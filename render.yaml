@@ -9,11 +9,9 @@ services:
         sync: false
       - key: MONGO_URI
         sync: false
-      - key: OWNER_ID
-        value: "1827336632"
+      - key: OWNER_IDS
+        sync: false
       - key: ADMIN_GROUP_ID
         value: "-1001234567890"
-      - key: BOT_USERNAME
-        sync: false
       - key: PORT
         value: "8080"
