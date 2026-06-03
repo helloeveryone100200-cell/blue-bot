@@ -14,7 +14,6 @@ BOT_TOKEN      = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN")
 MONGO_URI      = os.environ.get("MONGO_URI", "YOUR_MONGODB_URI")
 OWNER_ID       = int(os.environ.get("OWNER_ID", "1827336632"))
 ADMIN_GROUP_ID = int(os.environ.get("ADMIN_GROUP_ID", "-1001234567890"))
-BOT_USERNAME   = os.environ.get("BOT_USERNAME", "YourBotUsername")
 
 # ─── MONGODB SETUP ────────────────────────────────────────────────────────────
 client   = MongoClient(MONGO_URI)
@@ -31,6 +30,9 @@ ensure_video_counter()
 
 # ─── BOT INIT ─────────────────────────────────────────────────────────────────
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode=None)
+
+# Fetch bot username dynamically from Telegram (no env var needed)
+BOT_USERNAME = bot.get_me().username
 
 # ─── IN-MEMORY STATE ──────────────────────────────────────────────────────────
 # Tracks media groups being buffered: {media_group_id: {"file_ids": [], "caption": "", "processed": bool}}
