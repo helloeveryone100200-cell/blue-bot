@@ -12,7 +12,10 @@ from pymongo import MongoClient
 # ─── CONFIGURATION (set these as environment variables on Render) ─────────────
 BOT_TOKEN      = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN")
 MONGO_URI      = os.environ.get("MONGO_URI", "YOUR_MONGODB_URI")
-OWNER_ID       = int(os.environ.get("OWNER_ID", "1827336632"))
+_owner_id_env  = os.environ.get("OWNER_ID")
+if not _owner_id_env:
+    raise RuntimeError("OWNER_ID environment variable is not set.")
+OWNER_ID = int(_owner_id_env)
 ADMIN_GROUP_ID = int(os.environ.get("ADMIN_GROUP_ID", "-1001234567890"))
 
 # ─── MONGODB SETUP ────────────────────────────────────────────────────────────
