@@ -183,6 +183,51 @@ def cmd_panel(message):
         f"🎬 Total Videos: {total_vids}"
     )
 
+# ─── Owner /addlimit ──────────────────────────────────────────────────────────
+
+@bot.message_handler(commands=["addlimit"])
+def cmd_addlimit(message):
+    if message.from_user.id != OWNER_ID:
+        return
+    parts = message.text.split()
+    if len(parts) < 3:
+        bot.send_message(message.chat.id, "Usage: /addlimit {user_id} {amount}")
+        return
+    try:
+        target_id = int(parts[1])
+        amount    = int(parts[2])
+    except ValueError:
+        bot.send_message(message.chat.id, "Invalid user_id or amount. Both must be numbers.")
+        return
+    if amount == 0:
+        bot.send_message(message.chat.id, "Amount cannot be 0.")
+        return
+
+    result = users.find_one_and_update(
+        {"_id": target_id},
+        {"$inc": {"limit": amount}},
+        return_document=True
+    )
+    if not result:
+        bot.send_message(message.chat.id, f"❌ User {target_id} not found in database.")
+        return
+
+    new_limit = result.get("limit", 0)
+    action    = f"+{amount}" if amount > 0 else str(amount)
+    bot.send_message(
+        message.chat.id,
+        f"✅ User {target_id} limit {action} ထည့်ပြီးပါပြီ။\n"
+        f"New limit: {new_limit}"
+    )
+    try:
+        bot.send_message(
+            target_id,
+            f"🎁 Owner မှ ကြည့်ရှုခွင့် Limit {action} ခု ထည့်ပေးလိုက်ပါပြီ။\n"
+            f"လက်ရှိ Limit: {new_limit}"
+        )
+    except Exception:
+        pass
+
 # ─── Owner /free ──────────────────────────────────────────────────────────────
 
 @bot.message_handler(commands=["free"])
