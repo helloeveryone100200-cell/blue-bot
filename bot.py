@@ -6,7 +6,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from collections import defaultdict
 
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from pymongo import MongoClient
 
 # ─── CONFIGURATION (set these as environment variables on Render) ─────────────
@@ -66,6 +66,15 @@ def get_total_videos():
     counter = settings.find_one({"_id": "video_counter"})
     return counter["count"] if counter else 0
 
+def main_menu_keyboard():
+    markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(
+        KeyboardButton("👤 Profile"),
+        KeyboardButton("🔗 Share & Refer"),
+    )
+    markup.add(KeyboardButton("📞 Contact Owner"))
+    return markup
+
 def welcome_markup(user_id):
     markup = InlineKeyboardMarkup(row_width=2)
     share_url = f"https://t.me/share/url?url=https://t.me/{BOT_USERNAME}?start={user_id}"
@@ -89,7 +98,8 @@ def send_welcome(chat_id, user_id):
         f"videos ({total})ရှိတဲ့အတွက် videos ရှာလိုပါက v1,v2,v3 စသဖြင့် "
         "v အနောက်တွင် နံပါတ်ထည့်ပြီး ရိုက်ရှာနိုင်ပါသည်။"
     )
-    bot.send_message(chat_id, text, reply_markup=welcome_markup(user_id))
+    bot.send_message(chat_id, text,
+                     reply_markup=welcome_markup(user_id))
 
 # ─── /start ───────────────────────────────────────────────────────────────────
 
@@ -128,8 +138,9 @@ def cmd_start(message):
         except (ValueError, TypeError):
             pass
 
-    # Reset state and show welcome
+    # Reset state, show persistent menu keyboard, then welcome message
     users.update_one({"_id": new_user.id}, {"$set": {"state": "normal"}})
+    bot.send_message(message.chat.id, "🎉 Blue Bot へ ကြိုဆိုပါတယ်!", reply_markup=main_menu_keyboard())
     send_welcome(message.chat.id, new_user.id)
 
 # ─── Profile callback ─────────────────────────────────────────────────────────
@@ -392,6 +403,46 @@ def handle_text(message):
             f"ID: {user_id}\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"စာသား: {text}"
+        )
+        return
+
+    # ── Menu button: 👤 Profile ───────────────────────────────────────────────
+    if text == "👤 Profile":
+        display_name = doc.get("username") or doc.get("first_name") or str(user_id)
+        limit_str    = "Infinity" if doc.get("is_free") else str(doc.get("limit", 0))
+        bot.send_message(
+            message.chat.id,
+            "My Profile (unique)\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n\n"
+            f"အမည်: {display_name}\n\n"
+            f"အကောင့် ID: {user_id}\n\n"
+            f"limit: {limit_str}\n\n"
+            f"Share: {doc.get('shares', 0)}"
+        )
+        return
+
+    # ── Menu button: 🔗 Share & Refer ─────────────────────────────────────────
+    if text == "🔗 Share & Refer":
+        share_url = f"https://t.me/share/url?url=https://t.me/{BOT_USERNAME}?start={user_id}"
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("🔗 Share Link ကူးယူပါ", url=share_url))
+        bot.send_message(
+            message.chat.id,
+            f"🔗 သူငယ်ချင်းများကို ဖိတ်ခေါ်ပါ!\n\n"
+            f"တစ်ယောက် join ဖြစ်တိုင်း Limit +5 ခု ရမည်။\n\n"
+            f"သင့် Referral Link:\n"
+            f"https://t.me/{BOT_USERNAME}?start={user_id}",
+            reply_markup=markup
+        )
+        return
+
+    # ── Menu button: 📞 Contact Owner ─────────────────────────────────────────
+    if text == "📞 Contact Owner":
+        users.update_one({"_id": user_id}, {"$set": {"state": "waiting_contact"}})
+        bot.send_message(
+            message.chat.id,
+            "📞 လူကြီးမင်းအနေဖြင့် Bot Owner ထံ ပြောကြားလိုသည့် "
+            "စာသားများကို ရိုက်နှိပ်ပေးပို့နိုင်ပါပြီ ခင်ဗျာ။"
         )
         return
 
