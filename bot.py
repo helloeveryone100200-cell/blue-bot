@@ -75,6 +75,11 @@ def main_menu_keyboard():
     markup.add(KeyboardButton("📞 Contact Owner"))
     return markup
 
+def cancel_keyboard():
+    markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    markup.add(KeyboardButton("❌ Cancel"))
+    return markup
+
 def welcome_markup(user_id):
     markup = InlineKeyboardMarkup(row_width=2)
     share_url = f"https://t.me/share/url?url=https://t.me/{BOT_USERNAME}?start={user_id}"
@@ -176,7 +181,8 @@ def cmd_contact(message):
     bot.send_message(
         message.chat.id,
         "📞 လူကြီးမင်းအနေဖြင့် Bot Owner ထံ ပြောကြားလိုသည့် "
-        "စာသားများကို ရိုက်နှိပ်ပေးပို့နိုင်ပါပြီ ခင်ဗျာ။"
+        "စာသားများကို ရိုက်နှိပ်ပေးပို့နိုင်ပါပြီ ခင်ဗျာ။",
+        reply_markup=cancel_keyboard()
     )
 
 # ─── Owner /panel ─────────────────────────────────────────────────────────────
@@ -285,7 +291,8 @@ def cmd_broadcast(message):
     broadcast_targets[OWNER_ID] = target_id
     bot.send_message(
         message.chat.id,
-        f"📨 User {target_id} ထံပေးပို့မည့် စာသားကို ရိုက်ထည့်ပေးပါ:"
+        f"📨 User {target_id} ထံပေးပို့မည့် စာသားကို ရိုက်ထည့်ပေးပါ:",
+        reply_markup=cancel_keyboard()
     )
 
 # ─── Admin video ingestion (from ADMIN_GROUP_ID) ──────────────────────────────
@@ -371,6 +378,19 @@ def handle_text(message):
 
     state = doc.get("state", "normal")
 
+    # ── ❌ Cancel / ⬅️ Back — exits any active state back to main menu ─────────
+    if text in ("❌ Cancel", "⬅️ Back"):
+        users.update_one({"_id": user_id}, {"$set": {"state": "normal"}})
+        if user_id in broadcast_targets:
+            broadcast_targets.pop(user_id)
+        bot.send_message(
+            message.chat.id,
+            "🏠 Main menu သို့ ပြန်ရောက်ပါပြီ။",
+            reply_markup=main_menu_keyboard()
+        )
+        send_welcome(message.chat.id, user_id)
+        return
+
     # ── Owner broadcast reply step ────────────────────────────────────────────
     if user_id == OWNER_ID and user_id in broadcast_targets:
         target_id = broadcast_targets.pop(user_id)
@@ -381,9 +401,17 @@ def handle_text(message):
                 "━━━━━━━━━━━━━━━━━━━━\n\n"
                 + text
             )
-            bot.send_message(message.chat.id, f"✅ User {target_id} ထံ သတင်းပေးပို့ပြီးပါပြီ။")
+            bot.send_message(
+                message.chat.id,
+                f"✅ User {target_id} ထံ သတင်းပေးပို့ပြီးပါပြီ။",
+                reply_markup=main_menu_keyboard()
+            )
         except Exception as e:
-            bot.send_message(message.chat.id, f"❌ ပေးပို့မှု မအောင်မြင်ပါ: {e}")
+            bot.send_message(
+                message.chat.id,
+                f"❌ ပေးပို့မှု မအောင်မြင်ပါ: {e}",
+                reply_markup=main_menu_keyboard()
+            )
         return
 
     # ── Contact state ─────────────────────────────────────────────────────────
@@ -391,7 +419,8 @@ def handle_text(message):
         users.update_one({"_id": user_id}, {"$set": {"state": "normal"}})
         bot.send_message(
             message.chat.id,
-            "✅ လူကြီးမင်းပေးပို့သော စာသားသည် Owner ထံသို့ အောင်မြင်စွာ ရောက်ရှိသွားပါပြီ။"
+            "✅ လူကြီးမင်းပေးပို့သော စာသားသည် Owner ထံသို့ အောင်မြင်စွာ ရောက်ရှိသွားပါပြီ။",
+            reply_markup=main_menu_keyboard()
         )
         uname = doc.get("username") or ""
         fname = doc.get("first_name") or ""
@@ -442,7 +471,9 @@ def handle_text(message):
         bot.send_message(
             message.chat.id,
             "📞 လူကြီးမင်းအနေဖြင့် Bot Owner ထံ ပြောကြားလိုသည့် "
-            "စာသားများကို ရိုက်နှိပ်ပေးပို့နိုင်ပါပြီ ခင်ဗျာ။"
+            "စာသားများကို ရိုက်နှိပ်ပေးပို့နိုင်ပါပြီ ခင်ဗျာ။\n\n"
+            "မပို့လိုပါက ❌ Cancel ကိုနှိပ်ပါ။",
+            reply_markup=cancel_keyboard()
         )
         return
 
