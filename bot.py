@@ -12,10 +12,12 @@ from pymongo import MongoClient
 # ─── CONFIGURATION (set these as environment variables on Render) ─────────────
 BOT_TOKEN      = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN")
 MONGO_URI      = os.environ.get("MONGO_URI", "YOUR_MONGODB_URI")
-_owner_id_env  = os.environ.get("OWNER_ID")
-if not _owner_id_env:
-    raise RuntimeError("OWNER_ID environment variable is not set.")
-OWNER_ID = int(_owner_id_env)
+_owner_ids_env = os.environ.get("OWNER_IDS") or os.environ.get("OWNER_ID")
+if not _owner_ids_env:
+    raise RuntimeError("OWNER_IDS environment variable is not set.")
+OWNER_IDS = {int(x.strip()) for x in _owner_ids_env.split(",") if x.strip()}
+if not OWNER_IDS:
+    raise RuntimeError("OWNER_IDS contains no valid IDs.")
 ADMIN_GROUP_ID = int(os.environ.get("ADMIN_GROUP_ID", "-1001234567890"))
 
 # ─── MONGODB SETUP ────────────────────────────────────────────────────────────
@@ -189,7 +191,7 @@ def cmd_contact(message):
 
 @bot.message_handler(commands=["panel"])
 def cmd_panel(message):
-    if message.from_user.id != OWNER_ID:
+    if message.from_user.id not in OWNER_IDS:
         return
     total_users  = users.count_documents({})
     total_shares = sum(d.get("shares", 0) for d in users.find({}, {"shares": 1}))
@@ -207,7 +209,7 @@ def cmd_panel(message):
 
 @bot.message_handler(commands=["addlimit"])
 def cmd_addlimit(message):
-    if message.from_user.id != OWNER_ID:
+    if message.from_user.id not in OWNER_IDS:
         return
     parts = message.text.split()
     if len(parts) < 3:
@@ -252,7 +254,7 @@ def cmd_addlimit(message):
 
 @bot.message_handler(commands=["free"])
 def cmd_free(message):
-    if message.from_user.id != OWNER_ID:
+    if message.from_user.id not in OWNER_IDS:
         return
     parts = message.text.split()
     if len(parts) < 3:
@@ -277,7 +279,7 @@ def cmd_free(message):
 
 @bot.message_handler(commands=["broadcast"])
 def cmd_broadcast(message):
-    if message.from_user.id != OWNER_ID:
+    if message.from_user.id not in OWNER_IDS:
         return
     parts = message.text.split()
     if len(parts) < 2:
@@ -288,7 +290,7 @@ def cmd_broadcast(message):
     except ValueError:
         bot.send_message(message.chat.id, "Invalid user_id.")
         return
-    broadcast_targets[OWNER_ID] = target_id
+    broadcast_targets[message.from_user.id] = target_id
     bot.send_message(
         message.chat.id,
         f"📨 User {target_id} ထံပေးပို့မည့် စာသားကို ရိုက်ထည့်ပေးပါ:",
@@ -392,7 +394,7 @@ def handle_text(message):
         return
 
     # ── Owner broadcast reply step ────────────────────────────────────────────
-    if user_id == OWNER_ID and user_id in broadcast_targets:
+    if user_id in OWNER_IDS and user_id in broadcast_targets:
         target_id = broadcast_targets.pop(user_id)
         try:
             bot.send_message(
@@ -424,15 +426,19 @@ def handle_text(message):
         )
         uname = doc.get("username") or ""
         fname = doc.get("first_name") or ""
-        bot.send_message(
-            OWNER_ID,
-            f"📩 Message from user\n"
-            f"Name: {fname}\n"
-            f"Username: @{uname}\n"
-            f"ID: {user_id}\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"စာသား: {text}"
-        )
+        for oid in OWNER_IDS:
+            try:
+                bot.send_message(
+                    oid,
+                    f"📩 Message from user\n"
+                    f"Name: {fname}\n"
+                    f"Username: @{uname}\n"
+                    f"ID: {user_id}\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"စာသား: {text}"
+                )
+            except Exception:
+                pass
         return
 
     # ── Menu button: 👤 Profile ───────────────────────────────────────────────
