@@ -575,10 +575,38 @@ def start_web_server():
     server.serve_forever()
 
 
+# ─── POLLING WITH 409 GUARD ───────────────────────────────────────────────────
+
+def start_polling():
+    while True:
+        try:
+            # Clear any existing webhook / stale sessions before polling.
+            # This eliminates the 409 Conflict when Render spins up a new
+            # instance while the old one is still alive.
+            bot.delete_webhook(drop_pending_updates=True)
+            print("Webhook cleared. Starting polling...")
+            bot.infinity_polling(
+                timeout=60,
+                long_polling_timeout=30,
+                allowed_updates=["message", "callback_query"],
+                restart_on_change=False,
+            )
+        except Exception as e:
+            print(f"Polling error: {e}")
+            # 409 = another instance still running; back off and retry
+            time.sleep(5)
+            print("Retrying polling...")
+
+
 # ─── ENTRY POINT ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    # Web server starts FIRST so UptimeRobot always gets a 200 even while
+    # the bot polling thread is restarting after a 409 conflict.
     web_thread = threading.Thread(target=start_web_server, daemon=True)
     web_thread.start()
-    print("Blue Bot started. Web server running on port 8080.")
-    bot.infinity_polling(timeout=60, long_polling_timeout=30)
+    print("Blue Bot started. Web server running.")
+
+    poll_thread = threading.Thread(target=start_polling, daemon=False)
+    poll_thread.start()
+    poll_thread.join()
