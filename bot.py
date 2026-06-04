@@ -113,9 +113,6 @@ def send_welcome(chat_id, user_id):
 
 @bot.message_handler(commands=["start"])
 def cmd_start(message):
-    if message.chat.type != "private":
-        return
-
     args     = message.text.split()
     new_user = message.from_user
     doc      = users.find_one({"_id": new_user.id})
@@ -124,7 +121,7 @@ def cmd_start(message):
     if is_new:
         get_or_create_user(new_user)
 
-    # Referral logic
+    # Referral logic (works from any chat)
     if len(args) > 1 and is_new:
         try:
             referrer_id = int(args[1])
@@ -146,10 +143,29 @@ def cmd_start(message):
         except (ValueError, TypeError):
             pass
 
-    # Reset state, show persistent menu keyboard, then welcome message
     users.update_one({"_id": new_user.id}, {"$set": {"state": "normal"}})
-    bot.send_message(message.chat.id, "🎉 Blue Bot へ ကြိုဆိုပါတယ်!", reply_markup=main_menu_keyboard())
-    send_welcome(message.chat.id, new_user.id)
+
+    if message.chat.type == "private":
+        # Private: show full persistent keyboard + welcome
+        bot.send_message(message.chat.id, "🎉 Blue Bot へ ကြိုဆိုပါတယ်!", reply_markup=main_menu_keyboard())
+        send_welcome(message.chat.id, new_user.id)
+    else:
+        # Group: register confirmation + usage hint (no keyboard spam)
+        total   = get_total_videos()
+        fname   = new_user.first_name or new_user.username or str(new_user.id)
+        markup  = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton(
+            "🤖 Bot ကို Private တွင် ဖွင့်မည်",
+            url=f"https://t.me/{BOT_USERNAME}?start={new_user.id}"
+        ))
+        bot.send_message(
+            message.chat.id,
+            f"👋 {fname} မင်္ဂလာပါ! Blue Bot တွင် မှတ်ပုံတင်ပြီးပါပြီ။\n\n"
+            f"📹 Video {total} ခု ရှိပါသည်။\n"
+            f"ဤ group တွင် v1, v2, v3 … ရိုက်ပြီး video ရှာနိုင်ပါသည်။\n\n"
+            f"👤 Profile / Share / Contact — Private chat တွင်သာ ရနိုင်ပါသည်။",
+            reply_markup=markup
+        )
 
 # ─── Profile callback ─────────────────────────────────────────────────────────
 
@@ -367,6 +383,93 @@ def handle_admin_video(message):
             message.chat.id,
             f"✅ စနစ်ထဲသို့ {vid_id} ဖြင့် အလိုအလျောက်သိမ်းဆည်းပြီးပါပြီ။"
         )
+
+# ─── Group video search handler ───────────────────────────────────────────────
+# Handles vN pattern in groups/supergroups. Profile/Share/Contact stay private.
+
+@bot.message_handler(
+    func=lambda m: m.chat.type in ("group", "supergroup")
+                   and m.text is not None
+                   and re.fullmatch(r"v\d+", m.text.strip(), re.IGNORECASE) is not None,
+    content_types=["text"]
+)
+def handle_group_video_search(message):
+    user_id = message.from_user.id
+    text    = message.text.strip().lower()
+    doc     = users.find_one({"_id": user_id})
+
+    # Auto-register if not yet seen
+    if doc is None:
+        doc = get_or_create_user(message.from_user)
+
+    is_free = doc.get("is_free", False)
+    limit   = doc.get("limit", 0)
+
+    if not is_free and limit <= 0:
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton(
+            "🔗 Referral Link ယူပြီး Limit တိုးမည်",
+            url=f"https://t.me/{BOT_USERNAME}?start={user_id}"
+        ))
+        bot.send_message(
+            message.chat.id,
+            f"⚠️ {message.from_user.first_name or 'User'}, ကြည့်ရှုခွင့် Limit ကုန်ဆုံးပါပြီ။\n"
+            "သူငယ်ချင်းများ ဖိတ်ခေါ်ပြီး Limit ထပ်ရယူနိုင်ပါသည်။",
+            reply_to_message_id=message.message_id,
+            reply_markup=markup
+        )
+        return
+
+    vid_doc = videos.find_one({"_id": text})
+    if not vid_doc:
+        bot.send_message(
+            message.chat.id,
+            f"❌ {text} နံပါတ်ဖြင့် ဗီဒီယို ရှာမတွေ့ပါ။",
+            reply_to_message_id=message.message_id
+        )
+        return
+
+    # Loading animation
+    bot.send_chat_action(message.chat.id, "upload_video")
+    loading_msg = bot.send_message(
+        message.chat.id, "⏳ Please wait... ⬜ 0%",
+        reply_to_message_id=message.message_id
+    )
+    time.sleep(1.5)
+    try:
+        bot.edit_message_text("⏳ Please wait... 🟨🟨🟨 50%", message.chat.id, loading_msg.message_id)
+    except Exception:
+        pass
+    time.sleep(1.5)
+    try:
+        bot.edit_message_text("⏳ Please wait... 🟩🟩🟩🟩🟩 100%", message.chat.id, loading_msg.message_id)
+    except Exception:
+        pass
+
+    # Deduct limit
+    if not is_free:
+        users.update_one({"_id": user_id}, {"$inc": {"limit": -1}})
+
+    # Send video(s) in the group
+    caption  = vid_doc.get("caption", "")
+    file_ids = vid_doc.get("video_ids", [])
+    try:
+        if vid_doc["type"] == "single":
+            bot.send_video(message.chat.id, file_ids[0], caption=caption)
+        else:
+            media_group = [
+                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 else "")
+                for i, fid in enumerate(file_ids)
+            ]
+            bot.send_media_group(message.chat.id, media_group)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Video ပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+
+    try:
+        bot.delete_message(message.chat.id, loading_msg.message_id)
+    except Exception:
+        pass
+
 
 # ─── General message handler (private) ───────────────────────────────────────
 
