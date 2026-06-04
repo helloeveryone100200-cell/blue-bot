@@ -85,7 +85,10 @@ def main_menu_keyboard():
         KeyboardButton("👤 Profile"),
         KeyboardButton("🔗 Share & Refer"),
     )
-    markup.add(KeyboardButton("📞 Contact Owner"))
+    markup.add(
+        KeyboardButton("📹 Videos Update"),
+        KeyboardButton("📞 Contact Owner"),
+    )
     return markup
 
 def cancel_keyboard():
@@ -112,9 +115,10 @@ def send_welcome(chat_id, user_id):
     total = get_total_videos()
     text = (
         "welcome from Blue Bot\n\n"
-        "ဒီbotက မင်းရဲ့စိတ်ကိုဖြေလျော့ဖို့အတွက်အလွယ်တကူ videosများရှာဖွေကြည့်ရှုနိုင်ပါတယ်။\n"
-        f"videos ({total})ရှိတဲ့အတွက် videos ရှာလိုပါက v1,v2,v3 စသဖြင့် "
-        "v အနောက်တွင် နံပါတ်ထည့်ပြီး ရိုက်ရှာနိုင်ပါသည်။"
+        "ဒီbotက မင်းရဲ့စိတ်ကိုဖြေလျော့ဖို့အတွက်အလွယ်တကူ videosများရှာဖွေကြည့်ရှုနိုင်ပါတယ်။\n\n"
+        f"📹 လက်ရှိ Videos အရေအတွက်: {total} ခု\n"
+        f"videos ရှာလိုပါက v1, v2, v3 စသဖြင့် v အနောက်တွင် နံပါတ်ထည့်ပြီး ရိုက်ရှာနိုင်ပါသည်။\n\n"
+        "📹 Videos Update ခလုတ်ဖြင့် နောက်ဆုံး videos အရေအတွက် update ကို အချိန်မရွေး စစ်ဆေးနိုင်ပါသည်။"
     )
     bot.send_message(chat_id, text,
                      reply_markup=welcome_markup(user_id))
@@ -646,6 +650,18 @@ def handle_text(message):
             f"သင့် Referral Link:\n"
             f"https://t.me/{BOT_USERNAME}?start={user_id}",
             reply_markup=markup
+        )
+        return
+
+    # ── Menu button: 📹 Videos Update ────────────────────────────────────────
+    if text == "📹 Videos Update":
+        total = get_total_videos()
+        bot.send_message(
+            message.chat.id,
+            f"📹 Videos Update\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"လက်ရှိ Bot တွင် Videos စုစုပေါင်း {total} ခု ရှိပါသည်။\n\n"
+            f"v1 မှ v{total} အထိ ရှာဖွေနိုင်ပါသည်။"
         )
         return
 
