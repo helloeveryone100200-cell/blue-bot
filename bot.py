@@ -314,11 +314,12 @@ def cmd_broadcast(message):
         reply_markup=cancel_keyboard()
     )
 
-# ─── Admin video ingestion (from ADMIN_GROUP_ID) ──────────────────────────────
+# ─── Admin video ingestion (owner only, from ADMIN_GROUP_ID) ─────────────────
 
 @bot.message_handler(content_types=["video"], chat_id=[ADMIN_GROUP_ID])
 def handle_admin_video(message):
-    if message.chat.id != ADMIN_GROUP_ID:
+    # Only process videos sent by an owner — silently ignore everyone else
+    if message.from_user.id not in OWNER_IDS:
         return
 
     file_id        = message.video.file_id
