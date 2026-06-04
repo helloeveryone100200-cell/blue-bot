@@ -580,21 +580,26 @@ def start_web_server():
 def start_polling():
     while True:
         try:
-            # Clear any existing webhook / stale sessions before polling.
-            # This eliminates the 409 Conflict when Render spins up a new
-            # instance while the old one is still alive.
+            # Remove any webhook so Telegram knows we're using polling.
             bot.delete_webhook(drop_pending_updates=True)
             print("Webhook cleared. Starting polling...")
             bot.infinity_polling(
-                timeout=60,
-                long_polling_timeout=30,
+                timeout=20,
+                long_polling_timeout=20,
                 allowed_updates=["message", "callback_query"],
-                restart_on_change=False,
+                # Never re-raise exceptions — let our outer loop handle them.
+                none_stop=True,
             )
         except Exception as e:
-            print(f"Polling error: {e}")
-            # 409 = another instance still running; back off and retry
-            time.sleep(5)
+            err = str(e)
+            print(f"Polling error: {err}")
+            if "409" in err:
+                # Another instance is still holding the getUpdates connection.
+                # Wait longer than long_polling_timeout so it expires, then retry.
+                print("409 conflict — waiting 35 s for old instance to release...")
+                time.sleep(35)
+            else:
+                time.sleep(5)
             print("Retrying polling...")
 
 
