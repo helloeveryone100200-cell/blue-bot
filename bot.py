@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import json
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from collections import defaultdict
@@ -554,64 +555,60 @@ def handle_text(message):
     send_welcome(message.chat.id, user_id)
 
 
-# ─── WEB SERVER (UptimeRobot keep-alive) ──────────────────────────────────────
+# ─── WEBHOOK + KEEP-ALIVE SERVER ──────────────────────────────────────────────
+# Webhook mode: Telegram POSTs updates to /webhook.
+# No polling → no 409 Conflict even when Render spins up a new instance.
+# GET / → UptimeRobot keep-alive (always returns 200).
 
-class PingHandler(BaseHTTPRequestHandler):
+class WebhookHandler(BaseHTTPRequestHandler):
+
     def do_GET(self):
-        body = b"Blue Bot is Alive and Running Always On!"
+        body = b"Blue Bot is Alive!"
         self.send_response(200)
-        self.send_header("Content-Type", "text/html")
+        self.send_header("Content-Type", "text/plain")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def do_POST(self):
+        if self.path == "/webhook":
+            length  = int(self.headers.get("Content-Length", 0))
+            payload = self.rfile.read(length)
+            try:
+                update = telebot.types.Update.de_json(json.loads(payload))
+                bot.process_new_updates([update])
+            except Exception as e:
+                print(f"Update processing error: {e}")
+            self.send_response(200)
+            self.end_headers()
+        else:
+            self.send_response(404)
+            self.end_headers()
 
     def log_message(self, *args):
         pass  # silence access logs
 
 
-def start_web_server():
-    port   = int(os.environ.get("PORT", "8080"))
-    server = HTTPServer(("0.0.0.0", port), PingHandler)
-    server.serve_forever()
-
-
-# ─── POLLING WITH 409 GUARD ───────────────────────────────────────────────────
-
-def start_polling():
-    while True:
-        try:
-            # Remove any webhook so Telegram knows we're using polling.
-            bot.delete_webhook(drop_pending_updates=True)
-            print("Webhook cleared. Starting polling...")
-            bot.infinity_polling(
-                timeout=20,
-                long_polling_timeout=20,
-                allowed_updates=["message", "callback_query"],
-                # Never re-raise exceptions — let our outer loop handle them.
-                none_stop=True,
-            )
-        except Exception as e:
-            err = str(e)
-            print(f"Polling error: {err}")
-            if "409" in err:
-                # Another instance is still holding the getUpdates connection.
-                # Wait longer than long_polling_timeout so it expires, then retry.
-                print("409 conflict — waiting 35 s for old instance to release...")
-                time.sleep(35)
-            else:
-                time.sleep(5)
-            print("Retrying polling...")
-
-
 # ─── ENTRY POINT ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    # Web server starts FIRST so UptimeRobot always gets a 200 even while
-    # the bot polling thread is restarting after a 409 conflict.
-    web_thread = threading.Thread(target=start_web_server, daemon=True)
-    web_thread.start()
-    print("Blue Bot started. Web server running.")
+    port = int(os.environ.get("PORT", "8080"))
 
-    poll_thread = threading.Thread(target=start_polling, daemon=False)
-    poll_thread.start()
-    poll_thread.join()
+    # RENDER_EXTERNAL_URL is set automatically by Render, e.g.
+    # https://blue-bot-qz5f.onrender.com
+    # You can also set WEBHOOK_URL manually in Render env vars.
+    base_url    = (
+        os.environ.get("WEBHOOK_URL")
+        or os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")
+    )
+    webhook_url = f"{base_url}/webhook"
+
+    # Register webhook with Telegram (replaces any previous polling session).
+    bot.remove_webhook()
+    time.sleep(1)
+    bot.set_webhook(url=webhook_url, allowed_updates=["message", "callback_query"])
+    print(f"Webhook set → {webhook_url}")
+
+    server = HTTPServer(("0.0.0.0", port), WebhookHandler)
+    print(f"Blue Bot webhook server running on port {port}.")
+    server.serve_forever()
