@@ -19,8 +19,6 @@ if not _owner_ids_env:
 OWNER_IDS = {int(x.strip()) for x in _owner_ids_env.split(",") if x.strip()}
 if not OWNER_IDS:
     raise RuntimeError("OWNER_IDS contains no valid IDs.")
-ADMIN_GROUP_ID = int(os.environ.get("ADMIN_GROUP_ID", "-1001234567890"))
-
 # ─── MONGODB SETUP ────────────────────────────────────────────────────────────
 client   = MongoClient(MONGO_URI)
 db       = client["BlueBotDB"]
@@ -33,6 +31,18 @@ def ensure_video_counter():
         settings.insert_one({"_id": "video_counter", "count": 0})
 
 ensure_video_counter()
+
+def get_admin_group_id():
+    """Return the designated admin group ID stored in MongoDB, or None if not set."""
+    doc = settings.find_one({"_id": "admin_group"})
+    return doc["chat_id"] if doc else None
+
+def set_admin_group_id(chat_id: int):
+    settings.update_one(
+        {"_id": "admin_group"},
+        {"$set": {"chat_id": chat_id}},
+        upsert=True
+    )
 
 # ─── BOT INIT ─────────────────────────────────────────────────────────────────
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode=None)
@@ -314,13 +324,76 @@ def cmd_broadcast(message):
         reply_markup=cancel_keyboard()
     )
 
-# ─── Admin video ingestion (owner only, from ADMIN_GROUP_ID) ─────────────────
+# ─── Owner /setadmingroup ─────────────────────────────────────────────────────
+# Owner sends /setadmingroup inside any group → that group becomes the video
+# ingestion group.  Stored in MongoDB so it survives restarts.
 
-@bot.message_handler(content_types=["video"], chat_id=[ADMIN_GROUP_ID])
-def handle_admin_video(message):
-    # Only process videos sent by an owner — silently ignore everyone else
+@bot.message_handler(commands=["setadmingroup"])
+def cmd_setadmingroup(message):
     if message.from_user.id not in OWNER_IDS:
         return
+    if message.chat.type not in ("group", "supergroup"):
+        bot.send_message(
+            message.chat.id,
+            "⚠️ ဤ command ကို group ထဲတွင်သာ သုံးနိုင်ပါသည်။\n"
+            "Bot ကို group ထဲ add ပြုလုပ်ပြီး group ထဲတွင် /setadmingroup ရိုက်ပါ။"
+        )
+        return
+
+    chat_id   = message.chat.id
+    chat_name = message.chat.title or str(chat_id)
+    set_admin_group_id(chat_id)
+    bot.send_message(
+        message.chat.id,
+        f"✅ ဤ group ကို Video သိမ်းဆည်းမည့် Admin Group အဖြစ် သတ်မှတ်ပြီးပါပြီ။\n\n"
+        f"Group: {chat_name}\n"
+        f"ID: {chat_id}\n\n"
+        f"ယခုမှ စတင်ပြီး Owner ဤ group ထဲ video ပို့ပါက အလိုအလျောက် database သိမ်းဆည်းမည်။"
+    )
+
+
+# ─── Owner /deletevideo ───────────────────────────────────────────────────────
+# Usage: /deletevideo v5   (removes v5 from DB; does NOT renumber others)
+
+@bot.message_handler(commands=["deletevideo"])
+def cmd_deletevideo(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.send_message(message.chat.id, "Usage: /deletevideo v5")
+        return
+
+    vid_id = parts[1].lower()
+    if not re.fullmatch(r"v\d+", vid_id):
+        bot.send_message(message.chat.id, "❌ Video ID မမှန်ကန်ပါ။ ဥပမာ: /deletevideo v5")
+        return
+
+    result = videos.delete_one({"_id": vid_id})
+    if result.deleted_count == 0:
+        bot.send_message(message.chat.id, f"❌ {vid_id} ကို database တွင် ရှာမတွေ့ပါ။")
+        return
+
+    # Decrement the video counter so new uploads don't skip numbers
+    settings.update_one({"_id": "video_counter"}, {"$inc": {"count": -1}})
+    bot.send_message(
+        message.chat.id,
+        f"🗑 {vid_id} ကို database မှ ဖျက်ပြီးပါပြီ။"
+    )
+
+
+# ─── Admin video ingestion (owner only, from the designated admin group) ──────
+
+@bot.message_handler(
+    func=lambda m: (
+        m.content_type == "video"
+        and m.from_user.id in OWNER_IDS
+        and m.chat.id == get_admin_group_id()
+    ),
+    content_types=["video"]
+)
+def handle_admin_video(message):
+    # Sender and group already verified by the func= filter above
 
     file_id        = message.video.file_id
     media_group_id = getattr(message, "media_group_id", None)
