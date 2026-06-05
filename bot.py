@@ -306,7 +306,50 @@ def cmd_free(message):
     else:
         bot.send_message(message.chat.id, "Usage: /free {user_id} on|off")
 
+# ─── Owner /userlist ──────────────────────────────────────────────────────────
+
+@bot.message_handler(commands=["userlist"])
+def cmd_userlist(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+
+    all_users = list(users.find({}, {"_id": 1, "username": 1, "first_name": 1}))
+    if not all_users:
+        bot.send_message(message.chat.id, "📋 User မရှိသေးပါ။")
+        return
+
+    # Build lines: "@username 1234567890" or "FirstName 1234567890"
+    lines = []
+    for u in all_users:
+        uid  = u["_id"]
+        name = (
+            f"@{u['username']}" if u.get("username")
+            else (u.get("first_name") or "NoName")
+        )
+        lines.append(f"{name}  {uid}")
+
+    total = len(lines)
+    # Telegram max message length ~4096; split if needed
+    chunk, chunks = [], []
+    char_count = 0
+    header = f"👥 User List — {total} ဦး\n{'━' * 22}\n\n"
+    for line in lines:
+        if char_count + len(line) + 1 > 3800:
+            chunks.append(chunk)
+            chunk, char_count = [], 0
+        chunk.append(line)
+        char_count += len(line) + 1
+    if chunk:
+        chunks.append(chunk)
+
+    for i, ch in enumerate(chunks):
+        prefix = header if i == 0 else f"(ဆက်လက်... {i+1}/{len(chunks)})\n\n"
+        bot.send_message(message.chat.id, prefix + "\n".join(ch))
+
+
 # ─── Owner /broadcast ─────────────────────────────────────────────────────────
+# /broadcast all        → sends a message to every registered user
+# /broadcast {user_id}  → sends a message to one specific user
 
 @bot.message_handler(commands=["broadcast"])
 def cmd_broadcast(message):
@@ -314,19 +357,41 @@ def cmd_broadcast(message):
         return
     parts = message.text.split()
     if len(parts) < 2:
-        bot.send_message(message.chat.id, "Usage: /broadcast {user_id}")
+        bot.send_message(
+            message.chat.id,
+            "📨 Broadcast\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "Usage:\n"
+            "/broadcast all          → Users အားလုံးထံ ပေးပို့မည်\n"
+            "/broadcast {user_id}    → တစ်ဦးတည်းထံ ပေးပို့မည်"
+        )
         return
-    try:
-        target_id = int(parts[1])
-    except ValueError:
-        bot.send_message(message.chat.id, "Invalid user_id.")
-        return
-    broadcast_targets[message.from_user.id] = target_id
-    bot.send_message(
-        message.chat.id,
-        f"📨 User {target_id} ထံပေးပို့မည့် စာသားကို ရိုက်ထည့်ပေးပါ:",
-        reply_markup=cancel_keyboard()
-    )
+
+    arg = parts[1].strip()
+    owner_id = message.from_user.id
+
+    if arg.lower() == "all":
+        total = users.count_documents({})
+        broadcast_targets[owner_id] = "all"
+        bot.send_message(
+            message.chat.id,
+            f"📨 Users {total} ဦး အားလုံးထံ ပေးပို့မည့် စာသားကို ရိုက်ထည့်ပေးပါ:\n\n"
+            "မပို့လိုပါက ❌ Cancel ကိုနှိပ်ပါ။",
+            reply_markup=cancel_keyboard()
+        )
+    else:
+        try:
+            target_id = int(arg)
+        except ValueError:
+            bot.send_message(message.chat.id, "❌ User ID မမှန်ကန်ပါ။\nUsage: /broadcast {user_id} or /broadcast all")
+            return
+        broadcast_targets[owner_id] = target_id
+        bot.send_message(
+            message.chat.id,
+            f"📨 User {target_id} ထံ ပေးပို့မည့် စာသားကို ရိုက်ထည့်ပေးပါ:\n\n"
+            "မပို့လိုပါက ❌ Cancel ကိုနှိပ်ပါ။",
+            reply_markup=cancel_keyboard()
+        )
 
 # ─── Owner /setadmingroup ─────────────────────────────────────────────────────
 # Owner sends /setadmingroup inside any group → that group becomes the video
@@ -577,25 +642,67 @@ def handle_text(message):
 
     # ── Owner broadcast reply step ────────────────────────────────────────────
     if user_id in OWNER_IDS and user_id in broadcast_targets:
-        target_id = broadcast_targets.pop(user_id)
-        try:
-            bot.send_message(
-                target_id,
-                "📩 Owner ထံမှ စာပြန်လာပါသည်\n"
-                "━━━━━━━━━━━━━━━━━━━━\n\n"
-                + text
-            )
-            bot.send_message(
+        target = broadcast_targets.pop(user_id)
+
+        if target == "all":
+            # ── Broadcast to every registered user ───────────────────────────
+            all_ids    = [u["_id"] for u in users.find({}, {"_id": 1})]
+            sent_ok    = 0
+            sent_fail  = 0
+            status_msg = bot.send_message(
                 message.chat.id,
-                f"✅ User {target_id} ထံ သတင်းပေးပို့ပြီးပါပြီ။",
-                reply_markup=main_menu_keyboard()
+                f"⏳ ပေးပို့နေပါသည်... 0 / {len(all_ids)}"
             )
-        except Exception as e:
-            bot.send_message(
-                message.chat.id,
-                f"❌ ပေးပို့မှု မအောင်မြင်ပါ: {e}",
-                reply_markup=main_menu_keyboard()
-            )
+            for i, uid in enumerate(all_ids, 1):
+                try:
+                    bot.send_message(
+                        uid,
+                        "📢 Bot မှ အသိပေးချက်\n"
+                        "━━━━━━━━━━━━━━━━━━━━\n\n"
+                        + text
+                    )
+                    sent_ok += 1
+                except Exception:
+                    sent_fail += 1
+                # Update progress every 20 users to avoid flood
+                if i % 20 == 0:
+                    try:
+                        bot.edit_message_text(
+                            f"⏳ ပေးပို့နေပါသည်... {i} / {len(all_ids)}",
+                            message.chat.id, status_msg.message_id
+                        )
+                    except Exception:
+                        pass
+            try:
+                bot.edit_message_text(
+                    f"✅ Broadcast ပြီးပါပြီ\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"✔ အောင်မြင်: {sent_ok} ဦး\n"
+                    f"✘ မအောင်မြင်: {sent_fail} ဦး",
+                    message.chat.id, status_msg.message_id
+                )
+            except Exception:
+                pass
+        else:
+            # ── Broadcast to one specific user ────────────────────────────────
+            try:
+                bot.send_message(
+                    target,
+                    "📩 Owner ထံမှ သတင်းစကား\n"
+                    "━━━━━━━━━━━━━━━━━━━━\n\n"
+                    + text
+                )
+                bot.send_message(
+                    message.chat.id,
+                    f"✅ User {target} ထံ ပေးပို့ပြီးပါပြီ။",
+                    reply_markup=main_menu_keyboard()
+                )
+            except Exception as e:
+                bot.send_message(
+                    message.chat.id,
+                    f"❌ ပေးပို့မှု မအောင်မြင်ပါ: {e}",
+                    reply_markup=main_menu_keyboard()
+                )
         return
 
     # ── Contact state ─────────────────────────────────────────────────────────
