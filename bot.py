@@ -114,14 +114,18 @@ def share_markup(user_id):
 def send_welcome(chat_id, user_id):
     total = get_total_videos()
     text = (
-        "welcome from Blue Bot\n\n"
-        "ဒီbotက မင်းရဲ့စိတ်ကိုဖြေလျော့ဖို့အတွက်အလွယ်တကူ videosများရှာဖွေကြည့်ရှုနိုင်ပါတယ်။\n\n"
-        f"📹 လက်ရှိ Videos အရေအတွက်: {total} ခု\n"
-        f"videos ရှာလိုပါက v1, v2, v3 စသဖြင့် v အနောက်တွင် နံပါတ်ထည့်ပြီး ရိုက်ရှာနိုင်ပါသည်။\n\n"
-        "📹 Videos Update ခလုတ်ဖြင့် နောက်ဆုံး videos အရေအတွက် update ကို အချိန်မရွေး စစ်ဆေးနိုင်ပါသည်။"
+        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+        "   𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐟𝐫𝐨𝐦 𝗕𝗹𝘂𝗲 𝗕𝗼𝘁 \n"
+        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+        "ဒီ 𝗕𝗼𝘁 က မင်းရဲ့စိတ်ကို ဖြေလျော့ဖို့အတွက် အလွယ်တကူ 𝗩𝗶𝗱𝗲𝗼𝘀 များ ရှာဖွေကြည့်ရှုနိုင်ပါတယ်။\n\n"
+        "⚡️ 𝗟𝗮𝘁𝗲𝘀𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀\n"
+        f"• လက်ရှိ ဗီဒီယိုအရေအတွက် ——— 𝟎{total} ခု\n\n"
+        "🔍 𝗛𝗼𝘄 𝘁𝗼 𝗦𝗲𝗮𝗿𝗰𝗵 (ရှာဖွေနည်း)\n"
+        "• ဗီဒီယိုများ ရှာလိုပါက v1, v2, v3 စသဖြင့် \"v\" အနောက်တွင် နံပါတ်ထည့်ပြီး ရိုက်ရှာနိုင်ပါသည်။\n\n"
+        "🔄 𝗩𝗶𝗱𝗲𝗼𝘀 𝗨𝗽𝗱𝗮𝘁𝗲\n"
+        "• [ 📹 Videos Update ] ခလုတ်ကို နှိပ်ပြီး နောက်ဆုံး ဗီဒီယိုအရေအတွက်ကို အချိန်မရွေး စစ်ဆေးနိုင်ပါသည်။"
     )
-    bot.send_message(chat_id, text,
-                     reply_markup=welcome_markup(user_id))
+    bot.send_message(chat_id, text, reply_markup=welcome_markup(user_id))
 
 # ─── /start ───────────────────────────────────────────────────────────────────
 
@@ -149,8 +153,11 @@ def cmd_start(message):
                     try:
                         bot.send_message(
                             referrer_id,
-                            "🎉 အဖွဲ့ဝင်အသစ်တစ်ယောက် ဖိတ်ခေါ်မှုအောင်မြင်သဖြင့် "
-                            "ကြည့်ရှုခွင့် Limit 5 ခု တိုးပေးလိုက်ပါပြီ။"
+                            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+                            "   🎉 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹 𝗦𝘂𝗰𝗰𝗲𝘀𝘀!\n"
+                            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+                            "• သူငယ်ချင်းတစ်ဦး Bot ကို Join ဝင်သဖြင့်\n"
+                            "  ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 +𝟱 ခု ထပ်ရပါပြီ! ✅"
                         )
                     except Exception:
                         pass
@@ -160,24 +167,33 @@ def cmd_start(message):
     users.update_one({"_id": new_user.id}, {"$set": {"state": "normal"}})
 
     if message.chat.type == "private":
-        # Private: show full persistent keyboard + welcome
-        bot.send_message(message.chat.id, "🎉 Blue Bot へ ကြိုဆိုပါတယ်!", reply_markup=main_menu_keyboard())
+        bot.send_message(
+            message.chat.id,
+            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+            "   𝗕𝗹𝘂𝗲 𝗕𝗼𝘁 တွင် ကြိုဆိုပါသည်! 🎉\n"
+            "┗━━━━━━━━━━━━━━━━━━━━┛",
+            reply_markup=main_menu_keyboard()
+        )
         send_welcome(message.chat.id, new_user.id)
     else:
-        # Group: register confirmation + usage hint (no keyboard spam)
-        total   = get_total_videos()
-        fname   = new_user.first_name or new_user.username or str(new_user.id)
-        markup  = InlineKeyboardMarkup()
+        total  = get_total_videos()
+        fname  = new_user.first_name or new_user.username or str(new_user.id)
+        markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton(
-            "🤖 Bot ကို Private တွင် ဖွင့်မည်",
+            "🤖 Private တွင် Bot ဖွင့်မည်",
             url=f"https://t.me/{BOT_USERNAME}?start={new_user.id}"
         ))
         bot.send_message(
             message.chat.id,
-            f"👋 {fname} မင်္ဂလာပါ! Blue Bot တွင် မှတ်ပုံတင်ပြီးပါပြီ။\n\n"
-            f"📹 Video {total} ခု ရှိပါသည်။\n"
-            f"ဤ group တွင် v1, v2, v3 … ရိုက်ပြီး video ရှာနိုင်ပါသည်။\n\n"
-            f"👤 Profile / Share / Contact — Private chat တွင်သာ ရနိုင်ပါသည်။",
+            f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
+            f"   𝗕𝗹𝘂𝗲 𝗕𝗼𝘁 — မှတ်ပုံတင်ပြီးပါပြီ ✅\n"
+            f"┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+            f"👋 𝗛𝗲𝗹𝗹𝗼, {fname}!\n\n"
+            f"⚡️ 𝗟𝗮𝘁𝗲𝘀𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀\n"
+            f"• လက်ရှိ ဗီဒီယိုအရေအတွက် ——— {total} ခု\n\n"
+            f"🔍 𝗛𝗼𝘄 𝘁𝗼 𝗦𝗲𝗮𝗿𝗰𝗵\n"
+            f"• v1, v2, v3 … ရိုက်ပြီး ဤ Group တွင် ရှာနိုင်ပါသည်။\n\n"
+            f"💡 Profile / Share / Contact ကို 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗖𝗵𝗮𝘁 တွင်သာ သုံးနိုင်ပါသည်။",
             reply_markup=markup
         )
 
@@ -191,15 +207,16 @@ def cb_profile(call):
         doc = get_or_create_user(call.from_user)
 
     display_name = doc.get("username") or doc.get("first_name") or str(user_id)
-    limit_str    = "Infinity" if doc.get("is_free") else str(doc.get("limit", 0))
+    limit_str    = "∞ Unlimited" if doc.get("is_free") else str(doc.get("limit", 0))
 
     text = (
-        "My Profile (unique)\n"
-        "━━━━━━━━━━━━━━━━━━━━\n\n\n"
-        f"အမည်: {display_name}\n\n"
-        f"အကောင့် ID: {user_id}\n\n"
-        f"limit: {limit_str}\n\n"
-        f"Share: {doc.get('shares', 0)}"
+        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+        "      👤 𝗠𝘆 𝗣𝗿𝗼𝗳𝗶𝗹𝗲\n"
+        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+        f"• 𝗡𝗮𝗺𝗲  ——  {display_name}\n"
+        f"• 𝗜𝗗  ——  {user_id}\n"
+        f"• 𝗟𝗶𝗺𝗶𝘁  ——  {limit_str}\n"
+        f"• 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {doc.get('shares', 0)} ဦး"
     )
     bot.answer_callback_query(call.id)
     bot.send_message(call.message.chat.id, text)
@@ -229,11 +246,12 @@ def cmd_panel(message):
     total_vids   = get_total_videos()
     bot.send_message(
         message.chat.id,
-        f"📊 Bot Stats\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"👥 Total Users: {total_users}\n"
-        f"🔗 Total Shares: {total_shares}\n"
-        f"🎬 Total Videos: {total_vids}"
+        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+        "    📊 𝗕𝗼𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀\n"
+        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+        f"👥 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀  ——  {total_users} ဦး\n"
+        f"🔗 𝗧𝗼𝘁𝗮𝗹 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {total_shares} ကြိမ်\n"
+        f"🎬 𝗧𝗼𝘁𝗮𝗹 𝗩𝗶𝗱𝗲𝗼𝘀  ——  {total_vids} ခု"
     )
 
 # ─── Owner /addlimit ──────────────────────────────────────────────────────────
@@ -269,14 +287,17 @@ def cmd_addlimit(message):
     action    = f"+{amount}" if amount > 0 else str(amount)
     bot.send_message(
         message.chat.id,
-        f"✅ User {target_id} limit {action} ထည့်ပြီးပါပြီ။\n"
-        f"New limit: {new_limit}"
+        f"✅ User {target_id} ထံ 𝗟𝗶𝗺𝗶𝘁 {action} ထည့်ပြီးပါပြီ။\n"
+        f"• လက်ရှိ 𝗟𝗶𝗺𝗶𝘁: {new_limit}"
     )
     try:
         bot.send_message(
             target_id,
-            f"🎁 Owner မှ ကြည့်ရှုခွင့် Limit {action} ခု ထည့်ပေးလိုက်ပါပြီ။\n"
-            f"လက်ရှိ Limit: {new_limit}"
+            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+            "   🎁 𝗟𝗶𝗺𝗶𝘁 𝗔𝗱𝗱𝗲𝗱!\n"
+            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+            f"• 𝗢𝘄𝗻𝗲𝗿 မှ ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 {action} ခု ထည့်ပေးလိုက်ပါပြီ 🎉\n"
+            f"• လက်ရှိ 𝗟𝗶𝗺𝗶𝘁: {new_limit}"
         )
     except Exception:
         pass
@@ -556,8 +577,11 @@ def handle_group_video_search(message):
         ))
         bot.send_message(
             message.chat.id,
-            f"⚠️ {message.from_user.first_name or 'User'}, ကြည့်ရှုခွင့် Limit ကုန်ဆုံးပါပြီ။\n"
-            "သူငယ်ချင်းများ ဖိတ်ခေါ်ပြီး Limit ထပ်ရယူနိုင်ပါသည်။",
+            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+            "   ⚠️ 𝗟𝗶𝗺𝗶𝘁 𝗘𝘅𝗰𝗲𝗲𝗱𝗲𝗱\n"
+            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+            f"• {message.from_user.first_name or 'User'}, ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 ကုန်ဆုံးပါပြီ။\n\n"
+            "• သူငယ်ချင်းများ ဖိတ်ခေါ်ပြီး 𝗟𝗶𝗺𝗶𝘁 ထပ်ရယူနိုင်ပါသည်။",
             reply_to_message_id=message.message_id,
             reply_markup=markup
         )
@@ -567,7 +591,11 @@ def handle_group_video_search(message):
     if not vid_doc:
         bot.send_message(
             message.chat.id,
-            f"❌ {text} နံပါတ်ဖြင့် ဗီဒီယို ရှာမတွေ့ပါ။",
+            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+            "   ❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱\n"
+            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+            f"• 𝗩𝗶𝗱𝗲𝗼 {text} ကို ရှာမတွေ့ပါ။\n"
+            "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။",
             reply_to_message_id=message.message_id
         )
         return
@@ -575,17 +603,18 @@ def handle_group_video_search(message):
     # Loading animation
     bot.send_chat_action(message.chat.id, "upload_video")
     loading_msg = bot.send_message(
-        message.chat.id, "⏳ Please wait... ⬜ 0%",
+        message.chat.id,
+        "⏳ 𝗟𝗼𝗮𝗱𝗶𝗻𝗴...  ⬜⬜⬜⬜⬜  𝟬%",
         reply_to_message_id=message.message_id
     )
     time.sleep(1.5)
     try:
-        bot.edit_message_text("⏳ Please wait... 🟨🟨🟨 50%", message.chat.id, loading_msg.message_id)
+        bot.edit_message_text("⏳ 𝗟𝗼𝗮𝗱𝗶𝗻𝗴...  🟨🟨🟨⬜⬜  𝟱𝟬%", message.chat.id, loading_msg.message_id)
     except Exception:
         pass
     time.sleep(1.5)
     try:
-        bot.edit_message_text("⏳ Please wait... 🟩🟩🟩🟩🟩 100%", message.chat.id, loading_msg.message_id)
+        bot.edit_message_text("✅ 𝗟𝗼𝗮𝗱𝗶𝗻𝗴...  🟩🟩🟩🟩🟩  𝟭𝟬𝟬%", message.chat.id, loading_msg.message_id)
     except Exception:
         pass
 
@@ -657,8 +686,9 @@ def handle_text(message):
                 try:
                     bot.send_message(
                         uid,
-                        "📢 Bot မှ အသိပေးချက်\n"
-                        "━━━━━━━━━━━━━━━━━━━━\n\n"
+                        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+                        "   📢 𝗔𝗻𝗻𝗼𝘂𝗻𝗰𝗲𝗺𝗲𝗻𝘁\n"
+                        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
                         + text
                     )
                     sent_ok += 1
@@ -688,8 +718,9 @@ def handle_text(message):
             try:
                 bot.send_message(
                     target,
-                    "📩 Owner ထံမှ သတင်းစကား\n"
-                    "━━━━━━━━━━━━━━━━━━━━\n\n"
+                    "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+                    "   📩 𝗢𝘄𝗻𝗲𝗿 𝗠𝗲𝘀𝘀𝗮𝗴𝗲\n"
+                    "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
                     + text
                 )
                 bot.send_message(
@@ -710,7 +741,11 @@ def handle_text(message):
         users.update_one({"_id": user_id}, {"$set": {"state": "normal"}})
         bot.send_message(
             message.chat.id,
-            "✅ လူကြီးမင်းပေးပို့သော စာသားသည် Owner ထံသို့ အောင်မြင်စွာ ရောက်ရှိသွားပါပြီ။",
+            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+            "   ✅ 𝗦𝗲𝗻𝘁 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹𝗹𝘆\n"
+            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+            "• လူကြီးမင်းပေးပို့သော စာသားသည်\n"
+            "  𝗕𝗼𝘁 𝗢𝘄𝗻𝗲𝗿 ထံ ရောက်ရှိသွားပါပြီ ✅",
             reply_markup=main_menu_keyboard()
         )
         uname = doc.get("username") or ""
@@ -719,12 +754,13 @@ def handle_text(message):
             try:
                 bot.send_message(
                     oid,
-                    f"📩 Message from user\n"
-                    f"Name: {fname}\n"
-                    f"Username: @{uname}\n"
-                    f"ID: {user_id}\n"
-                    f"━━━━━━━━━━━━━━━━━━━━\n"
-                    f"စာသား: {text}"
+                    "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+                    "   📩 𝗨𝘀𝗲𝗿 𝗠𝗲𝘀𝘀𝗮𝗴𝗲\n"
+                    "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+                    f"• 𝗡𝗮𝗺𝗲  ——  {fname}\n"
+                    f"• 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲  ——  @{uname}\n"
+                    f"• 𝗜𝗗  ——  {user_id}\n\n"
+                    f"💬 𝗠𝗲𝘀𝘀𝗮𝗴𝗲:\n{text}"
                 )
             except Exception:
                 pass
@@ -733,15 +769,16 @@ def handle_text(message):
     # ── Menu button: 👤 Profile ───────────────────────────────────────────────
     if text == "👤 Profile":
         display_name = doc.get("username") or doc.get("first_name") or str(user_id)
-        limit_str    = "Infinity" if doc.get("is_free") else str(doc.get("limit", 0))
+        limit_str    = "∞ Unlimited" if doc.get("is_free") else str(doc.get("limit", 0))
         bot.send_message(
             message.chat.id,
-            "My Profile (unique)\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n\n"
-            f"အမည်: {display_name}\n\n"
-            f"အကောင့် ID: {user_id}\n\n"
-            f"limit: {limit_str}\n\n"
-            f"Share: {doc.get('shares', 0)}"
+            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+            "      👤 𝗠𝘆 𝗣𝗿𝗼𝗳𝗶𝗹𝗲\n"
+            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+            f"• 𝗡𝗮𝗺𝗲  ——  {display_name}\n"
+            f"• 𝗜𝗗  ——  {user_id}\n"
+            f"• 𝗟𝗶𝗺𝗶𝘁  ——  {limit_str}\n"
+            f"• 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {doc.get('shares', 0)} ဦး"
         )
         return
 
@@ -749,12 +786,16 @@ def handle_text(message):
     if text == "🔗 Share & Refer":
         share_url = f"https://t.me/share/url?url=https://t.me/{BOT_USERNAME}?start={user_id}"
         markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("🔗 Share Link ကူးယူပါ", url=share_url))
+        markup.add(InlineKeyboardButton("🔗 𝗦𝗵𝗮𝗿𝗲 𝗟𝗶𝗻𝗸 ကူးယူပါ", url=share_url))
         bot.send_message(
             message.chat.id,
-            f"🔗 သူငယ်ချင်းများကို ဖိတ်ခေါ်ပါ!\n\n"
-            f"တစ်ယောက် join ဖြစ်တိုင်း Limit +5 ခု ရမည်။\n\n"
-            f"သင့် Referral Link:\n"
+            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+            "   🔗 𝗦𝗵𝗮𝗿𝗲 & 𝗥𝗲𝗳𝗲𝗿\n"
+            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+            "• သူငယ်ချင်းများကို ဖိတ်ခေါ်ပြီး\n"
+            "  ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 ထပ်ရယူနိုင်ပါသည်။\n\n"
+            f"⚡️ တစ်ဦး Join ဖြစ်တိုင်း ——— 𝗟𝗶𝗺𝗶𝘁 +𝟱 ရမည်\n\n"
+            f"🔗 𝗬𝗼𝘂𝗿 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹 𝗟𝗶𝗻𝗸:\n"
             f"https://t.me/{BOT_USERNAME}?start={user_id}",
             reply_markup=markup
         )
@@ -765,10 +806,11 @@ def handle_text(message):
         total = get_total_videos()
         bot.send_message(
             message.chat.id,
-            f"📹 Videos Update\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"လက်ရှိ Bot တွင် Videos စုစုပေါင်း {total} ခု ရှိပါသည်။\n\n"
-            f"v1 မှ v{total} အထိ ရှာဖွေနိုင်ပါသည်။"
+            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+            "   🔄 𝗩𝗶𝗱𝗲𝗼𝘀 𝗨𝗽𝗱𝗮𝘁𝗲\n"
+            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+            f"• လက်ရှိ ဗီဒီယိုအရေအတွက် ——— 𝟬{total} ခု\n\n"
+            f"• v1 မှ v{total} အထိ ရှာဖွေနိုင်ပါသည်။"
         )
         return
 
@@ -777,9 +819,12 @@ def handle_text(message):
         users.update_one({"_id": user_id}, {"$set": {"state": "waiting_contact"}})
         bot.send_message(
             message.chat.id,
-            "📞 လူကြီးမင်းအနေဖြင့် Bot Owner ထံ ပြောကြားလိုသည့် "
-            "စာသားများကို ရိုက်နှိပ်ပေးပို့နိုင်ပါပြီ ခင်ဗျာ။\n\n"
-            "မပို့လိုပါက ❌ Cancel ကိုနှိပ်ပါ။",
+            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+            "   📞 𝗖𝗼𝗻𝘁𝗮𝗰𝘁 𝗢𝘄𝗻𝗲𝗿\n"
+            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+            "• 𝗕𝗼𝘁 𝗢𝘄𝗻𝗲𝗿 ထံ ပေးပို့လိုသည့် စာသားကို\n"
+            "  ရိုက်ထည့်ပြီး ပေးပို့နိုင်ပါပြီ ခင်ဗျာ။\n\n"
+            "• မပို့လိုပါက ❌ Cancel ကိုနှိပ်ပါ။",
             reply_markup=cancel_keyboard()
         )
         return
@@ -793,34 +838,46 @@ def handle_text(message):
         if not is_free and limit <= 0:
             bot.send_message(
                 message.chat.id,
-                "⚠️ လူကြီးမင်း၏ ဗီဒီယိုကြည့်ရှုခွင့် Limit ကုန်ဆုံးသွားပါပြီ။ "
-                "ဆက်လက်ကြည့်ရှုရန် အောက်ပါ ခလုတ်မှတစ်ဆင့် Share ပေးပါရန်။",
+                "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+                "   ⚠️ 𝗟𝗶𝗺𝗶𝘁 𝗘𝘅𝗰𝗲𝗲𝗱𝗲𝗱\n"
+                "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+                "• ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 ကုန်ဆုံးသွားပါပြီ။\n\n"
+                "• သူငယ်ချင်းများ ဖိတ်ခေါ်ပြီး\n"
+                "  𝗟𝗶𝗺𝗶𝘁 ထပ်ရယူနိုင်ပါသည်။",
                 reply_markup=share_markup(user_id)
             )
             return
 
         vid_doc = videos.find_one({"_id": vid_key})
         if not vid_doc:
-            bot.send_message(message.chat.id, "❌ ထိုနံပါတ်ဖြင့် ဗီဒီယို ရှာမတွေ့ပါ ခင်ဗျာ။")
+            bot.send_message(
+                message.chat.id,
+                "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+                "   ❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱\n"
+                "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+                f"• 𝗩𝗶𝗱𝗲𝗼 {vid_key} ကို ရှာမတွေ့ပါ ခင်ဗျာ။\n"
+                "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။"
+            )
             return
 
         # Anti-spam animation
         bot.send_chat_action(message.chat.id, "upload_video")
-        loading_msg = bot.send_message(message.chat.id, "⏳ Please wait a moment... ⬜ 0%")
-
+        loading_msg = bot.send_message(
+            message.chat.id,
+            "⏳ 𝗟𝗼𝗮𝗱𝗶𝗻𝗴...  ⬜⬜⬜⬜⬜  𝟬%"
+        )
         time.sleep(1.5)
         try:
             bot.edit_message_text(
-                "⏳ Please wait a moment... 🟨🟨🟨 50%",
+                "⏳ 𝗟𝗼𝗮𝗱𝗶𝗻𝗴...  🟨🟨🟨⬜⬜  𝟱𝟬%",
                 message.chat.id, loading_msg.message_id
             )
         except Exception:
             pass
-
         time.sleep(1.5)
         try:
             bot.edit_message_text(
-                "⏳ Please wait a moment... 🟩🟩🟩🟩🟩 100%",
+                "✅ 𝗟𝗼𝗮𝗱𝗶𝗻𝗴...  🟩🟩🟩🟩🟩  𝟭𝟬𝟬%",
                 message.chat.id, loading_msg.message_id
             )
         except Exception:
