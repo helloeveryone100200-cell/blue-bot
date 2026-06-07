@@ -302,6 +302,56 @@ def cmd_addlimit(message):
     except Exception:
         pass
 
+# ─── Owner /userinfo ──────────────────────────────────────────────────────────
+
+@bot.message_handler(commands=["userinfo"])
+def cmd_userinfo(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.send_message(message.chat.id, "Usage: /userinfo {user_id}")
+        return
+    try:
+        target_id = int(parts[1])
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Invalid user_id. Must be a number.")
+        return
+
+    doc = users.find_one({"_id": target_id})
+    if not doc:
+        bot.send_message(message.chat.id, f"❌ User {target_id} not found in database.")
+        return
+
+    uname    = doc.get("username") or "—"
+    fname    = doc.get("first_name") or "—"
+    limit    = doc.get("limit", 0)
+    shares   = doc.get("shares", 0)
+    is_free  = doc.get("is_free", False)
+    referrals = doc.get("referrals", 0)
+    state    = doc.get("state", "normal")
+    joined   = doc.get("joined_at", "—")
+
+    free_tag = "✅ Free (Unlimited)" if is_free else "❌ Limited"
+
+    bot.send_message(
+        message.chat.id,
+        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+        "   👤 𝗨𝘀𝗲𝗿 𝗜𝗻𝗳𝗼\n"
+        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+        f"• 𝗡𝗮𝗺𝗲  ——  {fname}\n"
+        f"• 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲  ——  @{uname}\n"
+        f"• 𝗜𝗗  ——  {target_id}\n\n"
+        "——————————————————\n\n"
+        f"• 𝗟𝗶𝗺𝗶𝘁  ——  {limit} ကြိမ်\n"
+        f"• 𝗦𝗵𝗮𝗿𝗲  ——  {shares} ကြိမ် Share ခဲ့သည်\n"
+        f"• 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹𝘀  ——  {referrals} ဦး ဖိတ်ခဲ့သည်\n\n"
+        "——————————————————\n\n"
+        f"• 𝗙𝗿𝗲𝗲 𝗠𝗼𝗱𝗲  ——  {free_tag}\n"
+        f"• 𝗦𝘁𝗮𝘁𝗲  ——  {state}\n"
+        f"• 𝗝𝗼𝗶𝗻𝗲𝗱  ——  {joined}"
+    )
+
 # ─── Owner /free ──────────────────────────────────────────────────────────────
 
 @bot.message_handler(commands=["free"])
