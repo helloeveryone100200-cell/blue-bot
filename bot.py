@@ -30,7 +30,12 @@ def ensure_video_counter():
     if settings.find_one({"_id": "video_counter"}) is None:
         settings.insert_one({"_id": "video_counter", "count": 0})
 
+def ensure_z_video_counter():
+    if settings.find_one({"_id": "z_video_counter"}) is None:
+        settings.insert_one({"_id": "z_video_counter", "count": 0})
+
 ensure_video_counter()
+ensure_z_video_counter()
 
 def get_admin_group_id():
     """Return the designated admin group ID stored in MongoDB, or None if not set."""
@@ -44,6 +49,46 @@ def set_admin_group_id(chat_id: int):
         upsert=True
     )
 
+def get_private_admin_group_id():
+    """Return the private admin group ID stored in MongoDB, or None if not set."""
+    doc = settings.find_one({"_id": "private_admin_group"})
+    return doc["chat_id"] if doc else None
+
+def set_private_admin_group_id(chat_id: int):
+    settings.update_one(
+        {"_id": "private_admin_group"},
+        {"$set": {"chat_id": chat_id}},
+        upsert=True
+    )
+
+def get_accepted_user_ids() -> set:
+    """Return set of user IDs accepted for the private group."""
+    doc = settings.find_one({"_id": "accepted_users"})
+    return set(doc["ids"]) if doc else set()
+
+def accept_user(user_id: int):
+    settings.update_one(
+        {"_id": "accepted_users"},
+        {"$addToSet": {"ids": user_id}},
+        upsert=True
+    )
+
+def remove_accepted_user(user_id: int):
+    settings.update_one(
+        {"_id": "accepted_users"},
+        {"$pull": {"ids": user_id}}
+    )
+
+def is_user_accepted(user_id: int) -> bool:
+    if user_id in OWNER_IDS:
+        return True
+    ids = get_accepted_user_ids()
+    return user_id in ids
+
+def get_total_z_videos():
+    counter = settings.find_one({"_id": "z_video_counter"})
+    return counter["count"] if counter else 0
+
 # ─── BOT INIT ─────────────────────────────────────────────────────────────────
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode=None)
 
@@ -52,8 +97,12 @@ BOT_USERNAME = bot.get_me().username
 
 # ─── IN-MEMORY STATE ──────────────────────────────────────────────────────────
 # Tracks media groups being buffered: {media_group_id: {"file_ids": [], "caption": "", "processed": bool}}
-album_buffer = defaultdict(lambda: {"file_ids": [], "caption": "", "processed": False})
-album_lock   = threading.Lock()
+album_buffer   = defaultdict(lambda: {"file_ids": [], "caption": "", "processed": False})
+album_lock     = threading.Lock()
+
+# Same buffer for private group z-videos
+z_album_buffer = defaultdict(lambda: {"file_ids": [], "caption": "", "processed": False})
+z_album_lock   = threading.Lock()
 
 # Tracks owner /broadcast step: {owner_id: target_user_id}
 broadcast_targets = {}
@@ -492,6 +541,112 @@ def cmd_setadmingroup(message):
     )
 
 
+# ─── Owner /setadmingroup_private ────────────────────────────────────────────
+# Owner sends /setadmingroup_private inside any group → that group becomes the
+# private video ingestion group. Only owner + accepted users can upload & search.
+
+@bot.message_handler(commands=["setadmingroup_private"])
+def cmd_setadmingroup_private(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+    if message.chat.type not in ("group", "supergroup"):
+        bot.send_message(
+            message.chat.id,
+            "⚠️ ဤ command ကို group ထဲတွင်သာ သုံးနိုင်ပါသည်။\n"
+            "Bot ကို group ထဲ add ပြုလုပ်ပြီး group ထဲတွင် /setadmingroup_private ရိုက်ပါ။"
+        )
+        return
+
+    chat_id   = message.chat.id
+    chat_name = message.chat.title or str(chat_id)
+    set_private_admin_group_id(chat_id)
+    bot.send_message(
+        message.chat.id,
+        f"🔒 ဤ group ကို Private Video Group အဖြစ် သတ်မှတ်ပြီးပါပြီ။\n\n"
+        f"Group: {chat_name}\n"
+        f"ID: {chat_id}\n\n"
+        f"• Owner တစ်ယောက်တည်း (သို့) /accept ဖြင့် ခွင့်ပြုထားသော User များသာ\n"
+        f"  ဤ group တွင် video ပေးပို့နိုင်ပြီး z1, z2, z3 … ဖြင့် ရှာဖွေနိုင်မည်။"
+    )
+
+
+# ─── Owner /accept ────────────────────────────────────────────────────────────
+# /accept {user_id}   → grant user access to private group upload & z-search
+# /accept remove {user_id} → revoke access
+
+@bot.message_handler(commands=["accept"])
+def cmd_accept(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+    parts = message.text.split()
+
+    # /accept remove {user_id}
+    if len(parts) >= 3 and parts[1].lower() == "remove":
+        try:
+            target_id = int(parts[2])
+        except ValueError:
+            bot.send_message(message.chat.id, "❌ User ID မမှန်ကန်ပါ။")
+            return
+        remove_accepted_user(target_id)
+        bot.send_message(
+            message.chat.id,
+            f"✅ User {target_id} ၏ Private Group ခွင့်ပြုချက် ဖျက်သိမ်းပြီးပါပြီ။"
+        )
+        try:
+            bot.send_message(
+                target_id,
+                "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+                "   🔒 𝗔𝗰𝗰𝗲𝘀𝘀 𝗥𝗲𝘃𝗼𝗸𝗲𝗱\n"
+                "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+                "• Owner မှ Private Group ခွင့်ပြုချက် ရုပ်သိမ်းလိုက်ပါပြီ။"
+            )
+        except Exception:
+            pass
+        return
+
+    # /accept {user_id}
+    if len(parts) < 2:
+        bot.send_message(
+            message.chat.id,
+            "Usage:\n"
+            "/accept {user_id}          → Private Group ခွင့်ပြုမည်\n"
+            "/accept remove {user_id}   → ခွင့်ပြုချက် ဖျက်မည်"
+        )
+        return
+
+    try:
+        target_id = int(parts[1])
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ User ID မမှန်ကန်ပါ။")
+        return
+
+    doc = users.find_one({"_id": target_id})
+    if not doc:
+        bot.send_message(message.chat.id, f"❌ User {target_id} database တွင် မတွေ့ပါ။")
+        return
+
+    accept_user(target_id)
+    uname = doc.get("username") or doc.get("first_name") or str(target_id)
+    bot.send_message(
+        message.chat.id,
+        f"✅ User {target_id} ({uname}) ကို Private Group ခွင့်ပြုပြီးပါပြီ။\n"
+        f"• ထို User သည် ယခု Private Group တွင် video တင်နိုင်ပြီး\n"
+        f"  z1, z2, z3 … ဖြင့် ရှာဖွေနိုင်မည်။"
+    )
+    try:
+        bot.send_message(
+            target_id,
+            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+            "   🔓 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗔𝗰𝗰𝗲𝘀𝘀 𝗚𝗿𝗮𝗻𝘁𝗲𝗱!\n"
+            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+            "• Owner မှ Private Group ကို ခွင့်ပြုလိုက်ပါပြီ ✅\n"
+            "• Private Group တွင် video တင်နိုင်ပြီး\n"
+            "  z1, z2, z3 … ဖြင့် ရှာဖွေနိုင်မည်ဖြစ်သည်။"
+        )
+    except Exception:
+        pass
+
+
 # ─── Owner /deletevideo ───────────────────────────────────────────────────────
 # Usage: /deletevideo v5   (removes v5 from DB; does NOT renumber others)
 
@@ -598,6 +753,83 @@ def handle_admin_video(message):
             f"✅ စနစ်ထဲသို့ {vid_id} ဖြင့် အလိုအလျောက်သိမ်းဆည်းပြီးပါပြီ။"
         )
 
+# ─── Private group video ingestion (owner + accepted users) ──────────────────
+
+@bot.message_handler(
+    func=lambda m: (
+        m.content_type == "video"
+        and is_user_accepted(m.from_user.id)
+        and m.chat.id == get_private_admin_group_id()
+    ),
+    content_types=["video"]
+)
+def handle_private_admin_video(message):
+    file_id        = message.video.file_id
+    media_group_id = getattr(message, "media_group_id", None)
+    caption        = message.caption or ""
+
+    if media_group_id:
+        with z_album_lock:
+            buf = z_album_buffer[media_group_id]
+            buf["file_ids"].append(file_id)
+            if not buf["caption"] and caption:
+                buf["caption"] = caption
+            already_processing = buf["processed"]
+            if not already_processing:
+                buf["processed"] = True
+
+        if not already_processing:
+            def flush_z_album(mgid, chat_id):
+                time.sleep(1.5)
+                with z_album_lock:
+                    b = z_album_buffer.pop(mgid, None)
+                if not b:
+                    return
+                result = settings.find_one_and_update(
+                    {"_id": "z_video_counter"},
+                    {"$inc": {"count": 1}},
+                    return_document=True
+                )
+                new_count = result["count"]
+                vid_id    = f"z{new_count}"
+                cap_text  = b["caption"] or f"Video {vid_id}"
+                videos.insert_one({
+                    "_id":            vid_id,
+                    "type":           "album",
+                    "media_group_id": mgid,
+                    "caption":        cap_text,
+                    "video_ids":      b["file_ids"],
+                    "private":        True,
+                })
+                bot.send_message(
+                    chat_id,
+                    f"🔒 Private Video {vid_id} ကို အလိုအလျောက်သိမ်းဆည်းပြီးပါပြီ။"
+                )
+
+            t = threading.Thread(target=flush_z_album, args=(media_group_id, message.chat.id), daemon=True)
+            t.start()
+    else:
+        result = settings.find_one_and_update(
+            {"_id": "z_video_counter"},
+            {"$inc": {"count": 1}},
+            return_document=True
+        )
+        new_count = result["count"]
+        vid_id    = f"z{new_count}"
+        cap_text  = caption or f"Video {vid_id}"
+        videos.insert_one({
+            "_id":      vid_id,
+            "type":     "single",
+            "caption":  cap_text,
+            "video_ids": [file_id],
+            "private":   True,
+        })
+        bot.send_message(
+            message.chat.id,
+            f"🔒 Private Video {vid_id} ကို အလိုအလျောက်သိမ်းဆည်းပြီးပါပြီ။"
+        )
+
+
 # ─── Group video search handler ───────────────────────────────────────────────
 # Handles vN pattern in groups/supergroups. Profile/Share/Contact stay private.
 
@@ -673,6 +905,83 @@ def handle_group_video_search(message):
         users.update_one({"_id": user_id}, {"$inc": {"limit": -1}})
 
     # Send video(s) in the group
+    caption  = vid_doc.get("caption", "")
+    file_ids = vid_doc.get("video_ids", [])
+    try:
+        if vid_doc["type"] == "single":
+            bot.send_video(message.chat.id, file_ids[0], caption=caption)
+        else:
+            media_group = [
+                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 else "")
+                for i, fid in enumerate(file_ids)
+            ]
+            bot.send_media_group(message.chat.id, media_group)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Video ပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+
+    try:
+        bot.delete_message(message.chat.id, loading_msg.message_id)
+    except Exception:
+        pass
+
+
+# ─── Group z-video search handler (accepted users + owner only) ───────────────
+# Handles zN pattern in groups/supergroups for private videos.
+
+@bot.message_handler(
+    func=lambda m: m.chat.type in ("group", "supergroup")
+                   and m.text is not None
+                   and re.fullmatch(r"z\d+", m.text.strip(), re.IGNORECASE) is not None,
+    content_types=["text"]
+)
+def handle_group_z_video_search(message):
+    user_id = message.from_user.id
+
+    # Only owner + accepted users can search z-videos
+    if not is_user_accepted(user_id):
+        bot.send_message(
+            message.chat.id,
+            "🔒 ဤ video များကို ကြည့်ရှုခွင့် မရှိပါ။",
+            reply_to_message_id=message.message_id
+        )
+        return
+
+    text    = message.text.strip().lower()
+    doc     = users.find_one({"_id": user_id})
+    if doc is None:
+        doc = get_or_create_user(message.from_user)
+
+    vid_doc = videos.find_one({"_id": text})
+    if not vid_doc:
+        bot.send_message(
+            message.chat.id,
+            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+            "   ❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱\n"
+            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+            f"• 𝗩𝗶𝗱𝗲𝗼 {text} ကို ရှာမတွေ့ပါ။\n"
+            "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။",
+            reply_to_message_id=message.message_id
+        )
+        return
+
+    # Loading animation
+    bot.send_chat_action(message.chat.id, "upload_video")
+    loading_msg = bot.send_message(
+        message.chat.id,
+        "⏳ 𝗟𝗼𝗮𝗱𝗶𝗻𝗴...  ⬜⬜⬜⬜⬜  𝟬%",
+        reply_to_message_id=message.message_id
+    )
+    time.sleep(1.5)
+    try:
+        bot.edit_message_text("⏳ 𝗟𝗼𝗮𝗱𝗶𝗻𝗴...  🟨🟨🟨⬜⬜  𝟱𝟬%", message.chat.id, loading_msg.message_id)
+    except Exception:
+        pass
+    time.sleep(1.5)
+    try:
+        bot.edit_message_text("✅ 𝗟𝗼𝗮𝗱𝗶𝗻𝗴...  🟩🟩🟩🟩🟩  𝟭𝟬𝟬%", message.chat.id, loading_msg.message_id)
+    except Exception:
+        pass
+
     caption  = vid_doc.get("caption", "")
     file_ids = vid_doc.get("video_ids", [])
     try:
@@ -951,6 +1260,69 @@ def handle_text(message):
             bot.send_media_group(message.chat.id, media_group)
 
         # Delete loading message
+        try:
+            bot.delete_message(message.chat.id, loading_msg.message_id)
+        except Exception:
+            pass
+
+        return
+
+    # ── Private video search (zN pattern) — owner + accepted users only ─────────
+    if re.fullmatch(r"z\d+", text, re.IGNORECASE):
+        if not is_user_accepted(user_id):
+            bot.send_message(
+                message.chat.id,
+                "🔒 ဤ video များကို ကြည့်ရှုခွင့် မရှိပါ။"
+            )
+            return
+
+        vid_key = text.lower()
+        vid_doc = videos.find_one({"_id": vid_key})
+        if not vid_doc:
+            bot.send_message(
+                message.chat.id,
+                "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+                "   ❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱\n"
+                "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+                f"• 𝗩𝗶𝗱𝗲𝗼 {vid_key} ကို ရှာမတွေ့ပါ ခင်ဗျာ။\n"
+                "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။"
+            )
+            return
+
+        bot.send_chat_action(message.chat.id, "upload_video")
+        loading_msg = bot.send_message(
+            message.chat.id,
+            "⏳ 𝗟𝗼𝗮𝗱𝗶𝗻𝗴...  ⬜⬜⬜⬜⬜  𝟬%"
+        )
+        time.sleep(1.5)
+        try:
+            bot.edit_message_text(
+                "⏳ 𝗟𝗼𝗮𝗱𝗶𝗻𝗴...  🟨🟨🟨⬜⬜  𝟱𝟬%",
+                message.chat.id, loading_msg.message_id
+            )
+        except Exception:
+            pass
+        time.sleep(1.5)
+        try:
+            bot.edit_message_text(
+                "✅ 𝗟𝗼𝗮𝗱𝗶𝗻𝗴...  🟩🟩🟩🟩🟩  𝟭𝟬𝟬%",
+                message.chat.id, loading_msg.message_id
+            )
+        except Exception:
+            pass
+
+        caption  = vid_doc.get("caption", "")
+        file_ids = vid_doc.get("video_ids", [])
+
+        if vid_doc["type"] == "single":
+            bot.send_video(message.chat.id, file_ids[0], caption=caption)
+        else:
+            media_group = [
+                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 else "")
+                for i, fid in enumerate(file_ids)
+            ]
+            bot.send_media_group(message.chat.id, media_group)
+
         try:
             bot.delete_message(message.chat.id, loading_msg.message_id)
         except Exception:
