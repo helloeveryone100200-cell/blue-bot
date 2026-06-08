@@ -303,6 +303,39 @@ def cmd_panel(message):
         f"🎬 𝗧𝗼𝘁𝗮𝗹 𝗩𝗶𝗱𝗲𝗼𝘀  ——  {total_vids} ခု"
     )
 
+# ─── Owner /ownerhelp ─────────────────────────────────────────────────────────
+
+@bot.message_handler(commands=["ownerhelp"])
+def cmd_ownerhelp(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+    bot.send_message(
+        message.chat.id,
+        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+        "   👑 𝗢𝘄𝗻𝗲𝗿 𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀\n"
+        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+        "📊 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀\n"
+        "• /panel — Bot စာရင်းအင်းများ ကြည့်ရန်\n\n"
+        "👥 𝗨𝘀𝗲𝗿 𝗠𝗮𝗻𝗮𝗴𝗲𝗺𝗲𝗻𝘁\n"
+        "• /userinfo {user_id} — User အချက်အလက်\n"
+        "• /userlist — User အားလုံး စာရင်း\n"
+        "• /addlimit {user_id} {amount} — Limit ထည့်/နှုတ်\n"
+        "• /free {user_id} on|off — Unlimited toggle\n\n"
+        "📨 𝗕𝗿𝗼𝗮𝗱𝗰𝗮𝘀𝘁\n"
+        "• /broadcast all — User အားလုံးထံ ပေးပို့\n"
+        "• /broadcast {user_id} — တစ်ဦးထဲ ပေးပို့\n\n"
+        "🎬 𝗩𝗶𝗱𝗲𝗼 (𝗣𝘂𝗯𝗹𝗶𝗰)\n"
+        "• /setadmingroup — Public video group သတ်မှတ် (group ထဲ)\n"
+        "• /deletevideo v5 — Public video ဖျက်\n\n"
+        "🔒 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗩𝗶𝗱𝗲𝗼\n"
+        "• /setadmingroup_private — Private video group သတ်မှတ် (group ထဲ)\n"
+        "• /accept {user_id} — User ကို private access ပေး\n"
+        "• /accept remove {user_id} — Private access ရုပ်သိမ်း\n"
+        "• /deleteprivatevideo z5 — Private video ဖျက်\n\n"
+        "• /ownerhelp — ဤ menu ပြန်ကြည့်ရန်"
+    )
+
+
 # ─── Owner /addlimit ──────────────────────────────────────────────────────────
 
 @bot.message_handler(commands=["addlimit"])
@@ -674,6 +707,35 @@ def cmd_deletevideo(message):
     bot.send_message(
         message.chat.id,
         f"🗑 {vid_id} ကို database မှ ဖျက်ပြီးပါပြီ။"
+    )
+
+
+# ─── Owner /deleteprivatevideo ────────────────────────────────────────────────
+# Usage: /deleteprivatevideo z5   (removes z5 from DB)
+
+@bot.message_handler(commands=["deleteprivatevideo"])
+def cmd_deleteprivatevideo(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.send_message(message.chat.id, "Usage: /deleteprivatevideo z5")
+        return
+
+    vid_id = parts[1].lower()
+    if not re.fullmatch(r"z\d+", vid_id):
+        bot.send_message(message.chat.id, "❌ Video ID မမှန်ကန်ပါ။ ဥပမာ: /deleteprivatevideo z5")
+        return
+
+    result = videos.delete_one({"_id": vid_id})
+    if result.deleted_count == 0:
+        bot.send_message(message.chat.id, f"❌ {vid_id} ကို database တွင် ရှာမတွေ့ပါ။")
+        return
+
+    settings.update_one({"_id": "z_video_counter"}, {"$inc": {"count": -1}})
+    bot.send_message(
+        message.chat.id,
+        f"🗑 Private Video {vid_id} ကို database မှ ဖျက်ပြီးပါပြီ။"
     )
 
 
