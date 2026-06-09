@@ -119,6 +119,8 @@ def get_or_create_user(user):
             "limit":      15,
             "shares":     0,
             "is_free":    False,
+            "is_banned":  False,
+            "gender":     None,
             "state":      "normal",
         }
         users.insert_one(doc)
@@ -159,6 +161,20 @@ def share_markup(user_id):
     share_url = f"https://t.me/share/url?url=https://t.me/{BOT_USERNAME}?start={user_id}"
     markup.add(InlineKeyboardButton("🔗 Share", url=share_url))
     return markup
+
+def gender_selection_markup():
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        InlineKeyboardButton("👨 Male",   callback_data="gender_male"),
+        InlineKeyboardButton("👩 Female", callback_data="gender_female"),
+    )
+    return markup
+
+def is_user_banned(user_id: int) -> bool:
+    if user_id in OWNER_IDS:
+        return False
+    doc = users.find_one({"_id": user_id}, {"is_banned": 1})
+    return bool(doc and doc.get("is_banned"))
 
 def send_welcome(chat_id, user_id):
     total = get_total_videos()
@@ -216,6 +232,14 @@ def cmd_start(message):
     users.update_one({"_id": new_user.id}, {"$set": {"state": "normal"}})
 
     if message.chat.type == "private":
+        # Ban check
+        if is_user_banned(new_user.id):
+            bot.send_message(
+                message.chat.id,
+                "🚫 သင်သည် ဤ Bot ကို အသုံးပြုခွင့် ပိတ်ဆို့ထားပါသည်။"
+            )
+            return
+
         bot.send_message(
             message.chat.id,
             "┏━━━━━━━━━━━━━━━━━━━━┓\n"
@@ -224,6 +248,18 @@ def cmd_start(message):
             reply_markup=main_menu_keyboard()
         )
         send_welcome(message.chat.id, new_user.id)
+
+        # Gender selection — only ask if not yet selected
+        doc_check = users.find_one({"_id": new_user.id}, {"gender": 1})
+        if not doc_check or not doc_check.get("gender"):
+            bot.send_message(
+                message.chat.id,
+                "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+                "   🔞 𝗔𝗴𝗲 𝗩𝗲𝗿𝗶𝗳𝗶𝗰𝗮𝘁𝗶𝗼𝗻\n"
+                "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+                "• Bot ကို အသုံးပြုရန် လိင်ကို ရွေးချယ်ပေးပါ ခင်ဗျာ။",
+                reply_markup=gender_selection_markup()
+            )
     else:
         total  = get_total_videos()
         fname  = new_user.first_name or new_user.username or str(new_user.id)
@@ -269,6 +305,51 @@ def cb_profile(call):
     )
     bot.answer_callback_query(call.id)
     bot.send_message(call.message.chat.id, text)
+
+# ─── Gender callbacks ─────────────────────────────────────────────────────────
+
+@bot.callback_query_handler(func=lambda c: c.data == "gender_male")
+def cb_gender_male(call):
+    user_id = call.from_user.id
+    users.update_one({"_id": user_id}, {"$set": {"gender": "male"}})
+    bot.answer_callback_query(call.id, "👨 Male ရွေးချယ်ပြီးပါပြီ")
+    try:
+        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    except Exception:
+        pass
+    bot.send_message(
+        call.message.chat.id,
+        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+        "   🔞 𝗔𝗱𝘂𝗹𝘁 𝗖𝗼𝗻𝘁𝗲𝗻𝘁 𝗡𝗼𝘁𝗶𝗰𝗲\n"
+        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+        "⚠️ ဤ Bot သည် 𝗔𝗱𝘂𝗹𝘁 𝗠𝗼𝘃𝗶𝗲𝘀 (လူကြီးကားများ)\n"
+        "ကြည့်ရှုနိုင်သည့် Bot ဖြစ်ပါသည်။\n\n"
+        "• အသက် 𝟭𝟴+ သာ အသုံးပြုခွင့်ရှိပါသည်။\n"
+        "• Bot ကို ဆက်လက် အသုံးပြုနိုင်ပါပြီ ✅"
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data == "gender_female")
+def cb_gender_female(call):
+    user_id = call.from_user.id
+    users.update_one({"_id": user_id}, {"$set": {"gender": "female"}})
+    bot.answer_callback_query(call.id, "👩 Female ရွေးချယ်ပြီးပါပြီ")
+    try:
+        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    except Exception:
+        pass
+    bot.send_message(
+        call.message.chat.id,
+        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+        "   🔞 𝗔𝗱𝘂𝗹𝘁 𝗖𝗼𝗻𝘁𝗲𝗻𝘁 𝗡𝗼𝘁𝗶𝗰𝗲\n"
+        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+        "⚠️ ဤ Bot သည် 𝗔𝗱𝘂𝗹𝘁 𝗠𝗼𝘃𝗶𝗲𝘀 (လူကြီးကားများ)\n"
+        "ကြည့်ရှုနိုင်သည့် Bot ဖြစ်ပါသည်။\n\n"
+        "• ဤ Bot ကို အသုံးပြုရန် 𝗮𝘁𝗿𝗶𝗻𝗴 𝗮𝗸𝗴𝘆𝗮𝗿 မတိုက်တွန်းပါ။\n"
+        "• အတင်းအကြပ် မတောင်းဆိုပါ — 𝗹ုပ်ဆောင်ချက် ကိုယ်တိုင်ဆုံးဖြတ်ပါ။\n\n"
+        "💬 ကိုယ်ပိုင်ဆန္ဒဖြင့် ဆက်လက်ကြည့်ရှုလိုပါက Bot ကို\n"
+        "   အသုံးပြုနိုင်ပါသည် — မည်သို့မျှ မတားမြစ်ပါ ✅"
+    )
+
 
 # ─── /contact_to_owner ────────────────────────────────────────────────────────
 
@@ -332,8 +413,88 @@ def cmd_ownerhelp(message):
         "• /accept {user_id} — User ကို private access ပေး\n"
         "• /accept remove {user_id} — Private access ရုပ်သိမ်း\n"
         "• /deleteprivatevideo z5 — Private video ဖျက်\n\n"
+        "🚫 𝗨𝘀𝗲𝗿 𝗕𝗮𝗻\n"
+        "• /ban {user_id} — User ကို Ban ချ\n"
+        "• /unban {user_id} — User ကို Ban ဖြုတ်\n\n"
         "• /ownerhelp — ဤ menu ပြန်ကြည့်ရန်"
     )
+
+
+# ─── Owner /ban & /unban ──────────────────────────────────────────────────────
+
+@bot.message_handler(commands=["ban"])
+def cmd_ban(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.send_message(message.chat.id, "Usage: /ban {user_id}")
+        return
+    try:
+        target_id = int(parts[1])
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ User ID မမှန်ကန်ပါ။")
+        return
+    if target_id in OWNER_IDS:
+        bot.send_message(message.chat.id, "❌ Owner ကို Ban မချနိုင်ပါ။")
+        return
+    result = users.find_one_and_update(
+        {"_id": target_id},
+        {"$set": {"is_banned": True}},
+        return_document=True
+    )
+    if not result:
+        bot.send_message(message.chat.id, f"❌ User {target_id} database တွင် မတွေ့ပါ။")
+        return
+    uname = result.get("username") or result.get("first_name") or str(target_id)
+    bot.send_message(
+        message.chat.id,
+        f"🚫 User {target_id} ({uname}) ကို Ban ချပြီးပါပြီ။\n"
+        f"• Bot ကို ဆက်လက် အသုံးပြုနိုင်တော့မည် မဟုတ်ပါ။"
+    )
+    try:
+        bot.send_message(
+            target_id,
+            "🚫 သင်သည် ဤ Bot ကို အသုံးပြုခွင့် ပိတ်ဆို့ပြီးပါပြီ။"
+        )
+    except Exception:
+        pass
+
+
+@bot.message_handler(commands=["unban"])
+def cmd_unban(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.send_message(message.chat.id, "Usage: /unban {user_id}")
+        return
+    try:
+        target_id = int(parts[1])
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ User ID မမှန်ကန်ပါ။")
+        return
+    result = users.find_one_and_update(
+        {"_id": target_id},
+        {"$set": {"is_banned": False}},
+        return_document=True
+    )
+    if not result:
+        bot.send_message(message.chat.id, f"❌ User {target_id} database တွင် မတွေ့ပါ။")
+        return
+    uname = result.get("username") or result.get("first_name") or str(target_id)
+    bot.send_message(
+        message.chat.id,
+        f"✅ User {target_id} ({uname}) ၏ Ban ကို ဖြုတ်ပြီးပါပြီ။\n"
+        f"• Bot ကို ဆက်လက် အသုံးပြုနိုင်ပါပြီ။"
+    )
+    try:
+        bot.send_message(
+            target_id,
+            "✅ သင်၏ Ban ကို ဖြုတ်ပေးလိုက်ပါပြီ။ Bot ကို ဆက်လက် အသုံးပြုနိုင်ပါပြီ။"
+        )
+    except Exception:
+        pass
 
 
 # ─── Owner /addlimit ──────────────────────────────────────────────────────────
@@ -910,6 +1071,20 @@ def handle_group_video_search(message):
     if doc is None:
         doc = get_or_create_user(message.from_user)
 
+    # Ban check
+    if user_id not in OWNER_IDS and doc.get("is_banned"):
+        return
+
+    # Gender gate — must have selected gender first (via private chat)
+    if user_id not in OWNER_IDS and not doc.get("gender"):
+        bot.send_message(
+            message.chat.id,
+            "⚠️ Bot ကို အသုံးပြုရန် ကျေးဇူးပြု၍ Private Chat တွင် /start နှိပ်ပြီး\n"
+            "လိင်ရွေးချယ်မှုကို ဦးစွာ ပြုလုပ်ပေးပါ။",
+            reply_to_message_id=message.message_id
+        )
+        return
+
     is_free = doc.get("is_free", False)
     limit   = doc.get("limit", 0)
 
@@ -998,6 +1173,11 @@ def handle_group_video_search(message):
 )
 def handle_group_z_video_search(message):
     user_id = message.from_user.id
+    doc     = users.find_one({"_id": user_id})
+
+    # Ban check
+    if user_id not in OWNER_IDS and doc and doc.get("is_banned"):
+        return
 
     # Only owner + accepted users can search z-videos
     if not is_user_accepted(user_id):
@@ -1076,6 +1256,27 @@ def handle_text(message):
         doc = get_or_create_user(message.from_user)
 
     state = doc.get("state", "normal")
+
+    # ── Ban check ─────────────────────────────────────────────────────────────
+    if user_id not in OWNER_IDS and doc.get("is_banned"):
+        bot.send_message(
+            message.chat.id,
+            "🚫 သင်သည် ဤ Bot ကို အသုံးပြုခွင့် ပိတ်ဆို့ထားပါသည်။"
+        )
+        return
+
+    # ── Gender gate — must select before using bot ────────────────────────────
+    if user_id not in OWNER_IDS and not doc.get("gender"):
+        if text not in ("❌ Cancel", "⬅️ Back"):
+            bot.send_message(
+                message.chat.id,
+                "┏━━━━━━━━━━━━━━━━━━━━┓\n"
+                "   🔞 𝗔𝗴𝗲 𝗩𝗲𝗿𝗶𝗳𝗶𝗰𝗮𝘁𝗶𝗼𝗻\n"
+                "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+                "• Bot ကို အသုံးပြုရန် အောက်မှ လိင်တစ်ခုခုကို ရွေးချယ်ပေးပါ ခင်ဗျာ။",
+                reply_markup=gender_selection_markup()
+            )
+            return
 
     # ── ❌ Cancel / ⬅️ Back — exits any active state back to main menu ─────────
     if text in ("❌ Cancel", "⬅️ Back"):
