@@ -10,6 +10,10 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from pymongo import MongoClient
 
+def h(s):
+    """Escape HTML special characters in dynamic content."""
+    return str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
 # ─── CONFIGURATION (set these as environment variables on Render) ─────────────
 BOT_TOKEN      = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN")
 MONGO_URI      = os.environ.get("MONGO_URI", "YOUR_MONGODB_URI")
@@ -179,18 +183,18 @@ def is_user_banned(user_id: int) -> bool:
 def send_welcome(chat_id, user_id):
     total = get_total_videos()
     text = (
-        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-        "   𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐟𝐫𝐨𝐦 𝗕𝗹𝘂𝗲 𝗕𝗼𝘁 \n"
-        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
+        "<b>𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐟𝐫𝐨𝐦 𝗕𝗹𝘂𝗲 𝗕𝗼𝘁</b>\n\n"
+        "<blockquote>"
         "ဒီ 𝗕𝗼𝘁 က မင်းရဲ့စိတ်ကို ဖြေလျော့ဖို့အတွက် အလွယ်တကူ 𝗩𝗶𝗱𝗲𝗼𝘀 များ ရှာဖွေကြည့်ရှုနိုင်ပါတယ်။\n\n"
-        "⚡️ 𝗟𝗮𝘁𝗲𝘀𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀\n"
+        "<b>⚡️ 𝗟𝗮𝘁𝗲𝘀𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀</b>\n"
         f"• လက်ရှိ ဗီဒီယိုအရေအတွက် ——— 𝟎{total} ခု\n\n"
-        "🔍 𝗛𝗼𝘄 𝘁𝗼 𝗦𝗲𝗮𝗿𝗰𝗵 (ရှာဖွေနည်း)\n"
-        "• ဗီဒီယိုများ ရှာလိုပါက v1, v2, v3 စသဖြင့် \"v\" အနောက်တွင် နံပါတ်ထည့်ပြီး ရိုက်ရှာနိုင်ပါသည်။\n\n"
-        "🔄 𝗩𝗶𝗱𝗲𝗼𝘀 𝗨𝗽𝗱𝗮𝘁𝗲\n"
+        "<b>🔍 𝗛𝗼𝘄 𝘁𝗼 𝗦𝗲𝗮𝗿𝗰𝗵</b> <i>(ရှာဖွေနည်း)</i>\n"
+        "• ဗီဒီယိုများ ရှာလိုပါက v1, v2, v3 စသဖြင့် v အနောက်တွင် နံပါတ်ထည့်ပြီး ရိုက်ရှာနိုင်ပါသည်။\n\n"
+        "<b>🔄 𝗩𝗶𝗱𝗲𝗼𝘀 𝗨𝗽𝗱𝗮𝘁𝗲</b>\n"
         "• [ 📹 Videos Update ] ခလုတ်ကို နှိပ်ပြီး နောက်ဆုံး ဗီဒီယိုအရေအတွက်ကို အချိန်မရွေး စစ်ဆေးနိုင်ပါသည်။"
+        "</blockquote>"
     )
-    bot.send_message(chat_id, text, reply_markup=welcome_markup(user_id))
+    bot.send_message(chat_id, text, parse_mode='HTML', reply_markup=welcome_markup(user_id))
 
 # ─── /start ───────────────────────────────────────────────────────────────────
 
@@ -218,11 +222,10 @@ def cmd_start(message):
                     try:
                         bot.send_message(
                             referrer_id,
-                            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-                            "   🎉 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹 𝗦𝘂𝗰𝗰𝗲𝘀𝘀!\n"
-                            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-                            "• သူငယ်ချင်းတစ်ဦး Bot ကို Join ဝင်သဖြင့်\n"
-                            "  ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 +𝟱 ခု ထပ်ရပါပြီ! ✅"
+                            "<b>🎉 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹 𝗦𝘂𝗰𝗰𝗲𝘀𝘀!</b>\n\n"
+                            "<blockquote>• သူငယ်ချင်းတစ်ဦး Bot ကို Join ဝင်သဖြင့်\n"
+                            "  ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 +𝟱 ခု ထပ်ရပါပြီ! ✅</blockquote>",
+                            parse_mode='HTML'
                         )
                     except Exception:
                         pass
@@ -242,9 +245,8 @@ def cmd_start(message):
 
         bot.send_message(
             message.chat.id,
-            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            "   𝗕𝗹𝘂𝗲 𝗕𝗼𝘁 တွင် ကြိုဆိုပါသည်! 🎉\n"
-            "┗━━━━━━━━━━━━━━━━━━━━┛",
+            "<b>𝗕𝗹𝘂𝗲 𝗕𝗼𝘁 တွင် ကြိုဆိုပါသည်! 🎉</b>",
+            parse_mode='HTML',
             reply_markup=main_menu_keyboard()
         )
         send_welcome(message.chat.id, new_user.id)
@@ -254,10 +256,9 @@ def cmd_start(message):
         if not doc_check or not doc_check.get("gender"):
             bot.send_message(
                 message.chat.id,
-                "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-                "   🔞 𝗔𝗴𝗲 𝗩𝗲𝗿𝗶𝗳𝗶𝗰𝗮𝘁𝗶𝗼𝗻\n"
-                "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-                "• Bot ကို အသုံးပြုရန် လိင်ကို ရွေးချယ်ပေးပါ ခင်ဗျာ။",
+                "<b>🔞 𝗔𝗴𝗲 𝗩𝗲𝗿𝗶𝗳𝗶𝗰𝗮𝘁𝗶𝗼𝗻</b>\n\n"
+                "<blockquote>• Bot ကို အသုံးပြုရန် လိင်ကို ရွေးချယ်ပေးပါ ခင်ဗျာ။</blockquote>",
+                parse_mode='HTML',
                 reply_markup=gender_selection_markup()
             )
     else:
@@ -270,15 +271,15 @@ def cmd_start(message):
         ))
         bot.send_message(
             message.chat.id,
-            f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            f"   𝗕𝗹𝘂𝗲 𝗕𝗼𝘁 — မှတ်ပုံတင်ပြီးပါပြီ ✅\n"
-            f"┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-            f"👋 𝗛𝗲𝗹𝗹𝗼, {fname}!\n\n"
-            f"⚡️ 𝗟𝗮𝘁𝗲𝘀𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀\n"
+            f"<b>𝗕𝗹𝘂𝗲 𝗕𝗼𝘁 — မှတ်ပုံတင်ပြီးပါပြီ ✅</b>\n\n"
+            f"<blockquote><b>👋 𝗛𝗲𝗹𝗹𝗼, {h(fname)}!</b>\n\n"
+            f"<b>⚡️ 𝗟𝗮𝘁𝗲𝘀𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀</b>\n"
             f"• လက်ရှိ ဗီဒီယိုအရေအတွက် ——— {total} ခု\n\n"
-            f"🔍 𝗛𝗼𝘄 𝘁𝗼 𝗦𝗲𝗮𝗿𝗰𝗵\n"
+            f"<b>🔍 𝗛𝗼𝘄 𝘁𝗼 𝗦𝗲𝗮𝗿𝗰𝗵</b>\n"
             f"• v1, v2, v3 … ရိုက်ပြီး ဤ Group တွင် ရှာနိုင်ပါသည်။\n\n"
-            f"💡 Profile / Share / Contact ကို 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗖𝗵𝗮𝘁 တွင်သာ သုံးနိုင်ပါသည်။",
+            f"<i>💡 Profile / Share / Contact ကို 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗖𝗵𝗮𝘁 တွင်သာ သုံးနိုင်ပါသည်။</i>"
+            f"</blockquote>",
+            parse_mode='HTML',
             reply_markup=markup
         )
 
@@ -295,16 +296,14 @@ def cb_profile(call):
     limit_str    = "∞ Unlimited" if doc.get("is_free") else str(doc.get("limit", 0))
 
     text = (
-        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-        "      👤 𝗠𝘆 𝗣𝗿𝗼𝗳𝗶𝗹𝗲\n"
-        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        f"• 𝗡𝗮𝗺𝗲  ——  {display_name}\n"
+        "<b>👤 𝗠𝘆 𝗣𝗿𝗼𝗳𝗶𝗹𝗲</b>\n\n"
+        f"<blockquote>• 𝗡𝗮𝗺𝗲  ——  {h(display_name)}\n"
         f"• 𝗜𝗗  ——  {user_id}\n"
-        f"• 𝗟𝗶𝗺𝗶𝘁  ——  {limit_str}\n"
-        f"• 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {doc.get('shares', 0)} ဦး"
+        f"• 𝗟𝗶𝗺𝗶𝘁  ——  {h(limit_str)}\n"
+        f"• 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {doc.get('shares', 0)} ဦး</blockquote>"
     )
     bot.answer_callback_query(call.id)
-    bot.send_message(call.message.chat.id, text)
+    bot.send_message(call.message.chat.id, text, parse_mode='HTML')
 
 # ─── Gender callbacks ─────────────────────────────────────────────────────────
 
@@ -319,13 +318,12 @@ def cb_gender_male(call):
         pass
     bot.send_message(
         call.message.chat.id,
-        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-        "   🔞 𝗔𝗱𝘂𝗹𝘁 𝗖𝗼𝗻𝘁𝗲𝗻𝘁 𝗡𝗼𝘁𝗶𝗰𝗲\n"
-        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        "⚠️ ဤ Bot သည် 𝗔𝗱𝘂𝗹𝘁 𝗠𝗼𝘃𝗶𝗲𝘀 (လူကြီးကားများ)\n"
+        "<b>🔞 𝗔𝗱𝘂𝗹𝘁 𝗖𝗼𝗻𝘁𝗲𝗻𝘁 𝗡𝗼𝘁𝗶𝗰𝗲</b>\n\n"
+        "<blockquote>⚠️ ဤ Bot သည် 𝗔𝗱𝘂𝗹𝘁 𝗠𝗼𝘃𝗶𝗲𝘀 (လူကြီးကားများ)\n"
         "ကြည့်ရှုနိုင်သည့် Bot ဖြစ်ပါသည်။\n\n"
         "• အသက် 𝟭𝟴+ သာ အသုံးပြုခွင့်ရှိပါသည်။\n"
-        "• Bot ကို ဆက်လက် အသုံးပြုနိုင်ပါပြီ ✅"
+        "• Bot ကို ဆက်လက် အသုံးပြုနိုင်ပါပြီ ✅</blockquote>",
+        parse_mode='HTML'
     )
 
 @bot.callback_query_handler(func=lambda c: c.data == "gender_female")
@@ -339,15 +337,14 @@ def cb_gender_female(call):
         pass
     bot.send_message(
         call.message.chat.id,
-        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-        "   🔞 𝗔𝗱𝘂𝗹𝘁 𝗖𝗼𝗻𝘁𝗲𝗻𝘁 𝗡𝗼𝘁𝗶𝗰𝗲\n"
-        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        "⚠️ ဤ Bot သည် 𝗔𝗱𝘂𝗹𝘁 𝗠𝗼𝘃𝗶𝗲𝘀 (လူကြီးကားများ)\n"
+        "<b>🔞 𝗔𝗱𝘂𝗹𝘁 𝗖𝗼𝗻𝘁𝗲𝗻𝘁 𝗡𝗼𝘁𝗶𝗰𝗲</b>\n\n"
+        "<blockquote>⚠️ ဤ Bot သည် 𝗔𝗱𝘂𝗹𝘁 𝗠𝗼𝘃𝗶𝗲𝘀 (လူကြီးကားများ)\n"
         "ကြည့်ရှုနိုင်သည့် Bot ဖြစ်ပါသည်။\n\n"
         "• ဤ Bot ကို အသုံးပြုရန် အတင်းအကြပ် မတိုက်တွန်းပါ။\n"
         "• အတင်းအကြပ် မတောင်းဆိုပါ အသုံးပြုသည်မပြုသည်ကို ကိုယ်တိုင်ဆုံးဖြတ်ပါ။\n\n"
-        "💬 ကိုယ်ပိုင်ဆန္ဒဖြင့် ဆက်လက်ကြည့်ရှုလိုပါက Bot ကို\n"
-        "   အသုံးပြုနိုင်ပါသည် — မည်သို့မျှ မတားမြစ်ပါ ✅"
+        "<i>💬 ကိုယ်ပိုင်ဆန္ဒဖြင့် ဆက်လက်ကြည့်ရှုလိုပါက Bot ကို\n"
+        "   အသုံးပြုနိုင်ပါသည် — မည်သို့မျှ မတားမြစ်ပါ ✅</i></blockquote>",
+        parse_mode='HTML'
     )
 
 
@@ -376,12 +373,11 @@ def cmd_panel(message):
     total_vids   = get_total_videos()
     bot.send_message(
         message.chat.id,
-        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-        "    📊 𝗕𝗼𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀\n"
-        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        f"👥 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀  ——  {total_users} ဦး\n"
+        "<b>📊 𝗕𝗼𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀</b>\n\n"
+        f"<blockquote>👥 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀  ——  {total_users} ဦး\n"
         f"🔗 𝗧𝗼𝘁𝗮𝗹 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {total_shares} ကြိမ်\n"
-        f"🎬 𝗧𝗼𝘁𝗮𝗹 𝗩𝗶𝗱𝗲𝗼𝘀  ——  {total_vids} ခု"
+        f"🎬 𝗧𝗼𝘁𝗮𝗹 𝗩𝗶𝗱𝗲𝗼𝘀  ——  {total_vids} ခု</blockquote>",
+        parse_mode='HTML'
     )
 
 # ─── Owner /ownerhelp ─────────────────────────────────────────────────────────
@@ -392,31 +388,32 @@ def cmd_ownerhelp(message):
         return
     bot.send_message(
         message.chat.id,
-        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-        "   👑 𝗢𝘄𝗻𝗲𝗿 𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀\n"
-        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        "📊 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀\n"
+        "<b>👑 𝗢𝘄𝗻𝗲𝗿 𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀</b>\n\n"
+        "<blockquote>"
+        "<b>📊 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀</b>\n"
         "• /panel — Bot စာရင်းအင်းများ ကြည့်ရန်\n\n"
-        "👥 𝗨𝘀𝗲𝗿 𝗠𝗮𝗻𝗮𝗴𝗲𝗺𝗲𝗻𝘁\n"
+        "<b>👥 𝗨𝘀𝗲𝗿 𝗠𝗮𝗻𝗮𝗴𝗲𝗺𝗲𝗻𝘁</b>\n"
         "• /userinfo {user_id} — User အချက်အလက်\n"
         "• /userlist — User အားလုံး စာရင်း\n"
         "• /addlimit {user_id} {amount} — Limit ထည့်/နှုတ်\n"
         "• /free {user_id} on|off — Unlimited toggle\n\n"
-        "📨 𝗕𝗿𝗼𝗮𝗱𝗰𝗮𝘀𝘁\n"
+        "<b>📨 𝗕𝗿𝗼𝗮𝗱𝗰𝗮𝘀𝘁</b>\n"
         "• /broadcast all — User အားလုံးထံ ပေးပို့\n"
         "• /broadcast {user_id} — တစ်ဦးထဲ ပေးပို့\n\n"
-        "🎬 𝗩𝗶𝗱𝗲𝗼 (𝗣𝘂𝗯𝗹𝗶𝗰)\n"
+        "<b>🎬 𝗩𝗶𝗱𝗲𝗼 (𝗣𝘂𝗯𝗹𝗶𝗰)</b>\n"
         "• /setadmingroup — Public video group သတ်မှတ် (group ထဲ)\n"
         "• /deletevideo v5 — Public video ဖျက်\n\n"
-        "🔒 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗩𝗶𝗱𝗲𝗼\n"
+        "<b>🔒 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗩𝗶𝗱𝗲𝗼</b>\n"
         "• /setadmingroup_private — Private video group သတ်မှတ် (group ထဲ)\n"
         "• /accept {user_id} — User ကို private access ပေး\n"
         "• /accept remove {user_id} — Private access ရုပ်သိမ်း\n"
         "• /deleteprivatevideo z5 — Private video ဖျက်\n\n"
-        "🚫 𝗨𝘀𝗲𝗿 𝗕𝗮𝗻\n"
+        "<b>🚫 𝗨𝘀𝗲𝗿 𝗕𝗮𝗻</b>\n"
         "• /ban {user_id} — User ကို Ban ချ\n"
         "• /unban {user_id} — User ကို Ban ဖြုတ်\n\n"
-        "• /ownerhelp — ဤ menu ပြန်ကြည့်ရန်"
+        "<i>• /ownerhelp — ဤ menu ပြန်ကြည့်ရန်</i>"
+        "</blockquote>",
+        parse_mode='HTML'
     )
 
 
@@ -536,11 +533,10 @@ def cmd_addlimit(message):
     try:
         bot.send_message(
             target_id,
-            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            "   🎁 𝗟𝗶𝗺𝗶𝘁 𝗔𝗱𝗱𝗲𝗱!\n"
-            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-            f"• 𝗢𝘄𝗻𝗲𝗿 မှ ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 {action} ခု ထည့်ပေးလိုက်ပါပြီ 🎉\n"
-            f"• လက်ရှိ 𝗟𝗶𝗺𝗶𝘁: {new_limit}"
+            "<b>🎁 𝗟𝗶𝗺𝗶𝘁 𝗔𝗱𝗱𝗲𝗱!</b>\n\n"
+            f"<blockquote>• 𝗢𝘄𝗻𝗲𝗿 မှ ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 {action} ခု ထည့်ပေးလိုက်ပါပြီ 🎉\n"
+            f"• လက်ရှိ 𝗟𝗶𝗺𝗶𝘁: {new_limit}</blockquote>",
+            parse_mode='HTML'
         )
     except Exception:
         pass
@@ -579,20 +575,17 @@ def cmd_userinfo(message):
 
     bot.send_message(
         message.chat.id,
-        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-        "   👤 𝗨𝘀𝗲𝗿 𝗜𝗻𝗳𝗼\n"
-        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        f"• 𝗡𝗮𝗺𝗲  ——  {fname}\n"
-        f"• 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲  ——  @{uname}\n"
+        "<b>👤 𝗨𝘀𝗲𝗿 𝗜𝗻𝗳𝗼</b>\n\n"
+        f"<blockquote>• 𝗡𝗮𝗺𝗲  ——  {h(fname)}\n"
+        f"• 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲  ——  @{h(uname)}\n"
         f"• 𝗜𝗗  ——  {target_id}\n\n"
-        "——————————————————\n\n"
         f"• 𝗟𝗶𝗺𝗶𝘁  ——  {limit} ကြိမ်\n"
         f"• 𝗦𝗵𝗮𝗿𝗲  ——  {shares} ကြိမ် Share ခဲ့သည်\n"
         f"• 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹𝘀  ——  {referrals} ဦး ဖိတ်ခဲ့သည်\n\n"
-        "——————————————————\n\n"
-        f"• 𝗙𝗿𝗲𝗲 𝗠𝗼𝗱𝗲  ——  {free_tag}\n"
-        f"• 𝗦𝘁𝗮𝘁𝗲  ——  {state}\n"
-        f"• 𝗝𝗼𝗶𝗻𝗲𝗱  ——  {joined}"
+        f"• 𝗙𝗿𝗲𝗲 𝗠𝗼𝗱𝗲  ——  {h(free_tag)}\n"
+        f"• 𝗦𝘁𝗮𝘁𝗲  ——  {h(state)}\n"
+        f"• 𝗝𝗼𝗶𝗻𝗲𝗱  ——  {h(str(joined))}</blockquote>",
+        parse_mode='HTML'
     )
 
 # ─── Owner /free ──────────────────────────────────────────────────────────────
@@ -789,10 +782,9 @@ def cmd_accept(message):
         try:
             bot.send_message(
                 target_id,
-                "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-                "   🔒 𝗔𝗰𝗰𝗲𝘀𝘀 𝗥𝗲𝘃𝗼𝗸𝗲𝗱\n"
-                "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-                "• Owner မှ Private Group ခွင့်ပြုချက် ရုပ်သိမ်းလိုက်ပါပြီ။"
+                "<b>🔒 𝗔𝗰𝗰𝗲𝘀𝘀 𝗥𝗲𝘃𝗼𝗸𝗲𝗱</b>\n\n"
+                "<blockquote>• Owner မှ Private Group ခွင့်ပြုချက် ရုပ်သိမ်းလိုက်ပါပြီ။</blockquote>",
+                parse_mode='HTML'
             )
         except Exception:
             pass
@@ -830,12 +822,11 @@ def cmd_accept(message):
     try:
         bot.send_message(
             target_id,
-            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            "   🔓 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗔𝗰𝗰𝗲𝘀𝘀 𝗚𝗿𝗮𝗻𝘁𝗲𝗱!\n"
-            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-            "• Owner မှ Private Group ကို ခွင့်ပြုလိုက်ပါပြီ ✅\n"
+            "<b>🔓 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗔𝗰𝗰𝗲𝘀𝘀 𝗚𝗿𝗮𝗻𝘁𝗲𝗱!</b>\n\n"
+            "<blockquote>• Owner မှ Private Group ကို ခွင့်ပြုလိုက်ပါပြီ ✅\n"
             "• Private Group တွင် video တင်နိုင်ပြီး\n"
-            "  z1, z2, z3 … ဖြင့် ရှာဖွေနိုင်မည်ဖြစ်သည်။"
+            "  z1, z2, z3 … ဖြင့် ရှာဖွေနိုင်မည်ဖြစ်သည်။</blockquote>",
+            parse_mode='HTML'
         )
     except Exception:
         pass
@@ -1096,11 +1087,10 @@ def handle_group_video_search(message):
         ))
         bot.send_message(
             message.chat.id,
-            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            "   ⚠️ 𝗟𝗶𝗺𝗶𝘁 𝗘𝘅𝗰𝗲𝗲𝗱𝗲𝗱\n"
-            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-            f"• {message.from_user.first_name or 'User'}, ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 ကုန်ဆုံးပါပြီ။\n\n"
-            "• သူငယ်ချင်းများ ဖိတ်ခေါ်ပြီး 𝗟𝗶𝗺𝗶𝘁 ထပ်ရယူနိုင်ပါသည်။",
+            "<b>⚠️ 𝗟𝗶𝗺𝗶𝘁 𝗘𝘅𝗰𝗲𝗲𝗱𝗲𝗱</b>\n\n"
+            f"<blockquote>• {h(message.from_user.first_name or 'User')}, ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 ကုန်ဆုံးပါပြီ။\n\n"
+            "• သူငယ်ချင်းများ ဖိတ်ခေါ်ပြီး 𝗟𝗶𝗺𝗶𝘁 ထပ်ရယူနိုင်ပါသည်။</blockquote>",
+            parse_mode='HTML',
             reply_to_message_id=message.message_id,
             reply_markup=markup
         )
@@ -1110,11 +1100,10 @@ def handle_group_video_search(message):
     if not vid_doc:
         bot.send_message(
             message.chat.id,
-            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            "   ❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱\n"
-            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-            f"• 𝗩𝗶𝗱𝗲𝗼 {text} ကို ရှာမတွေ့ပါ။\n"
-            "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။",
+            "<b>❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱</b>\n\n"
+            f"<blockquote>• 𝗩𝗶𝗱𝗲𝗼 {h(text)} ကို ရှာမတွေ့ပါ။\n"
+            "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။</blockquote>",
+            parse_mode='HTML',
             reply_to_message_id=message.message_id
         )
         return
@@ -1197,11 +1186,10 @@ def handle_group_z_video_search(message):
     if not vid_doc:
         bot.send_message(
             message.chat.id,
-            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            "   ❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱\n"
-            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-            f"• 𝗩𝗶𝗱𝗲𝗼 {text} ကို ရှာမတွေ့ပါ။\n"
-            "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။",
+            "<b>❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱</b>\n\n"
+            f"<blockquote>• 𝗩𝗶𝗱𝗲𝗼 {h(text)} ကို ရှာမတွေ့ပါ။\n"
+            "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။</blockquote>",
+            parse_mode='HTML',
             reply_to_message_id=message.message_id
         )
         return
@@ -1270,10 +1258,9 @@ def handle_text(message):
         if text not in ("❌ Cancel", "⬅️ Back"):
             bot.send_message(
                 message.chat.id,
-                "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-                "   🔞 𝗔𝗴𝗲 𝗩𝗲𝗿𝗶𝗳𝗶𝗰𝗮𝘁𝗶𝗼𝗻\n"
-                "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-                "• Bot ကို အသုံးပြုရန် အောက်မှ လိင်တစ်ခုခုကို ရွေးချယ်ပေးပါ ခင်ဗျာ။",
+                "<b>🔞 𝗔𝗴𝗲 𝗩𝗲𝗿𝗶𝗳𝗶𝗰𝗮𝘁𝗶𝗼𝗻</b>\n\n"
+                "<blockquote>• Bot ကို အသုံးပြုရန် အောက်မှ လိင်တစ်ခုခုကို ရွေးချယ်ပေးပါ ခင်ဗျာ။</blockquote>",
+                parse_mode='HTML',
                 reply_markup=gender_selection_markup()
             )
             return
@@ -1308,10 +1295,9 @@ def handle_text(message):
                 try:
                     bot.send_message(
                         uid,
-                        "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-                        "   📢 𝗔𝗻𝗻𝗼𝘂𝗻𝗰𝗲𝗺𝗲𝗻𝘁\n"
-                        "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-                        + text
+                        "<b>📢 𝗔𝗻𝗻𝗼𝘂𝗻𝗰𝗲𝗺𝗲𝗻𝘁</b>\n\n"
+                        + f"<blockquote>{h(text)}</blockquote>",
+                        parse_mode='HTML'
                     )
                     sent_ok += 1
                 except Exception:
@@ -1340,10 +1326,9 @@ def handle_text(message):
             try:
                 bot.send_message(
                     target,
-                    "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-                    "   📩 𝗢𝘄𝗻𝗲𝗿 𝗠𝗲𝘀𝘀𝗮𝗴𝗲\n"
-                    "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-                    + text
+                    "<b>📩 𝗢𝘄𝗻𝗲𝗿 𝗠𝗲𝘀𝘀𝗮𝗴𝗲</b>\n\n"
+                    + f"<blockquote>{h(text)}</blockquote>",
+                    parse_mode='HTML'
                 )
                 bot.send_message(
                     message.chat.id,
@@ -1363,11 +1348,10 @@ def handle_text(message):
         users.update_one({"_id": user_id}, {"$set": {"state": "normal"}})
         bot.send_message(
             message.chat.id,
-            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            "   ✅ 𝗦𝗲𝗻𝘁 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹𝗹𝘆\n"
-            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-            "• လူကြီးမင်းပေးပို့သော စာသားသည်\n"
-            "  𝗕𝗼𝘁 𝗢𝘄𝗻𝗲𝗿 ထံ ရောက်ရှိသွားပါပြီ ✅",
+            "<b>✅ 𝗦𝗲𝗻𝘁 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹𝗹𝘆</b>\n\n"
+            "<blockquote>• လူကြီးမင်းပေးပို့သော စာသားသည်\n"
+            "  𝗕𝗼𝘁 𝗢𝘄𝗻𝗲𝗿 ထံ ရောက်ရှိသွားပါပြီ ✅</blockquote>",
+            parse_mode='HTML',
             reply_markup=main_menu_keyboard()
         )
         uname = doc.get("username") or ""
@@ -1376,13 +1360,12 @@ def handle_text(message):
             try:
                 bot.send_message(
                     oid,
-                    "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-                    "   📩 𝗨𝘀𝗲𝗿 𝗠𝗲𝘀𝘀𝗮𝗴𝗲\n"
-                    "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-                    f"• 𝗡𝗮𝗺𝗲  ——  {fname}\n"
-                    f"• 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲  ——  @{uname}\n"
+                    "<b>📩 𝗨𝘀𝗲𝗿 𝗠𝗲𝘀𝘀𝗮𝗴𝗲</b>\n\n"
+                    f"<blockquote>• 𝗡𝗮𝗺𝗲  ——  {h(fname)}\n"
+                    f"• 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲  ——  @{h(uname)}\n"
                     f"• 𝗜𝗗  ——  {user_id}\n\n"
-                    f"💬 𝗠𝗲𝘀𝘀𝗮𝗴𝗲:\n{text}"
+                    f"💬 𝗠𝗲𝘀𝘀𝗮𝗴𝗲:\n{h(text)}</blockquote>",
+                    parse_mode='HTML'
                 )
             except Exception:
                 pass
@@ -1394,13 +1377,12 @@ def handle_text(message):
         limit_str    = "∞ Unlimited" if doc.get("is_free") else str(doc.get("limit", 0))
         bot.send_message(
             message.chat.id,
-            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            "      👤 𝗠𝘆 𝗣𝗿𝗼𝗳𝗶𝗹𝗲\n"
-            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-            f"• 𝗡𝗮𝗺𝗲  ——  {display_name}\n"
+            "<b>👤 𝗠𝘆 𝗣𝗿𝗼𝗳𝗶𝗹𝗲</b>\n\n"
+            f"<blockquote>• 𝗡𝗮𝗺𝗲  ——  {h(display_name)}\n"
             f"• 𝗜𝗗  ——  {user_id}\n"
-            f"• 𝗟𝗶𝗺𝗶𝘁  ——  {limit_str}\n"
-            f"• 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {doc.get('shares', 0)} ဦး"
+            f"• 𝗟𝗶𝗺𝗶𝘁  ——  {h(limit_str)}\n"
+            f"• 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {doc.get('shares', 0)} ဦး</blockquote>",
+            parse_mode='HTML'
         )
         return
 
@@ -1411,14 +1393,13 @@ def handle_text(message):
         markup.add(InlineKeyboardButton("🔗 𝗦𝗵𝗮𝗿𝗲 𝗟𝗶𝗻𝗸 ကူးယူပါ", url=share_url))
         bot.send_message(
             message.chat.id,
-            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            "   🔗 𝗦𝗵𝗮𝗿𝗲 & 𝗥𝗲𝗳𝗲𝗿\n"
-            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-            "• သူငယ်ချင်းများကို ဖိတ်ခေါ်ပြီး\n"
+            "<b>🔗 𝗦𝗵𝗮𝗿𝗲 &amp; 𝗥𝗲𝗳𝗲𝗿</b>\n\n"
+            "<blockquote>• သူငယ်ချင်းများကို ဖိတ်ခေါ်ပြီး\n"
             "  ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 ထပ်ရယူနိုင်ပါသည်။\n\n"
             f"⚡️ တစ်ဦး Join ဖြစ်တိုင်း ——— 𝗟𝗶𝗺𝗶𝘁 +𝟱 ရမည်\n\n"
             f"🔗 𝗬𝗼𝘂𝗿 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹 𝗟𝗶𝗻𝗸:\n"
-            f"https://t.me/{BOT_USERNAME}?start={user_id}",
+            f"https://t.me/{BOT_USERNAME}?start={user_id}</blockquote>",
+            parse_mode='HTML',
             reply_markup=markup
         )
         return
@@ -1428,11 +1409,10 @@ def handle_text(message):
         total = get_total_videos()
         bot.send_message(
             message.chat.id,
-            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            "   🔄 𝗩𝗶𝗱𝗲𝗼𝘀 𝗨𝗽𝗱𝗮𝘁𝗲\n"
-            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-            f"• လက်ရှိ ဗီဒီယိုအရေအတွက် ——— 𝟬{total} ခု\n\n"
-            f"• v1 မှ v{total} အထိ ရှာဖွေနိုင်ပါသည်။"
+            "<b>🔄 𝗩𝗶𝗱𝗲𝗼𝘀 𝗨𝗽𝗱𝗮𝘁𝗲</b>\n\n"
+            f"<blockquote>• လက်ရှိ ဗီဒီယိုအရေအတွက် ——— 𝟬{total} ခု\n\n"
+            f"• v1 မှ v{total} အထိ ရှာဖွေနိုင်ပါသည်။</blockquote>",
+            parse_mode='HTML'
         )
         return
 
@@ -1441,12 +1421,11 @@ def handle_text(message):
         users.update_one({"_id": user_id}, {"$set": {"state": "waiting_contact"}})
         bot.send_message(
             message.chat.id,
-            "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-            "   📞 𝗖𝗼𝗻𝘁𝗮𝗰𝘁 𝗢𝘄𝗻𝗲𝗿\n"
-            "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-            "• 𝗕𝗼𝘁 𝗢𝘄𝗻𝗲𝗿 ထံ ပေးပို့လိုသည့် စာသားကို\n"
+            "<b>📞 𝗖𝗼𝗻𝘁𝗮𝗰𝘁 𝗢𝘄𝗻𝗲𝗿</b>\n\n"
+            "<blockquote>• 𝗕𝗼𝘁 𝗢𝘄𝗻𝗲𝗿 ထံ ပေးပို့လိုသည့် စာသားကို\n"
             "  ရိုက်ထည့်ပြီး ပေးပို့နိုင်ပါပြီ ခင်ဗျာ။\n\n"
-            "• မပို့လိုပါက ❌ Cancel ကိုနှိပ်ပါ။",
+            "• မပို့လိုပါက ❌ Cancel ကိုနှိပ်ပါ။</blockquote>",
+            parse_mode='HTML',
             reply_markup=cancel_keyboard()
         )
         return
@@ -1460,12 +1439,11 @@ def handle_text(message):
         if not is_free and limit <= 0:
             bot.send_message(
                 message.chat.id,
-                "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-                "   ⚠️ 𝗟𝗶𝗺𝗶𝘁 𝗘𝘅𝗰𝗲𝗲𝗱𝗲𝗱\n"
-                "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-                "• ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 ကုန်ဆုံးသွားပါပြီ။\n\n"
+                "<b>⚠️ 𝗟𝗶𝗺𝗶𝘁 𝗘𝘅𝗰𝗲𝗲𝗱𝗲𝗱</b>\n\n"
+                "<blockquote>• ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 ကုန်ဆုံးသွားပါပြီ။\n\n"
                 "• သူငယ်ချင်းများ ဖိတ်ခေါ်ပြီး\n"
-                "  𝗟𝗶𝗺𝗶𝘁 ထပ်ရယူနိုင်ပါသည်။",
+                "  𝗟𝗶𝗺𝗶𝘁 ထပ်ရယူနိုင်ပါသည်။</blockquote>",
+                parse_mode='HTML',
                 reply_markup=share_markup(user_id)
             )
             return
@@ -1474,11 +1452,10 @@ def handle_text(message):
         if not vid_doc:
             bot.send_message(
                 message.chat.id,
-                "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-                "   ❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱\n"
-                "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-                f"• 𝗩𝗶𝗱𝗲𝗼 {vid_key} ကို ရှာမတွေ့ပါ ခင်ဗျာ။\n"
-                "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။"
+                "<b>❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱</b>\n\n"
+                f"<blockquote>• 𝗩𝗶𝗱𝗲𝗼 {h(vid_key)} ကို ရှာမတွေ့ပါ ခင်ဗျာ။\n"
+                "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။</blockquote>",
+                parse_mode='HTML'
             )
             return
 
@@ -1544,11 +1521,10 @@ def handle_text(message):
         if not vid_doc:
             bot.send_message(
                 message.chat.id,
-                "┏━━━━━━━━━━━━━━━━━━━━┓\n"
-                "   ❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱\n"
-                "┗━━━━━━━━━━━━━━━━━━━━┛\n\n"
-                f"• 𝗩𝗶𝗱𝗲𝗼 {vid_key} ကို ရှာမတွေ့ပါ ခင်ဗျာ။\n"
-                "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။"
+                "<b>❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱</b>\n\n"
+                f"<blockquote>• 𝗩𝗶𝗱𝗲𝗼 {h(vid_key)} ကို ရှာမတွေ့ပါ ခင်ဗျာ။\n"
+                "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။</blockquote>",
+                parse_mode='HTML'
             )
             return
 
