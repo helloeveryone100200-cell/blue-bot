@@ -3,7 +3,7 @@ import re
 import time
 import json
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import HTTPServer, ThreadingHTTPServer, BaseHTTPRequestHandler
 from collections import defaultdict
 
 import telebot
@@ -1627,6 +1627,6 @@ if __name__ == "__main__":
     bot.set_webhook(url=webhook_url, allowed_updates=["message", "callback_query"])
     print(f"Webhook set → {webhook_url}")
 
-    server = HTTPServer(("0.0.0.0", port), WebhookHandler)
+    server = ThreadingHTTPServer(("0.0.0.0", port), WebhookHandler)
     print(f"Blue Bot webhook server running on port {port}.")
     server.serve_forever()
