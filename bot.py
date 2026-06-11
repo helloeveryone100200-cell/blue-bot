@@ -1580,6 +1580,11 @@ def handle_text(message):
 
 class WebhookHandler(BaseHTTPRequestHandler):
 
+    def do_HEAD(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.end_headers()
+
     def do_GET(self):
         body = b"Blue Bot is Alive!"
         self.send_response(200)
