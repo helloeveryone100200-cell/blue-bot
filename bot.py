@@ -100,12 +100,12 @@ bot = telebot.TeleBot(BOT_TOKEN, parse_mode=None)
 BOT_USERNAME = bot.get_me().username
 
 # ─── IN-MEMORY STATE ──────────────────────────────────────────────────────────
-# Tracks media groups being buffered: {media_group_id: {"file_ids": [], "caption": "", "processed": bool}}
-album_buffer   = defaultdict(lambda: {"file_ids": [], "caption": "", "processed": False})
+# Tracks media groups being buffered: {media_group_id: {"file_ids": [], "photo_ids": [], "caption": "", "processed": bool}}
+album_buffer   = defaultdict(lambda: {"file_ids": [], "photo_ids": [], "caption": "", "processed": False})
 album_lock     = threading.Lock()
 
 # Same buffer for private group z-videos
-z_album_buffer = defaultdict(lambda: {"file_ids": [], "caption": "", "processed": False})
+z_album_buffer = defaultdict(lambda: {"file_ids": [], "photo_ids": [], "caption": "", "processed": False})
 z_album_lock   = threading.Lock()
 
 # Tracks owner /broadcast step: {owner_id: target_user_id}
@@ -939,10 +939,13 @@ def handle_admin_video(message):
                     "media_group_id": mgid,
                     "caption":        cap_text,
                     "video_ids":      b["file_ids"],
+                    "photo_ids":      b.get("photo_ids", []),
                 })
+                photo_count = len(b.get("photo_ids", []))
                 bot.send_message(
                     chat_id,
                     f"✅ စနစ်ထဲသို့ {vid_id} ဖြင့် အလိုအလျောက်သိမ်းဆည်းပြီးပါပြီ။"
+                    + (f" (ပုံ {photo_count} ပုံ ပါဝင်)" if photo_count else "")
                 )
 
             t = threading.Thread(target=flush_album, args=(media_group_id, message.chat.id), daemon=True)
@@ -1013,11 +1016,14 @@ def handle_private_admin_video(message):
                     "media_group_id": mgid,
                     "caption":        cap_text,
                     "video_ids":      b["file_ids"],
+                    "photo_ids":      b.get("photo_ids", []),
                     "private":        True,
                 })
+                photo_count = len(b.get("photo_ids", []))
                 bot.send_message(
                     chat_id,
                     f"🔒 Private Video {vid_id} ကို အလိုအလျောက်သိမ်းဆည်းပြီးပါပြီ။"
+                    + (f" (ပုံ {photo_count} ပုံ ပါဝင်)" if photo_count else "")
                 )
 
             t = threading.Thread(target=flush_z_album, args=(media_group_id, message.chat.id), daemon=True)
@@ -1042,6 +1048,46 @@ def handle_private_admin_video(message):
             message.chat.id,
             f"🔒 Private Video {vid_id} ကို အလိုအလျောက်သိမ်းဆည်းပြီးပါပြီ။"
         )
+
+
+# ─── Public admin group photo ingestion (part of album with video) ───────────
+
+@bot.message_handler(
+    func=lambda m: (
+        m.content_type == "photo"
+        and m.from_user.id in OWNER_IDS
+        and m.chat.id == get_admin_group_id()
+        and getattr(m, "media_group_id", None) is not None
+    ),
+    content_types=["photo"]
+)
+def handle_admin_photo(message):
+    media_group_id = message.media_group_id
+    photo_file_id  = message.photo[-1].file_id  # largest available size
+    with album_lock:
+        album_buffer[media_group_id]["photo_ids"].append(photo_file_id)
+        if not album_buffer[media_group_id]["caption"] and message.caption:
+            album_buffer[media_group_id]["caption"] = message.caption
+
+
+# ─── Private admin group photo ingestion (part of album with video) ──────────
+
+@bot.message_handler(
+    func=lambda m: (
+        m.content_type == "photo"
+        and is_user_accepted(m.from_user.id)
+        and m.chat.id == get_private_admin_group_id()
+        and getattr(m, "media_group_id", None) is not None
+    ),
+    content_types=["photo"]
+)
+def handle_private_admin_photo(message):
+    media_group_id = message.media_group_id
+    photo_file_id  = message.photo[-1].file_id
+    with z_album_lock:
+        z_album_buffer[media_group_id]["photo_ids"].append(photo_file_id)
+        if not z_album_buffer[media_group_id]["caption"] and message.caption:
+            z_album_buffer[media_group_id]["caption"] = message.caption
 
 
 # ─── Group video search handler ───────────────────────────────────────────────
@@ -1131,8 +1177,9 @@ def handle_group_video_search(message):
         users.update_one({"_id": user_id}, {"$inc": {"limit": -1}})
 
     # Send video(s) in the group
-    caption  = vid_doc.get("caption", "")
-    file_ids = vid_doc.get("video_ids", [])
+    caption   = vid_doc.get("caption", "")
+    file_ids  = vid_doc.get("video_ids", [])
+    photo_ids = vid_doc.get("photo_ids", [])
     try:
         if vid_doc["type"] == "single":
             bot.send_video(message.chat.id, file_ids[0], caption=caption)
@@ -1144,6 +1191,19 @@ def handle_group_video_search(message):
             bot.send_media_group(message.chat.id, media_group)
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Video ပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+
+    if photo_ids:
+        try:
+            if len(photo_ids) == 1:
+                bot.send_photo(message.chat.id, photo_ids[0])
+            else:
+                photo_group = [
+                    telebot.types.InputMediaPhoto(fid)
+                    for fid in photo_ids
+                ]
+                bot.send_media_group(message.chat.id, photo_group)
+        except Exception as e:
+            bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
 
     try:
         bot.delete_message(message.chat.id, loading_msg.message_id)
@@ -1212,8 +1272,9 @@ def handle_group_z_video_search(message):
     except Exception:
         pass
 
-    caption  = vid_doc.get("caption", "")
-    file_ids = vid_doc.get("video_ids", [])
+    caption   = vid_doc.get("caption", "")
+    file_ids  = vid_doc.get("video_ids", [])
+    photo_ids = vid_doc.get("photo_ids", [])
     try:
         if vid_doc["type"] == "single":
             bot.send_video(message.chat.id, file_ids[0], caption=caption)
@@ -1225,6 +1286,19 @@ def handle_group_z_video_search(message):
             bot.send_media_group(message.chat.id, media_group)
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Video ပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+
+    if photo_ids:
+        try:
+            if len(photo_ids) == 1:
+                bot.send_photo(message.chat.id, photo_ids[0])
+            else:
+                photo_group = [
+                    telebot.types.InputMediaPhoto(fid)
+                    for fid in photo_ids
+                ]
+                bot.send_media_group(message.chat.id, photo_group)
+        except Exception as e:
+            bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
 
     try:
         bot.delete_message(message.chat.id, loading_msg.message_id)
@@ -1487,8 +1561,9 @@ def handle_text(message):
             users.update_one({"_id": user_id}, {"$inc": {"limit": -1}})
 
         # Send video(s)
-        caption = vid_doc.get("caption", "")
-        file_ids = vid_doc.get("video_ids", [])
+        caption   = vid_doc.get("caption", "")
+        file_ids  = vid_doc.get("video_ids", [])
+        photo_ids = vid_doc.get("photo_ids", [])
 
         if vid_doc["type"] == "single":
             bot.send_video(message.chat.id, file_ids[0], caption=caption)
@@ -1498,6 +1573,19 @@ def handle_text(message):
                 for i, fid in enumerate(file_ids)
             ]
             bot.send_media_group(message.chat.id, media_group)
+
+        if photo_ids:
+            try:
+                if len(photo_ids) == 1:
+                    bot.send_photo(message.chat.id, photo_ids[0])
+                else:
+                    photo_group = [
+                        telebot.types.InputMediaPhoto(fid)
+                        for fid in photo_ids
+                    ]
+                    bot.send_media_group(message.chat.id, photo_group)
+            except Exception as e:
+                bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
 
         # Delete loading message
         try:
@@ -1550,8 +1638,9 @@ def handle_text(message):
         except Exception:
             pass
 
-        caption  = vid_doc.get("caption", "")
-        file_ids = vid_doc.get("video_ids", [])
+        caption   = vid_doc.get("caption", "")
+        file_ids  = vid_doc.get("video_ids", [])
+        photo_ids = vid_doc.get("photo_ids", [])
 
         if vid_doc["type"] == "single":
             bot.send_video(message.chat.id, file_ids[0], caption=caption)
@@ -1561,6 +1650,19 @@ def handle_text(message):
                 for i, fid in enumerate(file_ids)
             ]
             bot.send_media_group(message.chat.id, media_group)
+
+        if photo_ids:
+            try:
+                if len(photo_ids) == 1:
+                    bot.send_photo(message.chat.id, photo_ids[0])
+                else:
+                    photo_group = [
+                        telebot.types.InputMediaPhoto(fid)
+                        for fid in photo_ids
+                    ]
+                    bot.send_media_group(message.chat.id, photo_group)
+            except Exception as e:
+                bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
 
         try:
             bot.delete_message(message.chat.id, loading_msg.message_id)
