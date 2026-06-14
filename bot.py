@@ -41,6 +41,17 @@ def ensure_z_video_counter():
 ensure_video_counter()
 ensure_z_video_counter()
 
+def ensure_photo_counter():
+    if settings.find_one({"_id": "photo_counter"}) is None:
+        settings.insert_one({"_id": "photo_counter", "count": 0})
+
+def ensure_z_photo_counter():
+    if settings.find_one({"_id": "z_photo_counter"}) is None:
+        settings.insert_one({"_id": "z_photo_counter", "count": 0})
+
+ensure_photo_counter()
+ensure_z_photo_counter()
+
 def get_admin_group_id():
     """Return the designated admin group ID stored in MongoDB, or None if not set."""
     doc = settings.find_one({"_id": "admin_group"})
@@ -91,6 +102,14 @@ def is_user_accepted(user_id: int) -> bool:
 
 def get_total_z_videos():
     counter = settings.find_one({"_id": "z_video_counter"})
+    return counter["count"] if counter else 0
+
+def get_total_photos():
+    counter = settings.find_one({"_id": "photo_counter"})
+    return counter["count"] if counter else 0
+
+def get_total_z_photos():
+    counter = settings.find_one({"_id": "z_photo_counter"})
     return counter["count"] if counter else 0
 
 # ─── BOT INIT ─────────────────────────────────────────────────────────────────
@@ -368,15 +387,21 @@ def cmd_contact(message):
 def cmd_panel(message):
     if message.from_user.id not in OWNER_IDS:
         return
-    total_users  = users.count_documents({})
-    total_shares = sum(d.get("shares", 0) for d in users.find({}, {"shares": 1}))
-    total_vids   = get_total_videos()
+    total_users   = users.count_documents({})
+    total_shares  = sum(d.get("shares", 0) for d in users.find({}, {"shares": 1}))
+    total_vids    = get_total_videos()
+    total_photos  = get_total_photos()
+    total_zvids   = get_total_z_videos()
+    total_zphotos = get_total_z_photos()
     bot.send_message(
         message.chat.id,
         "<b>📊 𝗕𝗼𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀</b>\n\n"
         f"<blockquote>👥 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀  ——  {total_users} ဦး\n"
         f"🔗 𝗧𝗼𝘁𝗮𝗹 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {total_shares} ကြိမ်\n"
-        f"🎬 𝗧𝗼𝘁𝗮𝗹 𝗩𝗶𝗱𝗲𝗼𝘀  ——  {total_vids} ခု</blockquote>",
+        f"🎬 𝗣𝘂𝗯𝗹𝗶𝗰 𝗩𝗶𝗱𝗲𝗼𝘀  ——  {total_vids} ခု\n"
+        f"🖼 𝗣𝘂𝗯𝗹𝗶𝗰 𝗣𝗵𝗼𝘁𝗼𝘀  ——  {total_photos} ပုံ\n"
+        f"🔒 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗩𝗶𝗱𝗲𝗼𝘀  ——  {total_zvids} ခု\n"
+        f"🔒 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗣𝗵𝗼𝘁𝗼𝘀  ——  {total_zphotos} ပုံ</blockquote>",
         parse_mode='HTML'
     )
 
@@ -402,12 +427,18 @@ def cmd_ownerhelp(message):
         "• /broadcast {user_id} — တစ်ဦးထဲ ပေးပို့\n\n"
         "<b>🎬 𝗩𝗶𝗱𝗲𝗼 (𝗣𝘂𝗯𝗹𝗶𝗰)</b>\n"
         "• /setadmingroup — Public video group သတ်မှတ် (group ထဲ)\n"
-        "• /deletevideo v5 — Public video ဖျက်\n\n"
-        "<b>🔒 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗩𝗶𝗱𝗲𝗼</b>\n"
+        "• /deletevideo v5 — Public video ဖျက်\n"
+        "• /deletephoto p3 — Public photo ဖျက်\n\n"
+        "<b>🔒 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗩𝗶𝗱𝗲𝗼/𝗣𝗵𝗼𝘁𝗼</b>\n"
         "• /setadmingroup_private — Private video group သတ်မှတ် (group ထဲ)\n"
         "• /accept {user_id} — User ကို private access ပေး\n"
         "• /accept remove {user_id} — Private access ရုပ်သိမ်း\n"
-        "• /deleteprivatevideo z5 — Private video ဖျက်\n\n"
+        "• /deleteprivatevideo z5 — Private video ဖျက်\n"
+        "• /deleteprivatephoto zp3 — Private photo ဖျက်\n\n"
+        "<b>🖼 𝗧𝗵𝘂𝗺𝗯𝗻𝗮𝗶𝗹</b>\n"
+        "• /setthumb v3 — Video v3 အတွက် thumbnail သတ်မှတ် (ပုံ caption ထဲ)\n"
+        "• /setthumb z3 — Private video z3 thumbnail\n"
+        "• /removethumb v3 — Thumbnail ဖျက်\n\n"
         "<b>🚫 𝗨𝘀𝗲𝗿 𝗕𝗮𝗻</b>\n"
         "• /ban {user_id} — User ကို Ban ချ\n"
         "• /unban {user_id} — User ကို Ban ဖြုတ်\n\n"
@@ -891,6 +922,95 @@ def cmd_deleteprivatevideo(message):
     )
 
 
+# ─── Owner /deletephoto ────────────────────────────────────────────────────────
+# Usage: /deletephoto p3
+
+@bot.message_handler(commands=["deletephoto"])
+def cmd_deletephoto(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.send_message(message.chat.id, "Usage: /deletephoto p3")
+        return
+    pid = parts[1].lower()
+    if not re.fullmatch(r"p\d+", pid):
+        bot.send_message(message.chat.id, "❌ Photo ID မမှန်ကန်ပါ။ ဥပမာ: /deletephoto p3")
+        return
+    result = videos.delete_one({"_id": pid})
+    if result.deleted_count == 0:
+        bot.send_message(message.chat.id, f"❌ {pid} ကို database တွင် ရှာမတွေ့ပါ။")
+        return
+    settings.update_one({"_id": "photo_counter"}, {"$inc": {"count": -1}})
+    bot.send_message(message.chat.id, f"🗑 {pid} ကို database မှ ဖျက်ပြီးပါပြီ။")
+
+
+# ─── Owner /deleteprivatephoto ────────────────────────────────────────────────
+# Usage: /deleteprivatephoto zp3
+
+@bot.message_handler(commands=["deleteprivatephoto"])
+def cmd_deleteprivatephoto(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.send_message(message.chat.id, "Usage: /deleteprivatephoto zp3")
+        return
+    pid = parts[1].lower()
+    if not re.fullmatch(r"zp\d+", pid):
+        bot.send_message(message.chat.id, "❌ Photo ID မမှန်ကန်ပါ။ ဥပမာ: /deleteprivatephoto zp3")
+        return
+    result = videos.delete_one({"_id": pid})
+    if result.deleted_count == 0:
+        bot.send_message(message.chat.id, f"❌ {pid} ကို database တွင် ရှာမတွေ့ပါ။")
+        return
+    settings.update_one({"_id": "z_photo_counter"}, {"$inc": {"count": -1}})
+    bot.send_message(message.chat.id, f"🗑 Private Photo {pid} ကို database မှ ဖျက်ပြီးပါပြီ။")
+
+
+# ─── Owner /setthumb ──────────────────────────────────────────────────────────
+# Send a photo with caption "/setthumb v3" or "/setthumb z3" in the admin group.
+# Owner can also use it in private chat.
+
+@bot.message_handler(
+    func=lambda m: (
+        m.content_type == "photo"
+        and m.from_user.id in OWNER_IDS
+        and m.caption is not None
+        and re.fullmatch(r"/setthumb\s+[vz]\d+", (m.caption or "").strip(), re.IGNORECASE)
+    ),
+    content_types=["photo"]
+)
+def cmd_setthumb(message):
+    parts    = message.caption.strip().split()
+    vid_id   = parts[1].lower()
+    photo_id = message.photo[-1].file_id
+    result   = videos.update_one({"_id": vid_id}, {"$set": {"thumbnail": photo_id}})
+    if result.matched_count == 0:
+        bot.send_message(message.chat.id, f"❌ {vid_id} ကို database တွင် ရှာမတွေ့ပါ။")
+        return
+    bot.send_message(message.chat.id, f"✅ {vid_id} အတွက် thumbnail သတ်မှတ်ပြီးပါပြီ။")
+
+
+# ─── Owner /removethumb ───────────────────────────────────────────────────────
+# Usage: /removethumb v3  or  /removethumb z3
+
+@bot.message_handler(commands=["removethumb"])
+def cmd_removethumb(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.send_message(message.chat.id, "Usage: /removethumb v3")
+        return
+    vid_id = parts[1].lower()
+    result = videos.update_one({"_id": vid_id}, {"$unset": {"thumbnail": ""}})
+    if result.matched_count == 0:
+        bot.send_message(message.chat.id, f"❌ {vid_id} ကို database တွင် ရှာမတွေ့ပါ။")
+        return
+    bot.send_message(message.chat.id, f"✅ {vid_id} ၏ thumbnail ဖျက်ပြီးပါပြီ။")
+
+
 # ─── Admin video ingestion (owner only, from the designated admin group) ──────
 
 @bot.message_handler(
@@ -1090,6 +1210,194 @@ def handle_private_admin_photo(message):
             z_album_buffer[media_group_id]["caption"] = message.caption
 
 
+# ─── Public admin group standalone photo ingestion ────────────────────────────
+# Saves solo photos (no media_group_id, no /setthumb caption) as p1, p2 …
+
+@bot.message_handler(
+    func=lambda m: (
+        m.content_type == "photo"
+        and m.from_user.id in OWNER_IDS
+        and m.chat.id == get_admin_group_id()
+        and getattr(m, "media_group_id", None) is None
+        and not re.fullmatch(r"/setthumb\s+[vz]\d+", (m.caption or "").strip(), re.IGNORECASE)
+    ),
+    content_types=["photo"]
+)
+def handle_admin_standalone_photo(message):
+    photo_file_id = message.photo[-1].file_id
+    caption       = message.caption or ""
+    result = settings.find_one_and_update(
+        {"_id": "photo_counter"},
+        {"$inc": {"count": 1}},
+        return_document=True
+    )
+    new_count = result["count"]
+    pid       = f"p{new_count}"
+    cap_text  = caption or f"Photo {pid}"
+    videos.insert_one({
+        "_id":      pid,
+        "type":     "photo_only",
+        "caption":  cap_text,
+        "photo_ids": [photo_file_id],
+    })
+    bot.send_message(
+        message.chat.id,
+        f"🖼 {pid} ဖြင့် ပုံ သိမ်းဆည်းပြီးပါပြီ။"
+    )
+
+
+# ─── Private admin group standalone photo ingestion ───────────────────────────
+# Saves solo photos as zp1, zp2 … (accepted users + owner)
+
+@bot.message_handler(
+    func=lambda m: (
+        m.content_type == "photo"
+        and is_user_accepted(m.from_user.id)
+        and m.chat.id == get_private_admin_group_id()
+        and getattr(m, "media_group_id", None) is None
+        and not re.fullmatch(r"/setthumb\s+[vz]\d+", (m.caption or "").strip(), re.IGNORECASE)
+    ),
+    content_types=["photo"]
+)
+def handle_private_admin_standalone_photo(message):
+    photo_file_id = message.photo[-1].file_id
+    caption       = message.caption or ""
+    result = settings.find_one_and_update(
+        {"_id": "z_photo_counter"},
+        {"$inc": {"count": 1}},
+        return_document=True
+    )
+    new_count = result["count"]
+    pid       = f"zp{new_count}"
+    cap_text  = caption or f"Photo {pid}"
+    videos.insert_one({
+        "_id":      pid,
+        "type":     "photo_only",
+        "caption":  cap_text,
+        "photo_ids": [photo_file_id],
+        "private":  True,
+    })
+    bot.send_message(
+        message.chat.id,
+        f"🔒 {pid} ဖြင့် Private ပုံ သိမ်းဆည်းပြီးပါပြီ။"
+    )
+
+
+# ─── Group photo search handler (pN) ─────────────────────────────────────────
+# Handles pN pattern in groups/supergroups for public photos.
+
+@bot.message_handler(
+    func=lambda m: m.chat.type in ("group", "supergroup")
+                   and m.text is not None
+                   and re.fullmatch(r"p\d+", m.text.strip(), re.IGNORECASE) is not None,
+    content_types=["text"]
+)
+def handle_group_photo_search(message):
+    user_id = message.from_user.id
+    doc     = users.find_one({"_id": user_id})
+    if doc is None:
+        doc = get_or_create_user(message.from_user)
+    if user_id not in OWNER_IDS and doc.get("is_banned"):
+        return
+    if user_id not in OWNER_IDS and not doc.get("gender"):
+        bot.send_message(
+            message.chat.id,
+            "⚠️ Bot ကို အသုံးပြုရန် ကျေးဇူးပြု၍ Private Chat တွင် /start နှိပ်ပြီး\n"
+            "လိင်ရွေးချယ်မှုကို ဦးစွာ ပြုလုပ်ပေးပါ။",
+            reply_to_message_id=message.message_id
+        )
+        return
+
+    is_free = doc.get("is_free", False)
+    limit   = doc.get("limit", 0)
+    if not is_free and limit <= 0:
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton(
+            "🔗 Referral Link ယူပြီး Limit တိုးမည်",
+            url=f"https://t.me/{BOT_USERNAME}?start={user_id}"
+        ))
+        bot.send_message(
+            message.chat.id,
+            "<b>⚠️ Limit ကုန်သွားပါပြီ</b>\n\n"
+            "<blockquote>• Referral Link မျှဝေ၍ Limit တိုး နိုင်ပါသည်။</blockquote>",
+            parse_mode='HTML',
+            reply_markup=markup,
+            reply_to_message_id=message.message_id
+        )
+        return
+
+    text    = message.text.strip().lower()
+    pid_doc = videos.find_one({"_id": text})
+    if not pid_doc or pid_doc.get("type") != "photo_only":
+        bot.send_message(
+            message.chat.id,
+            "<b>❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱</b>\n\n"
+            f"<blockquote>• Photo {h(text)} ကို ရှာမတွေ့ပါ။</blockquote>",
+            parse_mode='HTML',
+            reply_to_message_id=message.message_id
+        )
+        return
+
+    if not is_free:
+        users.update_one({"_id": user_id}, {"$inc": {"limit": -1}})
+
+    caption   = pid_doc.get("caption", "")
+    photo_ids = pid_doc.get("photo_ids", [])
+    try:
+        if len(photo_ids) == 1:
+            bot.send_photo(message.chat.id, photo_ids[0], caption=caption)
+        else:
+            grp = [telebot.types.InputMediaPhoto(fid, caption=caption if i == 0 else "")
+                   for i, fid in enumerate(photo_ids)]
+            bot.send_media_group(message.chat.id, grp)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+
+
+# ─── Group photo search handler (zpN) ────────────────────────────────────────
+# Handles zpN pattern — accepted users + owner only.
+
+@bot.message_handler(
+    func=lambda m: m.chat.type in ("group", "supergroup")
+                   and m.text is not None
+                   and re.fullmatch(r"zp\d+", m.text.strip(), re.IGNORECASE) is not None,
+    content_types=["text"]
+)
+def handle_group_zphooto_search(message):
+    user_id = message.from_user.id
+    if not is_user_accepted(user_id):
+        bot.send_message(
+            message.chat.id,
+            "🔒 ဤ ပုံများကို ကြည့်ရှုခွင့် မရှိပါ။",
+            reply_to_message_id=message.message_id
+        )
+        return
+
+    text    = message.text.strip().lower()
+    pid_doc = videos.find_one({"_id": text})
+    if not pid_doc or pid_doc.get("type") != "photo_only":
+        bot.send_message(
+            message.chat.id,
+            "<b>❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱</b>\n\n"
+            f"<blockquote>• Photo {h(text)} ကို ရှာမတွေ့ပါ။</blockquote>",
+            parse_mode='HTML',
+            reply_to_message_id=message.message_id
+        )
+        return
+
+    caption   = pid_doc.get("caption", "")
+    photo_ids = pid_doc.get("photo_ids", [])
+    try:
+        if len(photo_ids) == 1:
+            bot.send_photo(message.chat.id, photo_ids[0], caption=caption)
+        else:
+            grp = [telebot.types.InputMediaPhoto(fid, caption=caption if i == 0 else "")
+                   for i, fid in enumerate(photo_ids)]
+            bot.send_media_group(message.chat.id, grp)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+
+
 # ─── Group video search handler ───────────────────────────────────────────────
 # Handles vN pattern in groups/supergroups. Profile/Share/Contact stay private.
 
@@ -1180,12 +1488,18 @@ def handle_group_video_search(message):
     caption   = vid_doc.get("caption", "")
     file_ids  = vid_doc.get("video_ids", [])
     photo_ids = vid_doc.get("photo_ids", [])
+    thumbnail = vid_doc.get("thumbnail")
+    if thumbnail:
+        try:
+            bot.send_photo(message.chat.id, thumbnail, caption=f"🖼 {caption}" if caption else None)
+        except Exception:
+            pass
     try:
         if vid_doc["type"] == "single":
-            bot.send_video(message.chat.id, file_ids[0], caption=caption)
+            bot.send_video(message.chat.id, file_ids[0], caption=caption if not thumbnail else "")
         else:
             media_group = [
-                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 else "")
+                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 and not thumbnail else "")
                 for i, fid in enumerate(file_ids)
             ]
             bot.send_media_group(message.chat.id, media_group)
@@ -1275,12 +1589,18 @@ def handle_group_z_video_search(message):
     caption   = vid_doc.get("caption", "")
     file_ids  = vid_doc.get("video_ids", [])
     photo_ids = vid_doc.get("photo_ids", [])
+    thumbnail = vid_doc.get("thumbnail")
+    if thumbnail:
+        try:
+            bot.send_photo(message.chat.id, thumbnail, caption=f"🖼 {caption}" if caption else None)
+        except Exception:
+            pass
     try:
         if vid_doc["type"] == "single":
-            bot.send_video(message.chat.id, file_ids[0], caption=caption)
+            bot.send_video(message.chat.id, file_ids[0], caption=caption if not thumbnail else "")
         else:
             media_group = [
-                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 else "")
+                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 and not thumbnail else "")
                 for i, fid in enumerate(file_ids)
             ]
             bot.send_media_group(message.chat.id, media_group)
@@ -1564,12 +1884,18 @@ def handle_text(message):
         caption   = vid_doc.get("caption", "")
         file_ids  = vid_doc.get("video_ids", [])
         photo_ids = vid_doc.get("photo_ids", [])
+        thumbnail = vid_doc.get("thumbnail")
+        if thumbnail:
+            try:
+                bot.send_photo(message.chat.id, thumbnail, caption=f"🖼 {caption}" if caption else None)
+            except Exception:
+                pass
 
         if vid_doc["type"] == "single":
-            bot.send_video(message.chat.id, file_ids[0], caption=caption)
+            bot.send_video(message.chat.id, file_ids[0], caption=caption if not thumbnail else "")
         else:
             media_group = [
-                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 else "")
+                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 and not thumbnail else "")
                 for i, fid in enumerate(file_ids)
             ]
             bot.send_media_group(message.chat.id, media_group)
@@ -1641,12 +1967,18 @@ def handle_text(message):
         caption   = vid_doc.get("caption", "")
         file_ids  = vid_doc.get("video_ids", [])
         photo_ids = vid_doc.get("photo_ids", [])
+        thumbnail = vid_doc.get("thumbnail")
+        if thumbnail:
+            try:
+                bot.send_photo(message.chat.id, thumbnail, caption=f"🖼 {caption}" if caption else None)
+            except Exception:
+                pass
 
         if vid_doc["type"] == "single":
-            bot.send_video(message.chat.id, file_ids[0], caption=caption)
+            bot.send_video(message.chat.id, file_ids[0], caption=caption if not thumbnail else "")
         else:
             media_group = [
-                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 else "")
+                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 and not thumbnail else "")
                 for i, fid in enumerate(file_ids)
             ]
             bot.send_media_group(message.chat.id, media_group)
@@ -1669,6 +2001,77 @@ def handle_text(message):
         except Exception:
             pass
 
+        return
+
+    # ── Public photo search (pN pattern) ─────────────────────────────────────
+    if re.fullmatch(r"p\d+", text, re.IGNORECASE):
+        is_free = doc.get("is_free", False)
+        limit   = doc.get("limit", 0)
+        if not is_free and limit <= 0:
+            bot.send_message(
+                message.chat.id,
+                "<b>⚠️ 𝗟𝗶𝗺𝗶𝘁 𝗘𝘅𝗰𝗲𝗲𝗱𝗲𝗱</b>\n\n"
+                "<blockquote>• ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 ကုန်ဆုံးသွားပါပြီ။\n\n"
+                "• သူငယ်ချင်းများ ဖိတ်ခေါ်ပြီး\n"
+                "  𝗟𝗶𝗺𝗶𝘁 ထပ်ရယူနိုင်ပါသည်။</blockquote>",
+                parse_mode='HTML',
+                reply_markup=share_markup(user_id)
+            )
+            return
+        pid_key = text.lower()
+        pid_doc = videos.find_one({"_id": pid_key})
+        if not pid_doc or pid_doc.get("type") != "photo_only":
+            bot.send_message(
+                message.chat.id,
+                "<b>❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱</b>\n\n"
+                f"<blockquote>• Photo {h(pid_key)} ကို ရှာမတွေ့ပါ ခင်ဗျာ။</blockquote>",
+                parse_mode='HTML'
+            )
+            return
+        if not is_free:
+            users.update_one({"_id": user_id}, {"$inc": {"limit": -1}})
+        caption   = pid_doc.get("caption", "")
+        photo_ids = pid_doc.get("photo_ids", [])
+        try:
+            if len(photo_ids) == 1:
+                bot.send_photo(message.chat.id, photo_ids[0], caption=caption)
+            else:
+                grp = [telebot.types.InputMediaPhoto(fid, caption=caption if i == 0 else "")
+                       for i, fid in enumerate(photo_ids)]
+                bot.send_media_group(message.chat.id, grp)
+        except Exception as e:
+            bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+        return
+
+    # ── Private photo search (zpN pattern) — owner + accepted users only ─────
+    if re.fullmatch(r"zp\d+", text, re.IGNORECASE):
+        if not is_user_accepted(user_id):
+            bot.send_message(
+                message.chat.id,
+                "🔒 ဤ ပုံများကို ကြည့်ရှုခွင့် မရှိပါ။"
+            )
+            return
+        pid_key = text.lower()
+        pid_doc = videos.find_one({"_id": pid_key})
+        if not pid_doc or pid_doc.get("type") != "photo_only":
+            bot.send_message(
+                message.chat.id,
+                "<b>❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱</b>\n\n"
+                f"<blockquote>• Photo {h(pid_key)} ကို ရှာမတွေ့ပါ ခင်ဗျာ။</blockquote>",
+                parse_mode='HTML'
+            )
+            return
+        caption   = pid_doc.get("caption", "")
+        photo_ids = pid_doc.get("photo_ids", [])
+        try:
+            if len(photo_ids) == 1:
+                bot.send_photo(message.chat.id, photo_ids[0], caption=caption)
+            else:
+                grp = [telebot.types.InputMediaPhoto(fid, caption=caption if i == 0 else "")
+                       for i, fid in enumerate(photo_ids)]
+                bot.send_media_group(message.chat.id, grp)
+        except Exception as e:
+            bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
         return
 
     # ── Fallback: show welcome ─────────────────────────────────────────────────
