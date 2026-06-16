@@ -1345,9 +1345,9 @@ def handle_group_photo_search(message):
     photo_ids = pid_doc.get("photo_ids", [])
     try:
         if len(photo_ids) == 1:
-            bot.send_photo(message.chat.id, photo_ids[0], caption=caption)
+            bot.send_photo(message.chat.id, photo_ids[0], caption=caption, has_spoiler=True)
         else:
-            grp = [telebot.types.InputMediaPhoto(fid, caption=caption if i == 0 else "")
+            grp = [telebot.types.InputMediaPhoto(fid, caption=caption if i == 0 else "", has_spoiler=True)
                    for i, fid in enumerate(photo_ids)]
             bot.send_media_group(message.chat.id, grp)
     except Exception as e:
@@ -1389,9 +1389,9 @@ def handle_group_zphooto_search(message):
     photo_ids = pid_doc.get("photo_ids", [])
     try:
         if len(photo_ids) == 1:
-            bot.send_photo(message.chat.id, photo_ids[0], caption=caption)
+            bot.send_photo(message.chat.id, photo_ids[0], caption=caption, has_spoiler=True)
         else:
-            grp = [telebot.types.InputMediaPhoto(fid, caption=caption if i == 0 else "")
+            grp = [telebot.types.InputMediaPhoto(fid, caption=caption if i == 0 else "", has_spoiler=True)
                    for i, fid in enumerate(photo_ids)]
             bot.send_media_group(message.chat.id, grp)
     except Exception as e:
@@ -1491,15 +1491,15 @@ def handle_group_video_search(message):
     thumbnail = vid_doc.get("thumbnail")
     if thumbnail:
         try:
-            bot.send_photo(message.chat.id, thumbnail, caption=f"🖼 {caption}" if caption else None)
+            bot.send_photo(message.chat.id, thumbnail, caption=f"🖼 {caption}" if caption else None, has_spoiler=True)
         except Exception:
             pass
     try:
         if vid_doc["type"] == "single":
-            bot.send_video(message.chat.id, file_ids[0], caption=caption if not thumbnail else "")
+            bot.send_video(message.chat.id, file_ids[0], caption=caption if not thumbnail else "", has_spoiler=True)
         else:
             media_group = [
-                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 and not thumbnail else "")
+                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 and not thumbnail else "", has_spoiler=True)
                 for i, fid in enumerate(file_ids)
             ]
             bot.send_media_group(message.chat.id, media_group)
@@ -1509,10 +1509,10 @@ def handle_group_video_search(message):
     if photo_ids:
         try:
             if len(photo_ids) == 1:
-                bot.send_photo(message.chat.id, photo_ids[0])
+                bot.send_photo(message.chat.id, photo_ids[0], has_spoiler=True)
             else:
                 photo_group = [
-                    telebot.types.InputMediaPhoto(fid)
+                    telebot.types.InputMediaPhoto(fid, has_spoiler=True)
                     for fid in photo_ids
                 ]
                 bot.send_media_group(message.chat.id, photo_group)
@@ -1592,15 +1592,15 @@ def handle_group_z_video_search(message):
     thumbnail = vid_doc.get("thumbnail")
     if thumbnail:
         try:
-            bot.send_photo(message.chat.id, thumbnail, caption=f"🖼 {caption}" if caption else None)
+            bot.send_photo(message.chat.id, thumbnail, caption=f"🖼 {caption}" if caption else None, has_spoiler=True)
         except Exception:
             pass
     try:
         if vid_doc["type"] == "single":
-            bot.send_video(message.chat.id, file_ids[0], caption=caption if not thumbnail else "")
+            bot.send_video(message.chat.id, file_ids[0], caption=caption if not thumbnail else "", has_spoiler=True)
         else:
             media_group = [
-                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 and not thumbnail else "")
+                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 and not thumbnail else "", has_spoiler=True)
                 for i, fid in enumerate(file_ids)
             ]
             bot.send_media_group(message.chat.id, media_group)
@@ -1610,10 +1610,10 @@ def handle_group_z_video_search(message):
     if photo_ids:
         try:
             if len(photo_ids) == 1:
-                bot.send_photo(message.chat.id, photo_ids[0])
+                bot.send_photo(message.chat.id, photo_ids[0], has_spoiler=True)
             else:
                 photo_group = [
-                    telebot.types.InputMediaPhoto(fid)
+                    telebot.types.InputMediaPhoto(fid, has_spoiler=True)
                     for fid in photo_ids
                 ]
                 bot.send_media_group(message.chat.id, photo_group)
@@ -1887,15 +1887,15 @@ def handle_text(message):
         thumbnail = vid_doc.get("thumbnail")
         if thumbnail:
             try:
-                bot.send_photo(message.chat.id, thumbnail, caption=f"🖼 {caption}" if caption else None)
+                bot.send_photo(message.chat.id, thumbnail, caption=f"🖼 {caption}" if caption else None, has_spoiler=True)
             except Exception:
                 pass
 
         if vid_doc["type"] == "single":
-            bot.send_video(message.chat.id, file_ids[0], caption=caption if not thumbnail else "")
+            bot.send_video(message.chat.id, file_ids[0], caption=caption if not thumbnail else "", has_spoiler=True)
         else:
             media_group = [
-                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 and not thumbnail else "")
+                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 and not thumbnail else "", has_spoiler=True)
                 for i, fid in enumerate(file_ids)
             ]
             bot.send_media_group(message.chat.id, media_group)
@@ -1903,10 +1903,10 @@ def handle_text(message):
         if photo_ids:
             try:
                 if len(photo_ids) == 1:
-                    bot.send_photo(message.chat.id, photo_ids[0])
+                    bot.send_photo(message.chat.id, photo_ids[0], has_spoiler=True)
                 else:
                     photo_group = [
-                        telebot.types.InputMediaPhoto(fid)
+                        telebot.types.InputMediaPhoto(fid, has_spoiler=True)
                         for fid in photo_ids
                     ]
                     bot.send_media_group(message.chat.id, photo_group)
@@ -1970,15 +1970,15 @@ def handle_text(message):
         thumbnail = vid_doc.get("thumbnail")
         if thumbnail:
             try:
-                bot.send_photo(message.chat.id, thumbnail, caption=f"🖼 {caption}" if caption else None)
+                bot.send_photo(message.chat.id, thumbnail, caption=f"🖼 {caption}" if caption else None, has_spoiler=True)
             except Exception:
                 pass
 
         if vid_doc["type"] == "single":
-            bot.send_video(message.chat.id, file_ids[0], caption=caption if not thumbnail else "")
+            bot.send_video(message.chat.id, file_ids[0], caption=caption if not thumbnail else "", has_spoiler=True)
         else:
             media_group = [
-                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 and not thumbnail else "")
+                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 and not thumbnail else "", has_spoiler=True)
                 for i, fid in enumerate(file_ids)
             ]
             bot.send_media_group(message.chat.id, media_group)
@@ -1986,10 +1986,10 @@ def handle_text(message):
         if photo_ids:
             try:
                 if len(photo_ids) == 1:
-                    bot.send_photo(message.chat.id, photo_ids[0])
+                    bot.send_photo(message.chat.id, photo_ids[0], has_spoiler=True)
                 else:
                     photo_group = [
-                        telebot.types.InputMediaPhoto(fid)
+                        telebot.types.InputMediaPhoto(fid, has_spoiler=True)
                         for fid in photo_ids
                     ]
                     bot.send_media_group(message.chat.id, photo_group)
@@ -2034,9 +2034,9 @@ def handle_text(message):
         photo_ids = pid_doc.get("photo_ids", [])
         try:
             if len(photo_ids) == 1:
-                bot.send_photo(message.chat.id, photo_ids[0], caption=caption)
+                bot.send_photo(message.chat.id, photo_ids[0], caption=caption, has_spoiler=True)
             else:
-                grp = [telebot.types.InputMediaPhoto(fid, caption=caption if i == 0 else "")
+                grp = [telebot.types.InputMediaPhoto(fid, caption=caption if i == 0 else "", has_spoiler=True)
                        for i, fid in enumerate(photo_ids)]
                 bot.send_media_group(message.chat.id, grp)
         except Exception as e:
@@ -2065,9 +2065,9 @@ def handle_text(message):
         photo_ids = pid_doc.get("photo_ids", [])
         try:
             if len(photo_ids) == 1:
-                bot.send_photo(message.chat.id, photo_ids[0], caption=caption)
+                bot.send_photo(message.chat.id, photo_ids[0], caption=caption, has_spoiler=True)
             else:
-                grp = [telebot.types.InputMediaPhoto(fid, caption=caption if i == 0 else "")
+                grp = [telebot.types.InputMediaPhoto(fid, caption=caption if i == 0 else "", has_spoiler=True)
                        for i, fid in enumerate(photo_ids)]
                 bot.send_media_group(message.chat.id, grp)
         except Exception as e:
