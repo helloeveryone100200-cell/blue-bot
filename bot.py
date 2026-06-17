@@ -3,6 +3,7 @@ import re
 import time
 import json
 import threading
+from datetime import date
 from http.server import HTTPServer, ThreadingHTTPServer, BaseHTTPRequestHandler
 from collections import defaultdict
 
@@ -163,6 +164,9 @@ def main_menu_keyboard():
         KeyboardButton("📹 Videos Update"),
         KeyboardButton("📞 Contact Owner"),
     )
+    markup.add(
+        KeyboardButton("🏆 Top Videos"),
+    )
     return markup
 
 def cancel_keyboard():
@@ -214,6 +218,89 @@ def send_welcome(chat_id, user_id):
         "</blockquote>"
     )
     bot.send_message(chat_id, text, parse_mode='HTML', reply_markup=welcome_markup(user_id))
+
+# ─── DAILY BONUS ──────────────────────────────────────────────────────────────
+
+def check_daily_bonus(user_id: int) -> bool:
+    """Award +2 limit if user hasn't claimed today. Returns True if awarded."""
+    if user_id in OWNER_IDS:
+        return False
+    today = str(date.today())
+    doc = users.find_one({"_id": user_id}, {"last_daily": 1, "is_banned": 1})
+    if not doc or doc.get("is_banned"):
+        return False
+    if doc.get("last_daily") == today:
+        return False
+    users.update_one(
+        {"_id": user_id},
+        {"$set": {"last_daily": today}, "$inc": {"limit": 2}}
+    )
+    return True
+
+# ─── RATING MARKUP ────────────────────────────────────────────────────────────
+
+def rating_markup(vid_id: str) -> InlineKeyboardMarkup:
+    vid_doc  = videos.find_one({"_id": vid_id}, {"likes": 1, "dislikes": 1, "views": 1})
+    likes    = vid_doc.get("likes",    0) if vid_doc else 0
+    dislikes = vid_doc.get("dislikes", 0) if vid_doc else 0
+    views    = vid_doc.get("views",    0) if vid_doc else 0
+    markup = InlineKeyboardMarkup(row_width=3)
+    markup.add(
+        InlineKeyboardButton(f"👍 {likes}",    callback_data=f"rate_{vid_id}_like"),
+        InlineKeyboardButton(f"👎 {dislikes}", callback_data=f"rate_{vid_id}_dislike"),
+        InlineKeyboardButton(f"👁 {views}",    callback_data="noop"),
+    )
+    return markup
+
+# ─── BROADCAST NEW CONTENT ────────────────────────────────────────────────────
+
+def broadcast_new_content(vid_id: str):
+    """Notify all non-banned users about new public video in background thread."""
+    def _send():
+        all_ids = [u["_id"] for u in users.find({"is_banned": {"$ne": True}}, {"_id": 1})]
+        for uid in all_ids:
+            try:
+                markup = InlineKeyboardMarkup()
+                markup.add(InlineKeyboardButton(
+                    f"▶️ ကြည့်ရှု ({vid_id})",
+                    url=f"https://t.me/{BOT_USERNAME}?start={uid}"
+                ))
+                bot.send_message(
+                    uid,
+                    f"<b>🆕 အသစ် ထည့်သွင်းလိုက်ပြီ!</b>\n\n"
+                    f"<blockquote>📹 <b>{vid_id}</b> ကို ယခုမှ ကြည့်ရှုနိုင်ပါပြီ။\n"
+                    f"• Group/Private တွင် <code>{vid_id}</code> ရိုက်ပြီး ရှာနိုင်သည်။</blockquote>",
+                    parse_mode='HTML',
+                    reply_markup=markup
+                )
+            except Exception:
+                pass
+    threading.Thread(target=_send, daemon=True).start()
+
+# ─── TOP VIDEOS TEXT ──────────────────────────────────────────────────────────
+
+def get_top_videos_text(n: int = 10) -> str:
+    top = list(videos.find(
+        {"_id": {"$regex": r"^v\d+$"}, "likes": {"$gt": 0}},
+        {"_id": 1, "likes": 1, "dislikes": 1, "views": 1}
+    ).sort("likes", -1).limit(n))
+    if not top:
+        return (
+            "<b>🏆 𝗧𝗼𝗽 𝗩𝗶𝗱𝗲𝗼𝘀</b>\n\n"
+            "<blockquote>• မဲပေးမှု မရှိသေးပါ။\n"
+            "• Video ကြည့်ပြီးနောက် 👍 / 👎 နှိပ်ပြီး မဲပေးနိုင်ပါသည်။</blockquote>"
+        )
+    medals = ["🥇","🥈","🥉"] + ["🏅"] * 7
+    lines  = []
+    for i, v in enumerate(top):
+        lines.append(
+            f"{medals[i]} <b>{v['_id']}</b>  👍 {v.get('likes',0)}  "
+            f"👎 {v.get('dislikes',0)}  👁 {v.get('views',0)}"
+        )
+    return (
+        "<b>🏆 𝗧𝗼𝗽 𝗩𝗶𝗱𝗲𝗼𝘀 (Most Liked)</b>\n\n"
+        f"<blockquote>{'%0A'.join(lines).replace('%0A', chr(10))}</blockquote>"
+    )
 
 # ─── /start ───────────────────────────────────────────────────────────────────
 
@@ -269,6 +356,18 @@ def cmd_start(message):
             reply_markup=main_menu_keyboard()
         )
         send_welcome(message.chat.id, new_user.id)
+
+        # Daily bonus check
+        if not is_new:
+            bonus = check_daily_bonus(new_user.id)
+            if bonus:
+                bot.send_message(
+                    message.chat.id,
+                    "<b>🎁 𝗗𝗮𝗶𝗹𝘆 𝗕𝗼𝗻𝘂𝘀!</b>\n\n"
+                    "<blockquote>• ယနေ့ Bot ဝင်ရောက်သဖြင့်\n"
+                    "  ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 +𝟮 ရပါပြီ! ✅</blockquote>",
+                    parse_mode='HTML'
+                )
 
         # Gender selection — only ask if not yet selected
         doc_check = users.find_one({"_id": new_user.id}, {"gender": 1})
@@ -1060,6 +1159,9 @@ def handle_admin_video(message):
                     "caption":        cap_text,
                     "video_ids":      b["file_ids"],
                     "photo_ids":      b.get("photo_ids", []),
+                    "likes":          0,
+                    "dislikes":       0,
+                    "views":          0,
                 })
                 photo_count = len(b.get("photo_ids", []))
                 bot.send_message(
@@ -1067,6 +1169,7 @@ def handle_admin_video(message):
                     f"✅ စနစ်ထဲသို့ {vid_id} ဖြင့် အလိုအလျောက်သိမ်းဆည်းပြီးပါပြီ။"
                     + (f" (ပုံ {photo_count} ပုံ ပါဝင်)" if photo_count else "")
                 )
+                broadcast_new_content(vid_id)
 
             t = threading.Thread(target=flush_album, args=(media_group_id, message.chat.id), daemon=True)
             t.start()
@@ -1084,11 +1187,15 @@ def handle_admin_video(message):
             "type":     "single",
             "caption":  cap_text,
             "video_ids": [file_id],
+            "likes":    0,
+            "dislikes": 0,
+            "views":    0,
         })
         bot.send_message(
             message.chat.id,
             f"✅ စနစ်ထဲသို့ {vid_id} ဖြင့် အလိုအလျောက်သိမ်းဆည်းပြီးပါပြီ။"
         )
+        broadcast_new_content(vid_id)
 
 # ─── Private group video ingestion (owner + accepted users) ──────────────────
 
@@ -1480,9 +1587,19 @@ def handle_group_video_search(message):
     except Exception:
         pass
 
+    # Increment view count
+    videos.update_one({"_id": text}, {"$inc": {"views": 1}})
+
     # Deduct limit
     if not is_free:
-        users.update_one({"_id": user_id}, {"$inc": {"limit": -1}})
+        result_upd = users.find_one_and_update(
+            {"_id": user_id},
+            {"$inc": {"limit": -1}},
+            return_document=True
+        )
+        remaining = result_upd.get("limit", 0) if result_upd else 0
+    else:
+        remaining = None
 
     # Send video(s) in the group
     caption   = vid_doc.get("caption", "")
@@ -1523,6 +1640,32 @@ def handle_group_video_search(message):
         bot.delete_message(message.chat.id, loading_msg.message_id)
     except Exception:
         pass
+
+    # Rating buttons
+    try:
+        bot.send_message(
+            message.chat.id,
+            f"<b>⭐ {h(text)}</b> — မဲပေးနိုင်ပါသည်",
+            parse_mode='HTML',
+            reply_markup=rating_markup(text)
+        )
+    except Exception:
+        pass
+
+    # Limit warning
+    if remaining is not None and remaining == 3:
+        try:
+            bot.send_message(
+                message.chat.id,
+                "<b>⚠️ 𝗟𝗶𝗺𝗶𝘁 သတိပေးချက်</b>\n\n"
+                "<blockquote>• ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 <b>𝟯</b> သာ ကျန်တော့သည်။\n"
+                "• သူငယ်ချင်း ဖိတ်ခေါ်ပြီး Limit ထပ်တိုးနိုင်သည်။</blockquote>",
+                parse_mode='HTML',
+                reply_markup=share_markup(user_id),
+                reply_to_message_id=message.message_id
+            )
+        except Exception:
+            pass
 
 
 # ─── Group z-video search handler (accepted users + owner only) ───────────────
@@ -1586,6 +1729,9 @@ def handle_group_z_video_search(message):
     except Exception:
         pass
 
+    # Increment view count
+    videos.update_one({"_id": text}, {"$inc": {"views": 1}})
+
     caption   = vid_doc.get("caption", "")
     file_ids  = vid_doc.get("video_ids", [])
     photo_ids = vid_doc.get("photo_ids", [])
@@ -1625,6 +1771,17 @@ def handle_group_z_video_search(message):
     except Exception:
         pass
 
+    # Rating buttons for group z-video
+    try:
+        bot.send_message(
+            message.chat.id,
+            f"<b>⭐ {h(text)}</b> — မဲပေးနိုင်ပါသည်",
+            parse_mode='HTML',
+            reply_markup=rating_markup(text)
+        )
+    except Exception:
+        pass
+
 
 # ─── General message handler (private) ───────────────────────────────────────
 
@@ -1646,6 +1803,17 @@ def handle_text(message):
             "🚫 သင်သည် ဤ Bot ကို အသုံးပြုခွင့် ပိတ်ဆို့ထားပါသည်။"
         )
         return
+
+    # ── Daily bonus check ─────────────────────────────────────────────────────
+    if check_daily_bonus(user_id):
+        bot.send_message(
+            message.chat.id,
+            "<b>🎁 𝗗𝗮𝗶𝗹𝘆 𝗕𝗼𝗻𝘂𝘀!</b>\n\n"
+            "<blockquote>• ယနေ့ Bot ဝင်ရောက်သဖြင့်\n"
+            "  ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 +𝟮 ရပါပြီ! ✅</blockquote>",
+            parse_mode='HTML'
+        )
+        doc = users.find_one({"_id": user_id})
 
     # ── Gender gate — must select before using bot ────────────────────────────
     if user_id not in OWNER_IDS and not doc.get("gender"):
@@ -1824,6 +1992,15 @@ def handle_text(message):
         )
         return
 
+    # ── Menu button: 🏆 Top Videos ────────────────────────────────────────────
+    if text == "🏆 Top Videos":
+        bot.send_message(
+            message.chat.id,
+            get_top_videos_text(10),
+            parse_mode='HTML'
+        )
+        return
+
     # ── Video search (vN pattern) ─────────────────────────────────────────────
     if re.fullmatch(r"v\d+", text, re.IGNORECASE):
         vid_key = text.lower()
@@ -1876,9 +2053,19 @@ def handle_text(message):
         except Exception:
             pass
 
+        # Increment view count
+        videos.update_one({"_id": vid_key}, {"$inc": {"views": 1}})
+
         # Deduct limit
         if not is_free:
-            users.update_one({"_id": user_id}, {"$inc": {"limit": -1}})
+            result_upd = users.find_one_and_update(
+                {"_id": user_id},
+                {"$inc": {"limit": -1}},
+                return_document=True
+            )
+            remaining = result_upd.get("limit", 0) if result_upd else 0
+        else:
+            remaining = None
 
         # Send video(s)
         caption   = vid_doc.get("caption", "")
@@ -1918,6 +2105,28 @@ def handle_text(message):
             bot.delete_message(message.chat.id, loading_msg.message_id)
         except Exception:
             pass
+
+        # Rating buttons
+        try:
+            bot.send_message(
+                message.chat.id,
+                f"<b>⭐ {h(vid_key)}</b> — မဲပေးနိုင်ပါသည်",
+                parse_mode='HTML',
+                reply_markup=rating_markup(vid_key)
+            )
+        except Exception:
+            pass
+
+        # Limit warning
+        if remaining is not None and remaining == 3:
+            bot.send_message(
+                message.chat.id,
+                "<b>⚠️ 𝗟𝗶𝗺𝗶𝘁 သတိပေးချက်</b>\n\n"
+                "<blockquote>• ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 <b>𝟯</b> သာ ကျန်တော့သည်။\n"
+                "• သူငယ်ချင်း ဖိတ်ခေါ်ပြီး Limit ထပ်တိုးနိုင်သည်။</blockquote>",
+                parse_mode='HTML',
+                reply_markup=share_markup(user_id)
+            )
 
         return
 
@@ -2001,6 +2210,17 @@ def handle_text(message):
         except Exception:
             pass
 
+        # Rating buttons for private zN
+        try:
+            bot.send_message(
+                message.chat.id,
+                f"<b>⭐ {h(vid_key)}</b> — မဲပေးနိုင်ပါသည်",
+                parse_mode='HTML',
+                reply_markup=rating_markup(vid_key)
+            )
+        except Exception:
+            pass
+
         return
 
     # ── Public photo search (pN pattern) ─────────────────────────────────────
@@ -2077,6 +2297,51 @@ def handle_text(message):
     # ── Fallback: show welcome ─────────────────────────────────────────────────
     send_welcome(message.chat.id, user_id)
 
+
+# ─── RATING CALLBACKS ─────────────────────────────────────────────────────────
+
+@bot.callback_query_handler(func=lambda c: c.data == "noop")
+def cb_noop(call):
+    bot.answer_callback_query(call.id)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("rate_") and (c.data.endswith("_like") or c.data.endswith("_dislike")))
+def cb_rate(call):
+    parts   = call.data.split("_")
+    action  = parts[-1]
+    vid_id  = "_".join(parts[1:-1])
+    user_id = call.from_user.id
+
+    if action == "like":
+        field = "likes"
+    else:
+        field = "dislikes"
+
+    result = videos.find_one_and_update(
+        {"_id": vid_id},
+        {"$inc": {field: 1}},
+        return_document=True
+    )
+    if not result:
+        bot.answer_callback_query(call.id, "❌ Video ရှာမတွေ့ပါ")
+        return
+
+    likes    = result.get("likes", 0)
+    dislikes = result.get("dislikes", 0)
+    views    = result.get("views", 0)
+
+    new_markup = InlineKeyboardMarkup(row_width=3)
+    new_markup.add(
+        InlineKeyboardButton(f"👍 {likes}",    callback_data=f"rate_{vid_id}_like"),
+        InlineKeyboardButton(f"👎 {dislikes}", callback_data=f"rate_{vid_id}_dislike"),
+        InlineKeyboardButton(f"👁 {views}",    callback_data="noop"),
+    )
+    try:
+        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=new_markup)
+    except Exception:
+        pass
+
+    emoji = "👍" if action == "like" else "👎"
+    bot.answer_callback_query(call.id, f"{emoji} မဲပေးပြီးပါပြီ!")
 
 # ─── WEBHOOK + KEEP-ALIVE SERVER ──────────────────────────────────────────────
 # Webhook mode: Telegram POSTs updates to /webhook.
