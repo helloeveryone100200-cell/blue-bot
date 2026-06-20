@@ -556,20 +556,27 @@ def cmd_panel(message):
     if message.from_user.id not in OWNER_IDS:
         return
     total_users   = users.count_documents({})
+    free_users    = users.count_documents({"is_free": True})
+    banned_users  = users.count_documents({"is_banned": True})
     total_shares  = sum(d.get("shares", 0) for d in users.find({}, {"shares": 1}))
     total_vids    = get_total_videos()
     total_photos  = get_total_photos()
     total_zvids   = get_total_z_videos()
     total_zphotos = get_total_z_photos()
+    broadcast_on  = get_broadcast_new_video()
+    bc_status     = "✅ ON (ဖွင့်ထား)" if broadcast_on else "❌ OFF (ပိတ်ထား)"
     bot.send_message(
         message.chat.id,
         "<b>📊 𝗕𝗼𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀</b>\n\n"
         f"<blockquote>👥 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀  ——  {total_users} ဦး\n"
-        f"🔗 𝗧𝗼𝘁𝗮𝗹 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {total_shares} ကြိမ်\n"
+        f"✅ 𝗙𝗿𝗲𝗲 𝗨𝘀𝗲𝗿𝘀    ——  {free_users} ဦး\n"
+        f"🚫 𝗕𝗮𝗻𝗻𝗲𝗱 𝗨𝘀𝗲𝗿𝘀  ——  {banned_users} ဦး\n"
+        f"🔗 𝗧𝗼𝘁𝗮𝗹 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {total_shares} ကြိမ်\n\n"
         f"🎬 𝗣𝘂𝗯𝗹𝗶𝗰 𝗩𝗶𝗱𝗲𝗼𝘀  ——  {total_vids} ခု\n"
         f"🖼 𝗣𝘂𝗯𝗹𝗶𝗰 𝗣𝗵𝗼𝘁𝗼𝘀  ——  {total_photos} ပုံ\n"
         f"🔒 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗩𝗶𝗱𝗲𝗼𝘀  ——  {total_zvids} ခု\n"
-        f"🔒 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗣𝗵𝗼𝘁𝗼𝘀  ——  {total_zphotos} ပုံ</blockquote>",
+        f"🔒 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗣𝗵𝗼𝘁𝗼𝘀  ——  {total_zphotos} ပုံ\n\n"
+        f"📡 𝗔𝘂𝘁𝗼 𝗕𝗿𝗼𝗮𝗱𝗰𝗮𝘀𝘁  ——  {bc_status}</blockquote>",
         parse_mode='HTML'
     )
 
