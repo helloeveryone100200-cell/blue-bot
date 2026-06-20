@@ -53,19 +53,19 @@ def ensure_z_photo_counter():
 ensure_photo_counter()
 ensure_z_photo_counter()
 
-  def get_broadcast_new_video() -> bool:
-      """Return True if auto-broadcast of new public videos is enabled (default: on)."""
-      doc = settings.find_one({"_id": "broadcast_new_video"})
-      return doc.get("enabled", True) if doc else True
+def get_broadcast_new_video() -> bool:
+    """Return True if auto-broadcast of new public videos is enabled (default: on)."""
+    doc = settings.find_one({"_id": "broadcast_new_video"})
+    return doc.get("enabled", True) if doc else True
 
-  def set_broadcast_new_video(enabled: bool):
-      settings.update_one(
-          {"_id": "broadcast_new_video"},
-          {"$set": {"enabled": enabled}},
-          upsert=True
-      )
+def set_broadcast_new_video(enabled: bool):
+    settings.update_one(
+        {"_id": "broadcast_new_video"},
+        {"$set": {"enabled": enabled}},
+        upsert=True
+    )
 
-  
+
 def get_admin_group_id():
     """Return the designated admin group ID stored in MongoDB, or None if not set."""
     doc = settings.find_one({"_id": "admin_group"})
@@ -318,60 +318,49 @@ def get_top_videos_text(n: int = 10) -> str:
     )
 
 # ─── Owner /autobroadcast ────────────────────────────────────────────────────
-  # /autobroadcast on   → enable auto-notify when new public video is added
-  # /autobroadcast off  → disable auto-notify
-  # /autobroadcast      → show current status
+# /autobroadcast on   → enable auto-notify when new public video is added
+# /autobroadcast off  → disable auto-notify
+# /autobroadcast      → show current status
 
-  @bot.message_handler(commands=["autobroadcast"])
-  def cmd_autobroadcast(message):
-      if message.from_user.id not in OWNER_IDS:
-          return
-      parts = message.text.split()
-      if len(parts) < 2 or parts[1].lower() not in ("on", "off"):
-          current = get_broadcast_new_video()
-          status  = "✅ ON (ဖွင့်ထား)" if current else "❌ OFF (ပိတ်ထား)"
-          bot.send_message(
-              message.chat.id,
-              "<b>📡 Auto Broadcast New Video</b>
-
-"
-              f"<blockquote>• လက်ရှိ အခြေအနေ ——— {status}
-
-"
-              "• /autobroadcast on  — ဖွင့်မည်
-"
-              "• /autobroadcast off — ပိတ်မည်</blockquote>",
-              parse_mode='HTML'
-          )
-          return
-      toggle  = parts[1].lower()
-      enabled = (toggle == "on")
-      set_broadcast_new_video(enabled)
-      if enabled:
-          bot.send_message(
-              message.chat.id,
-              "✅ <b>Auto Broadcast ဖွင့်လိုက်ပါပြီ။</b>
-
-"
-              "<blockquote>• Video အသစ်တင်တိုင်း Users အားလုံးကို
-"
-              "  အလိုအလျောက် Notify ပေးပို့မည်။</blockquote>",
-              parse_mode='HTML'
-          )
-      else:
-          bot.send_message(
-              message.chat.id,
-              "❌ <b>Auto Broadcast ပိတ်လိုက်ပါပြီ။</b>
-
-"
-              "<blockquote>• Video အသစ်တင်သော်လည်း
-"
-              "  Users များကို Notify မပေးပို့တော့ပါ။</blockquote>",
-              parse_mode='HTML'
-          )
+@bot.message_handler(commands=["autobroadcast"])
+def cmd_autobroadcast(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+    parts = message.text.split()
+    if len(parts) < 2 or parts[1].lower() not in ("on", "off"):
+        current = get_broadcast_new_video()
+        status  = "✅ ON (ဖွင့်ထား)" if current else "❌ OFF (ပိတ်ထား)"
+        bot.send_message(
+            message.chat.id,
+            "<b>📡 Auto Broadcast New Video</b>\n\n"
+            f"<blockquote>• လက်ရှိ အခြေအနေ ——— {status}\n\n"
+            "• /autobroadcast on  — ဖွင့်မည်\n"
+            "• /autobroadcast off — ပိတ်မည်</blockquote>",
+            parse_mode='HTML'
+        )
+        return
+    toggle  = parts[1].lower()
+    enabled = (toggle == "on")
+    set_broadcast_new_video(enabled)
+    if enabled:
+        bot.send_message(
+            message.chat.id,
+            "✅ <b>Auto Broadcast ဖွင့်လိုက်ပါပြီ။</b>\n\n"
+            "<blockquote>• Video အသစ်တင်တိုင်း Users အားလုံးကို\n"
+            "  အလိုအလျောက် Notify ပေးပို့မည်။</blockquote>",
+            parse_mode='HTML'
+        )
+    else:
+        bot.send_message(
+            message.chat.id,
+            "❌ <b>Auto Broadcast ပိတ်လိုက်ပါပြီ။</b>\n\n"
+            "<blockquote>• Video အသစ်တင်သော်လည်း\n"
+            "  Users များကို Notify မပေးပို့တော့ပါ။</blockquote>",
+            parse_mode='HTML'
+        )
 
 
-  # ─── /start ───────────────────────────────────────────────────────────────────
+# ─── /start ───────────────────────────────────────────────────────────────────
 
 @bot.message_handler(commands=["start"])
 def cmd_start(message):
