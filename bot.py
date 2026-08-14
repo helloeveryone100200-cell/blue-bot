@@ -170,15 +170,15 @@ def get_total_videos():
 def main_menu_keyboard():
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
-        KeyboardButton("👤 Profile"),
-        KeyboardButton("🔗 Share & Refer"),
+        KeyboardButton("👤 Profile", style="success"),
+        KeyboardButton("🔗 Share & Refer", style="primary"),
     )
     markup.add(
-        KeyboardButton("📹 Videos Update"),
-        KeyboardButton("📞 Contact Owner"),
+        KeyboardButton("📹 Videos Update", style="danger"),
+        KeyboardButton("📞 Contact Owner", style="success"),
     )
     markup.add(
-        KeyboardButton("🏆 Top Videos"),
+        KeyboardButton("🏆 Top Videos", style="primary"),
     )
     return markup
 
