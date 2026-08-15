@@ -184,7 +184,7 @@ def main_menu_keyboard():
 
 def cancel_keyboard():
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-    markup.add(KeyboardButton("❌ Cancel"))
+    markup.add(KeyboardButton("❌ Cancel", style="danger"))
     return markup
 
 def welcome_markup(user_id):
@@ -259,9 +259,9 @@ def rating_markup(vid_id: str) -> InlineKeyboardMarkup:
     views    = vid_doc.get("views",    0) if vid_doc else 0
     markup = InlineKeyboardMarkup(row_width=3)
     markup.add(
-        InlineKeyboardButton(f"👍 {likes}",    callback_data=f"rate_{vid_id}_like"),
-        InlineKeyboardButton(f"👎 {dislikes}", callback_data=f"rate_{vid_id}_dislike"),
-        InlineKeyboardButton(f"👁 {views}",    callback_data="noop"),
+        InlineKeyboardButton(f"👍 {likes}",    callback_data=f"rate_{vid_id}_like", style="success"),
+        InlineKeyboardButton(f"👎 {dislikes}", callback_data=f"rate_{vid_id}_dislike", style="danger"),
+        InlineKeyboardButton(f"👁 {views}",    callback_data="noop", style="primary"),
     )
     return markup
 
@@ -2396,9 +2396,9 @@ def cb_rate(call):
 
     new_markup = InlineKeyboardMarkup(row_width=3)
     new_markup.add(
-        InlineKeyboardButton(f"👍 {likes}",    callback_data=f"rate_{vid_id}_like"),
-        InlineKeyboardButton(f"👎 {dislikes}", callback_data=f"rate_{vid_id}_dislike"),
-        InlineKeyboardButton(f"👁 {views}",    callback_data="noop"),
+        InlineKeyboardButton(f"👍 {likes}",    callback_data=f"rate_{vid_id}_like", style="success"),
+        InlineKeyboardButton(f"👎 {dislikes}", callback_data=f"rate_{vid_id}_dislike", style="danger"),
+        InlineKeyboardButton(f"👁 {views}",    callback_data="noop", style="primary"),
     )
     try:
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=new_markup)
