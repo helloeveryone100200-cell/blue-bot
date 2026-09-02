@@ -461,13 +461,17 @@ def cmd_start(message):
             )
             return
 
-        bot.send_message(
-            message.chat.id,
-            "<b>𝗕𝗹𝘂𝗲 𝗕𝗼𝘁 တွင် ကြိုဆိုပါသည်! 🎉</b>",
-            parse_mode='HTML',
-            reply_markup=main_menu_keyboard()
-        )
-        send_welcome(message.chat.id, new_user.id)
+        # Referral links should only show the welcome messages to new users.
+        # Existing users can go straight to the requested video.
+        show_welcome = is_new or ref_video_id is None
+        if show_welcome:
+            bot.send_message(
+                message.chat.id,
+                "<b>𝗕𝗹𝘂𝗲 𝗕𝗼𝘁 တွင် ကြိုဆိုပါသည်! 🎉</b>",
+                parse_mode='HTML',
+                reply_markup=main_menu_keyboard()
+            )
+            send_welcome(message.chat.id, new_user.id)
 
         # Daily bonus check
         if not is_new:
