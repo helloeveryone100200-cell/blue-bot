@@ -278,7 +278,8 @@ def broadcast_new_content(vid_id: str):
                 markup = InlineKeyboardMarkup()
                 markup.add(InlineKeyboardButton(
                     f"▶️ ကြည့်ရှု ({vid_id})",
-                    url=f"https://t.me/{BOT_USERNAME}?start={uid}"
+                    url=f"https://t.me/{BOT_USERNAME}?start={uid}",
+                    style="success"
                 ))
                 bot.send_message(
                     uid,
