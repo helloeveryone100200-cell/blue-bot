@@ -6,6 +6,7 @@ import threading
 from datetime import date
 from http.server import HTTPServer, ThreadingHTTPServer, BaseHTTPRequestHandler
 from collections import defaultdict
+from types import SimpleNamespace
 
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
@@ -361,6 +362,50 @@ def cmd_autobroadcast(message):
         )
 
 
+# ─── Owner /ref ──────────────────────────────────────────────────────────────
+# Usage: /ref v1  → create a deep link that opens this public video in PM
+
+@bot.message_handler(commands=["ref"])
+def cmd_ref(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+
+    parts = message.text.split()
+    if len(parts) != 2 or not re.fullmatch(r"v\d+", parts[1].strip(), re.IGNORECASE):
+        bot.send_message(
+            message.chat.id,
+            "<b>အသုံးပြုပုံ</b>\n\n"
+            "<code>/ref v1</code>\n"
+            "<code>/ref v2</code>",
+            parse_mode='HTML'
+        )
+        return
+
+    vid_id = parts[1].strip().lower()
+    if not videos.find_one({"_id": vid_id}, {"_id": 1}):
+        bot.send_message(
+            message.chat.id,
+            f"❌ <b>{h(vid_id)}</b> ကို Video database ထဲမှာ မတွေ့ပါ။",
+            parse_mode='HTML'
+        )
+        return
+
+    deep_link = f"https://t.me/{BOT_USERNAME}?start=ref_{vid_id}"
+    share_url  = f"https://t.me/share/url?url={deep_link}"
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("🔗 Link Share လုပ်မည်", url=share_url))
+    bot.send_message(
+        message.chat.id,
+        "<b>🔗 Video Referral Link</b>\n\n"
+        f"• Video — <code>{h(vid_id)}</code>\n"
+        f"• Link —\n<code>{h(deep_link)}</code>\n\n"
+        "ဤ link ကိုနှိပ်သူများသည် Bot PM ထဲတွင်\n"
+        f"<code>{h(vid_id)}</code> ကို တိုက်ရိုက်ရရှိပါမည်။",
+        parse_mode='HTML',
+        reply_markup=markup
+    )
+
+
 # ─── /start ───────────────────────────────────────────────────────────────────
 
 @bot.message_handler(commands=["start"])
@@ -369,12 +414,20 @@ def cmd_start(message):
     new_user = message.from_user
     doc      = users.find_one({"_id": new_user.id})
     is_new   = doc is None
+    ref_video_id = None
+
+    if len(args) > 1:
+        start_param = args[1].strip().lower()
+        if start_param.startswith("ref_"):
+            candidate = start_param[4:]
+            if re.fullmatch(r"v\d+", candidate, re.IGNORECASE):
+                ref_video_id = candidate
 
     if is_new:
         get_or_create_user(new_user)
 
     # Referral logic (works from any chat)
-    if len(args) > 1 and is_new:
+    if len(args) > 1 and is_new and ref_video_id is None:
         try:
             referrer_id = int(args[1])
             if referrer_id != new_user.id:
@@ -431,6 +484,11 @@ def cmd_start(message):
         # Gender selection — only ask if not yet selected
         doc_check = users.find_one({"_id": new_user.id}, {"gender": 1})
         if not doc_check or not doc_check.get("gender"):
+            if ref_video_id:
+                users.update_one(
+                    {"_id": new_user.id},
+                    {"$set": {"pending_ref_video": ref_video_id}}
+                )
             bot.send_message(
                 message.chat.id,
                 "<b>🔞 𝗔𝗴𝗲 𝗩𝗲𝗿𝗶𝗳𝗶𝗰𝗮𝘁𝗶𝗼𝗻</b>\n\n"
@@ -438,6 +496,12 @@ def cmd_start(message):
                 parse_mode='HTML',
                 reply_markup=gender_selection_markup()
             )
+            return
+
+        if ref_video_id:
+            message.text = ref_video_id
+            handle_text(message)
+            return
     else:
         total  = get_total_videos()
         fname  = new_user.first_name or new_user.username or str(new_user.id)
@@ -484,6 +548,25 @@ def cb_profile(call):
 
 # ─── Gender callbacks ─────────────────────────────────────────────────────────
 
+def send_pending_ref_video(call):
+    user_id = call.from_user.id
+    pending_doc = users.find_one({"_id": user_id}, {"pending_ref_video": 1})
+    vid_id = pending_doc.get("pending_ref_video") if pending_doc else None
+    if not vid_id or not re.fullmatch(r"v\d+", vid_id, re.IGNORECASE):
+        return
+
+    users.update_one(
+        {"_id": user_id},
+        {"$unset": {"pending_ref_video": ""}}
+    )
+    pending_message = SimpleNamespace(
+        text=vid_id,
+        from_user=call.from_user,
+        chat=call.message.chat
+    )
+    handle_text(pending_message)
+
+
 @bot.callback_query_handler(func=lambda c: c.data == "gender_male")
 def cb_gender_male(call):
     user_id = call.from_user.id
@@ -502,6 +585,7 @@ def cb_gender_male(call):
         "• Bot ကို ဆက်လက် အသုံးပြုနိုင်ပါပြီ ✅</blockquote>",
         parse_mode='HTML'
     )
+    send_pending_ref_video(call)
 
 @bot.callback_query_handler(func=lambda c: c.data == "gender_female")
 def cb_gender_female(call):
@@ -523,6 +607,7 @@ def cb_gender_female(call):
         "   အသုံးပြုနိုင်ပါသည် — မည်သို့မျှ မတားမြစ်ပါ ✅</i></blockquote>",
         parse_mode='HTML'
     )
+    send_pending_ref_video(call)
 
 
 # ─── /contact_to_owner ────────────────────────────────────────────────────────
