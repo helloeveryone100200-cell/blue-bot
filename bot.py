@@ -7,6 +7,7 @@ from datetime import date
 from http.server import HTTPServer, ThreadingHTTPServer, BaseHTTPRequestHandler
 from collections import defaultdict
 from types import SimpleNamespace
+from urllib.parse import urlparse
 
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
@@ -217,6 +218,70 @@ def is_user_banned(user_id: int) -> bool:
     doc = users.find_one({"_id": user_id}, {"is_banned": 1})
     return bool(doc and doc.get("is_banned"))
 
+def get_required_channel():
+    return settings.find_one({"_id": "required_channel"})
+
+def parse_public_channel_link(raw_link: str):
+    raw_link = raw_link.strip()
+    if raw_link.startswith("@"):
+        username = raw_link[1:]
+    else:
+        parsed = urlparse(raw_link)
+        if (
+            parsed.scheme not in ("http", "https")
+            or parsed.netloc.lower() not in ("t.me", "www.t.me", "telegram.me", "www.telegram.me")
+        ):
+            return None
+        username = parsed.path.strip("/").split("/")[0]
+
+    if not re.fullmatch(r"[A-Za-z0-9_]{4,32}", username):
+        return None
+
+    return {
+        "chat_id": f"@{username}",
+        "link": f"https://t.me/{username}"
+    }
+
+def is_user_channel_joined(user_id: int) -> bool:
+    if user_id in OWNER_IDS:
+        return True
+
+    channel = get_required_channel()
+    if not channel:
+        return True
+
+    try:
+        member = bot.get_chat_member(channel["chat_id"], user_id)
+        if member.status in ("creator", "administrator", "member"):
+            return True
+        return member.status == "restricted" and bool(getattr(member, "is_member", False))
+    except Exception:
+        return False
+
+def channel_join_markup():
+    channel = get_required_channel()
+    markup = InlineKeyboardMarkup(row_width=1)
+    if channel:
+        markup.add(InlineKeyboardButton(
+            "✅ Channel Join လုပ်ရန်",
+            url=channel["link"],
+            style="success"
+        ))
+    markup.add(InlineKeyboardButton(
+        "🔄 Join ပြီးပါပြီ — စစ်ဆေးမည်",
+        callback_data="check_channel_join",
+        style="primary"
+    ))
+    return markup
+
+def send_channel_join_prompt(chat_id, reply_to_message_id=None):
+    bot.send_message(
+        chat_id,
+        "ဇာတ်ကားကြည့်ရန် Channel အရင် Join ပေးပါ။",
+        reply_markup=channel_join_markup(),
+        reply_to_message_id=reply_to_message_id
+    )
+
 def send_welcome(chat_id, user_id):
     total = get_total_videos()
     text = (
@@ -406,6 +471,90 @@ def cmd_ref(message):
     )
 
 
+# ─── Owner /setchannel and /removechannel ────────────────────────────────────
+
+@bot.message_handler(commands=["setchannel"])
+def cmd_setchannel(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+    if message.chat.type != "private":
+        return
+
+    parts = message.text.split()
+    if len(parts) != 2:
+        bot.send_message(
+            message.chat.id,
+            "အသုံးပြုပုံ:\n<code>/setchannel https://t.me/your_channel</code>\n\n"
+            "Channel သည် public ဖြစ်ရမည်ဖြစ်ပြီး Bot ကို Channel ထဲတွင် Admin ပေးထားပါ။",
+            parse_mode='HTML'
+        )
+        return
+
+    channel = parse_public_channel_link(parts[1])
+    if not channel:
+        bot.send_message(
+            message.chat.id,
+            "❌ Public Channel link မမှန်ကန်ပါ။\n"
+            "ဥပမာ: <code>https://t.me/your_channel</code>",
+            parse_mode='HTML'
+        )
+        return
+
+    try:
+        chat = bot.get_chat(channel["chat_id"])
+        if chat.type != "channel":
+            raise ValueError("ပေးထားသော link သည် Channel link မဟုတ်ပါ။")
+        bot_member = bot.get_chat_member(channel["chat_id"], bot.get_me().id)
+        if bot_member.status not in ("administrator", "creator"):
+            raise ValueError("Bot ကို Channel ထဲတွင် Administrator ပေးထားရပါမည်။")
+    except Exception as e:
+        bot.send_message(
+            message.chat.id,
+            "❌ Channel ကို မတွေ့ပါ။ Link မှန်ကန်ကြောင်းနှင့်\n"
+            "Bot ကို Channel ထဲတွင် ထည့်ထားကြောင်း စစ်ဆေးပေးပါ။\n\n"
+            f"<code>{h(str(e))}</code>",
+            parse_mode='HTML'
+        )
+        return
+
+    settings.update_one(
+        {"_id": "required_channel"},
+        {"$set": {
+            "chat_id": channel["chat_id"],
+            "link": channel["link"],
+            "title": chat.title or channel["chat_id"]
+        }},
+        upsert=True
+    )
+    bot.send_message(
+        message.chat.id,
+        "✅ <b>Join လုပ်ရန် Channel သတ်မှတ်ပြီးပါပြီ။</b>\n\n"
+        f"• Channel — <b>{h(chat.title or channel['chat_id'])}</b>\n"
+        f"• Link — <code>{h(channel['link'])}</code>\n\n"
+        "Bot သည် User များ၏ Channel Join အခြေအနေကို စစ်ဆေးပါမည်။",
+        parse_mode='HTML'
+    )
+
+@bot.message_handler(commands=["removechannel"])
+def cmd_removechannel(message):
+    if message.from_user.id not in OWNER_IDS:
+        return
+    if message.chat.type != "private":
+        return
+
+    result = settings.delete_one({"_id": "required_channel"})
+    if result.deleted_count:
+        bot.send_message(
+            message.chat.id,
+            "✅ Join လုပ်ရန် Channel သတ်မှတ်ချက်ကို ပယ်ဖျက်ပြီးပါပြီ။"
+        )
+    else:
+        bot.send_message(
+            message.chat.id,
+            "ℹ️ သတ်မှတ်ထားသော Channel မရှိသေးပါ။"
+        )
+
+
 # ─── /start ───────────────────────────────────────────────────────────────────
 
 @bot.message_handler(commands=["start"])
@@ -414,6 +563,7 @@ def cmd_start(message):
     new_user = message.from_user
     doc      = users.find_one({"_id": new_user.id})
     is_new   = doc is None
+    resumed_new_user = bool(getattr(message, "_channel_was_new", False))
     ref_video_id = None
 
     if len(args) > 1:
@@ -461,9 +611,20 @@ def cmd_start(message):
             )
             return
 
+        if not is_user_channel_joined(new_user.id):
+            users.update_one(
+                {"_id": new_user.id},
+                {"$set": {
+                    "pending_channel_action": message.text,
+                    "pending_channel_new_user": is_new or resumed_new_user
+                }}
+            )
+            send_channel_join_prompt(message.chat.id)
+            return
+
         # Referral links should only show the welcome messages to new users.
         # Existing users can go straight to the requested video.
-        show_welcome = is_new or ref_video_id is None
+        show_welcome = is_new or resumed_new_user or ref_video_id is None
         if show_welcome:
             bot.send_message(
                 message.chat.id,
@@ -569,6 +730,57 @@ def send_pending_ref_video(call):
         chat=call.message.chat
     )
     handle_text(pending_message)
+
+def resume_pending_channel_action(call):
+    user_id = call.from_user.id
+    if not is_user_channel_joined(user_id):
+        bot.answer_callback_query(
+            call.id,
+            "Channel ကို အရင် Join ပေးပါ။",
+            show_alert=True
+        )
+        return
+
+    pending_doc = users.find_one(
+        {"_id": user_id},
+        {"pending_channel_action": 1, "pending_channel_new_user": 1}
+    )
+    pending_action = pending_doc.get("pending_channel_action") if pending_doc else None
+    pending_new_user = bool(pending_doc and pending_doc.get("pending_channel_new_user"))
+    users.update_one(
+        {"_id": user_id},
+        {"$unset": {
+            "pending_channel_action": "",
+            "pending_channel_new_user": ""
+        }}
+    )
+    bot.answer_callback_query(call.id, "✅ Channel Join အတည်ပြုပြီးပါပြီ။")
+    try:
+        bot.edit_message_reply_markup(
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=None
+        )
+    except Exception:
+        pass
+
+    if not pending_action:
+        return
+
+    pending_message = SimpleNamespace(
+        text=pending_action,
+        from_user=call.from_user,
+        chat=call.message.chat
+    )
+    if pending_action.startswith("/start"):
+        pending_message._channel_was_new = pending_new_user
+        cmd_start(pending_message)
+    else:
+        handle_text(pending_message)
+
+@bot.callback_query_handler(func=lambda c: c.data == "check_channel_join")
+def cb_check_channel_join(call):
+    resume_pending_channel_action(call)
 
 
 @bot.callback_query_handler(func=lambda c: c.data == "gender_male")
@@ -1682,6 +1894,13 @@ def handle_group_video_search(message):
     if user_id not in OWNER_IDS and doc.get("is_banned"):
         return
 
+    if not is_user_channel_joined(user_id):
+        send_channel_join_prompt(
+            message.chat.id,
+            reply_to_message_id=message.message_id
+        )
+        return
+
     # Gender gate — must have selected gender first (via private chat)
     if user_id not in OWNER_IDS and not doc.get("gender"):
         bot.send_message(
@@ -1957,6 +2176,16 @@ def handle_text(message):
             message.chat.id,
             "🚫 သင်သည် ဤ Bot ကို အသုံးပြုခွင့် ပိတ်ဆို့ထားပါသည်။"
         )
+        return
+
+    if not is_user_channel_joined(user_id):
+        users.update_one(
+            {"_id": user_id},
+            {"$set": {
+                "pending_channel_action": text
+            }}
+        )
+        send_channel_join_prompt(message.chat.id)
         return
 
     # ── Daily bonus check ─────────────────────────────────────────────────────
