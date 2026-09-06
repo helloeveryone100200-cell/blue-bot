@@ -247,8 +247,8 @@ def is_user_channel_joined(user_id: int) -> bool:
         return True
 
     channel = get_required_channel()
-    if not channel:
-        return True
+    if not channel or not channel.get("chat_id") or not channel.get("link"):
+        return False
 
     try:
         member = bot.get_chat_member(channel["chat_id"], user_id)
@@ -267,6 +267,12 @@ def channel_join_markup():
             url=channel["link"],
             style="success"
         ))
+    else:
+        markup.add(InlineKeyboardButton(
+            "⚠️ Channel မသတ်မှတ်ရသေးပါ",
+            callback_data="channel_not_configured",
+            style="danger"
+        ))
     markup.add(InlineKeyboardButton(
         "🔄 Join ပြီးပါပြီ — စစ်ဆေးမည်",
         callback_data="check_channel_join",
@@ -275,9 +281,13 @@ def channel_join_markup():
     return markup
 
 def send_channel_join_prompt(chat_id, reply_to_message_id=None):
+    channel = get_required_channel()
+    text = "ဇာတ်ကားကြည့်ရန် Channel အရင် Join ပေးပါ။"
+    if not channel:
+        text += "\n\n⚠️ Owner က Channel link ကို အရင်သတ်မှတ်ပေးရပါမည်။"
     bot.send_message(
         chat_id,
-        "ဇာတ်ကားကြည့်ရန် Channel အရင် Join ပေးပါ။",
+        text,
         reply_markup=channel_join_markup(),
         reply_to_message_id=reply_to_message_id
     )
@@ -733,6 +743,13 @@ def send_pending_ref_video(call):
 
 def resume_pending_channel_action(call):
     user_id = call.from_user.id
+    if not get_required_channel():
+        bot.answer_callback_query(
+            call.id,
+            "Owner က Channel link ကို အရင်သတ်မှတ်ပေးရပါမည်။",
+            show_alert=True
+        )
+        return
     if not is_user_channel_joined(user_id):
         bot.answer_callback_query(
             call.id,
@@ -781,6 +798,14 @@ def resume_pending_channel_action(call):
 @bot.callback_query_handler(func=lambda c: c.data == "check_channel_join")
 def cb_check_channel_join(call):
     resume_pending_channel_action(call)
+
+@bot.callback_query_handler(func=lambda c: c.data == "channel_not_configured")
+def cb_channel_not_configured(call):
+    bot.answer_callback_query(
+        call.id,
+        "Owner က /setchannel ဖြင့် Channel link သတ်မှတ်ပေးရပါမည်။",
+        show_alert=True
+    )
 
 
 @bot.callback_query_handler(func=lambda c: c.data == "gender_male")
