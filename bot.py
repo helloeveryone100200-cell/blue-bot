@@ -3,7 +3,6 @@ import re
 import time
 import json
 import threading
-from datetime import date
 from http.server import HTTPServer, ThreadingHTTPServer, BaseHTTPRequestHandler
 from collections import defaultdict
 from types import SimpleNamespace
@@ -155,9 +154,7 @@ def get_or_create_user(user):
             "_id":        user.id,
             "username":   user.username or "",
             "first_name": user.first_name or "",
-            "limit":      15,
             "shares":     0,
-            "is_free":    False,
             "is_banned":  False,
             "gender":     None,
             "state":      "normal",
@@ -307,24 +304,6 @@ def send_welcome(chat_id, user_id):
         "</blockquote>"
     )
     bot.send_message(chat_id, text, parse_mode='HTML', reply_markup=welcome_markup(user_id))
-
-# ─── DAILY BONUS ──────────────────────────────────────────────────────────────
-
-def check_daily_bonus(user_id: int) -> bool:
-    """Award +2 limit if user hasn't claimed today. Returns True if awarded."""
-    if user_id in OWNER_IDS:
-        return False
-    today = str(date.today())
-    doc = users.find_one({"_id": user_id}, {"last_daily": 1, "is_banned": 1})
-    if not doc or doc.get("is_banned"):
-        return False
-    if doc.get("last_daily") == today:
-        return False
-    users.update_one(
-        {"_id": user_id},
-        {"$set": {"last_daily": today}, "$inc": {"limit": 2}}
-    )
-    return True
 
 # ─── RATING MARKUP ────────────────────────────────────────────────────────────
 
@@ -595,14 +574,13 @@ def cmd_start(message):
                 if referrer:
                     users.update_one(
                         {"_id": referrer_id},
-                        {"$inc": {"limit": 5, "shares": 1}}
+                        {"$inc": {"shares": 1}}
                     )
                     try:
                         bot.send_message(
                             referrer_id,
                             "<b>🎉 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹 𝗦𝘂𝗰𝗰𝗲𝘀𝘀!</b>\n\n"
-                            "<blockquote>• သူငယ်ချင်းတစ်ဦး Bot ကို Join ဝင်သဖြင့်\n"
-                            "  ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 +𝟱 ခု ထပ်ရပါပြီ! ✅</blockquote>",
+                            "<blockquote>• သူငယ်ချင်းတစ်ဦး Bot ကို Join ဝင်ပါပြီ ✅</blockquote>",
                             parse_mode='HTML'
                         )
                     except Exception:
@@ -643,18 +621,6 @@ def cmd_start(message):
                 reply_markup=main_menu_keyboard()
             )
             send_welcome(message.chat.id, new_user.id)
-
-        # Daily bonus check
-        if not is_new:
-            bonus = check_daily_bonus(new_user.id)
-            if bonus:
-                bot.send_message(
-                    message.chat.id,
-                    "<b>🎁 𝗗𝗮𝗶𝗹𝘆 𝗕𝗼𝗻𝘂𝘀!</b>\n\n"
-                    "<blockquote>• ယနေ့ Bot ဝင်ရောက်သဖြင့်\n"
-                    "  ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 +𝟮 ရပါပြီ! ✅</blockquote>",
-                    parse_mode='HTML'
-                )
 
         # Gender selection — only ask if not yet selected
         doc_check = users.find_one({"_id": new_user.id}, {"gender": 1})
@@ -709,13 +675,11 @@ def cb_profile(call):
         doc = get_or_create_user(call.from_user)
 
     display_name = doc.get("username") or doc.get("first_name") or str(user_id)
-    limit_str    = "∞ Unlimited" if doc.get("is_free") else str(doc.get("limit", 0))
-
     text = (
         "<b>👤 𝗠𝘆 𝗣𝗿𝗼𝗳𝗶𝗹𝗲</b>\n\n"
         f"<blockquote>• 𝗡𝗮𝗺𝗲  ——  {h(display_name)}\n"
         f"• 𝗜𝗗  ——  {user_id}\n"
-        f"• 𝗟𝗶𝗺𝗶𝘁  ——  {h(limit_str)}\n"
+        "• 𝗩𝗶𝗱𝗲𝗼 𝗔𝗰𝗰𝗲𝘀𝘀  ——  ∞ Unlimited\n"
         f"• 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {doc.get('shares', 0)} ဦး</blockquote>"
     )
     bot.answer_callback_query(call.id)
@@ -872,7 +836,6 @@ def cmd_panel(message):
     if message.from_user.id not in OWNER_IDS:
         return
     total_users   = users.count_documents({})
-    free_users    = users.count_documents({"is_free": True})
     banned_users  = users.count_documents({"is_banned": True})
     total_shares  = sum(d.get("shares", 0) for d in users.find({}, {"shares": 1}))
     total_vids    = get_total_videos()
@@ -885,7 +848,6 @@ def cmd_panel(message):
         message.chat.id,
         "<b>📊 𝗕𝗼𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀</b>\n\n"
         f"<blockquote>👥 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀  ——  {total_users} ဦး\n"
-        f"✅ 𝗙𝗿𝗲𝗲 𝗨𝘀𝗲𝗿𝘀    ——  {free_users} ဦး\n"
         f"🚫 𝗕𝗮𝗻𝗻𝗲𝗱 𝗨𝘀𝗲𝗿𝘀  ——  {banned_users} ဦး\n"
         f"🔗 𝗧𝗼𝘁𝗮𝗹 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {total_shares} ကြိမ်\n\n"
         f"🎬 𝗣𝘂𝗯𝗹𝗶𝗰 𝗩𝗶𝗱𝗲𝗼𝘀  ——  {total_vids} ခု\n"
@@ -911,8 +873,7 @@ def cmd_ownerhelp(message):
         "<b>👥 𝗨𝘀𝗲𝗿 𝗠𝗮𝗻𝗮𝗴𝗲𝗺𝗲𝗻𝘁</b>\n"
         "• /userinfo {user_id} — User အချက်အလက်\n"
         "• /userlist — User အားလုံး စာရင်း\n"
-        "• /addlimit {user_id} {amount} — Limit ထည့်/နှုတ်\n"
-        "• /free {user_id} on|off — Unlimited toggle\n\n"
+        "• User အားလုံးသည် Video ကို Unlimited ကြည့်နိုင်ပါသည်။\n\n"
         "<b>📨 𝗕𝗿𝗼𝗮𝗱𝗰𝗮𝘀𝘁</b>\n"
         "• /broadcast all — User အားလုံးထံ ပေးပို့\n"
         "• /broadcast {user_id} — တစ်ဦးထဲ ပေးပို့\n\n"
@@ -1016,52 +977,13 @@ def cmd_unban(message):
         pass
 
 
-# ─── Owner /addlimit ──────────────────────────────────────────────────────────
+# ─── Legacy limit commands ─────────────────────────────────────────────────────
 
 @bot.message_handler(commands=["addlimit"])
 def cmd_addlimit(message):
     if message.from_user.id not in OWNER_IDS:
         return
-    parts = message.text.split()
-    if len(parts) < 3:
-        bot.send_message(message.chat.id, "Usage: /addlimit {user_id} {amount}")
-        return
-    try:
-        target_id = int(parts[1])
-        amount    = int(parts[2])
-    except ValueError:
-        bot.send_message(message.chat.id, "Invalid user_id or amount. Both must be numbers.")
-        return
-    if amount == 0:
-        bot.send_message(message.chat.id, "Amount cannot be 0.")
-        return
-
-    result = users.find_one_and_update(
-        {"_id": target_id},
-        {"$inc": {"limit": amount}},
-        return_document=True
-    )
-    if not result:
-        bot.send_message(message.chat.id, f"❌ User {target_id} not found in database.")
-        return
-
-    new_limit = result.get("limit", 0)
-    action    = f"+{amount}" if amount > 0 else str(amount)
-    bot.send_message(
-        message.chat.id,
-        f"✅ User {target_id} ထံ 𝗟𝗶𝗺𝗶𝘁 {action} ထည့်ပြီးပါပြီ။\n"
-        f"• လက်ရှိ 𝗟𝗶𝗺𝗶𝘁: {new_limit}"
-    )
-    try:
-        bot.send_message(
-            target_id,
-            "<b>🎁 𝗟𝗶𝗺𝗶𝘁 𝗔𝗱𝗱𝗲𝗱!</b>\n\n"
-            f"<blockquote>• 𝗢𝘄𝗻𝗲𝗿 မှ ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 {action} ခု ထည့်ပေးလိုက်ပါပြီ 🎉\n"
-            f"• လက်ရှိ 𝗟𝗶𝗺𝗶𝘁: {new_limit}</blockquote>",
-            parse_mode='HTML'
-        )
-    except Exception:
-        pass
+    bot.send_message(message.chat.id, "ℹ️ Limit system မရှိတော့ပါ။ User အားလုံးသည် Unlimited ဖြစ်ပါသည်။")
 
 # ─── Owner /userinfo ──────────────────────────────────────────────────────────
 
@@ -1086,14 +1008,10 @@ def cmd_userinfo(message):
 
     uname    = doc.get("username") or "—"
     fname    = doc.get("first_name") or "—"
-    limit    = doc.get("limit", 0)
     shares   = doc.get("shares", 0)
-    is_free  = doc.get("is_free", False)
     referrals = doc.get("referrals", 0)
     state    = doc.get("state", "normal")
     joined   = doc.get("joined_at", "—")
-
-    free_tag = "✅ Free (Unlimited)" if is_free else "❌ Limited"
 
     bot.send_message(
         message.chat.id,
@@ -1101,39 +1019,21 @@ def cmd_userinfo(message):
         f"<blockquote>• 𝗡𝗮𝗺𝗲  ——  {h(fname)}\n"
         f"• 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲  ——  @{h(uname)}\n"
         f"• 𝗜𝗗  ——  {target_id}\n\n"
-        f"• 𝗟𝗶𝗺𝗶𝘁  ——  {limit} ကြိမ်\n"
+        "• 𝗩𝗶𝗱𝗲𝗼 𝗔𝗰𝗰𝗲𝘀𝘀  ——  ∞ Unlimited\n"
         f"• 𝗦𝗵𝗮𝗿𝗲  ——  {shares} ကြိမ် Share ခဲ့သည်\n"
         f"• 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹𝘀  ——  {referrals} ဦး ဖိတ်ခဲ့သည်\n\n"
-        f"• 𝗙𝗿𝗲𝗲 𝗠𝗼𝗱𝗲  ——  {h(free_tag)}\n"
         f"• 𝗦𝘁𝗮𝘁𝗲  ——  {h(state)}\n"
         f"• 𝗝𝗼𝗶𝗻𝗲𝗱  ——  {h(str(joined))}</blockquote>",
         parse_mode='HTML'
     )
 
-# ─── Owner /free ──────────────────────────────────────────────────────────────
+# ─── Legacy /free command ──────────────────────────────────────────────────────
 
 @bot.message_handler(commands=["free"])
 def cmd_free(message):
     if message.from_user.id not in OWNER_IDS:
         return
-    parts = message.text.split()
-    if len(parts) < 3:
-        bot.send_message(message.chat.id, "Usage: /free {user_id} on|off")
-        return
-    try:
-        target_id = int(parts[1])
-    except ValueError:
-        bot.send_message(message.chat.id, "Invalid user_id.")
-        return
-    toggle = parts[2].lower()
-    if toggle == "on":
-        users.update_one({"_id": target_id}, {"$set": {"is_free": True}})
-        bot.send_message(message.chat.id, f"✅ User {target_id} is now FREE (unlimited views).")
-    elif toggle == "off":
-        users.update_one({"_id": target_id}, {"$set": {"is_free": False}})
-        bot.send_message(message.chat.id, f"✅ User {target_id} limit consumption restored.")
-    else:
-        bot.send_message(message.chat.id, "Usage: /free {user_id} on|off")
+    bot.send_message(message.chat.id, "ℹ️ Limit system မရှိတော့ပါ။ User အားလုံးသည် Unlimited ဖြစ်ပါသည်။")
 
 # ─── Owner /userlist ──────────────────────────────────────────────────────────
 
@@ -1807,24 +1707,6 @@ def handle_group_photo_search(message):
         )
         return
 
-    is_free = doc.get("is_free", False)
-    limit   = doc.get("limit", 0)
-    if not is_free and limit <= 0:
-        markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton(
-            "🔗 Referral Link ယူပြီး Limit တိုးမည်",
-            url=f"https://t.me/{BOT_USERNAME}?start={user_id}"
-        ))
-        bot.send_message(
-            message.chat.id,
-            "<b>⚠️ Limit ကုန်သွားပါပြီ</b>\n\n"
-            "<blockquote>• Referral Link မျှဝေ၍ Limit တိုး နိုင်ပါသည်။</blockquote>",
-            parse_mode='HTML',
-            reply_markup=markup,
-            reply_to_message_id=message.message_id
-        )
-        return
-
     text    = message.text.strip().lower()
     pid_doc = videos.find_one({"_id": text})
     if not pid_doc or pid_doc.get("type") != "photo_only":
@@ -1836,9 +1718,6 @@ def handle_group_photo_search(message):
             reply_to_message_id=message.message_id
         )
         return
-
-    if not is_free:
-        users.update_one({"_id": user_id}, {"$inc": {"limit": -1}})
 
     caption   = pid_doc.get("caption", "")
     photo_ids = pid_doc.get("photo_ids", [])
@@ -1936,26 +1815,6 @@ def handle_group_video_search(message):
         )
         return
 
-    is_free = doc.get("is_free", False)
-    limit   = doc.get("limit", 0)
-
-    if not is_free and limit <= 0:
-        markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton(
-            "🔗 Referral Link ယူပြီး Limit တိုးမည်",
-            url=f"https://t.me/{BOT_USERNAME}?start={user_id}"
-        ))
-        bot.send_message(
-            message.chat.id,
-            "<b>⚠️ 𝗟𝗶𝗺𝗶𝘁 𝗘𝘅𝗰𝗲𝗲𝗱𝗲𝗱</b>\n\n"
-            f"<blockquote>• {h(message.from_user.first_name or 'User')}, ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 ကုန်ဆုံးပါပြီ။\n\n"
-            "• သူငယ်ချင်းများ ဖိတ်ခေါ်ပြီး 𝗟𝗶𝗺𝗶𝘁 ထပ်ရယူနိုင်ပါသည်။</blockquote>",
-            parse_mode='HTML',
-            reply_to_message_id=message.message_id,
-            reply_markup=markup
-        )
-        return
-
     vid_doc = videos.find_one({"_id": text})
     if not vid_doc:
         bot.send_message(
@@ -1988,17 +1847,6 @@ def handle_group_video_search(message):
 
     # Increment view count
     videos.update_one({"_id": text}, {"$inc": {"views": 1}})
-
-    # Deduct limit
-    if not is_free:
-        result_upd = users.find_one_and_update(
-            {"_id": user_id},
-            {"$inc": {"limit": -1}},
-            return_document=True
-        )
-        remaining = result_upd.get("limit", 0) if result_upd else 0
-    else:
-        remaining = None
 
     # Send video(s) in the group
     caption   = vid_doc.get("caption", "")
@@ -2050,22 +1898,6 @@ def handle_group_video_search(message):
         )
     except Exception:
         pass
-
-    # Limit warning
-    if remaining is not None and remaining == 3:
-        try:
-            bot.send_message(
-                message.chat.id,
-                "<b>⚠️ 𝗟𝗶𝗺𝗶𝘁 သတိပေးချက်</b>\n\n"
-                "<blockquote>• ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 <b>𝟯</b> သာ ကျန်တော့သည်။\n"
-                "• သူငယ်ချင်း ဖိတ်ခေါ်ပြီး Limit ထပ်တိုးနိုင်သည်။</blockquote>",
-                parse_mode='HTML',
-                reply_markup=share_markup(user_id),
-                reply_to_message_id=message.message_id
-            )
-        except Exception:
-            pass
-
 
 # ─── Group z-video search handler (accepted users + owner only) ───────────────
 # Handles zN pattern in groups/supergroups for private videos.
@@ -2213,17 +2045,6 @@ def handle_text(message):
         send_channel_join_prompt(message.chat.id)
         return
 
-    # ── Daily bonus check ─────────────────────────────────────────────────────
-    if check_daily_bonus(user_id):
-        bot.send_message(
-            message.chat.id,
-            "<b>🎁 𝗗𝗮𝗶𝗹𝘆 𝗕𝗼𝗻𝘂𝘀!</b>\n\n"
-            "<blockquote>• ယနေ့ Bot ဝင်ရောက်သဖြင့်\n"
-            "  ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 +𝟮 ရပါပြီ! ✅</blockquote>",
-            parse_mode='HTML'
-        )
-        doc = users.find_one({"_id": user_id})
-
     # ── Gender gate — must select before using bot ────────────────────────────
     if user_id not in OWNER_IDS and not doc.get("gender"):
         if text not in ("❌ Cancel", "⬅️ Back"):
@@ -2345,13 +2166,12 @@ def handle_text(message):
     # ── Menu button: 👤 Profile ───────────────────────────────────────────────
     if text == "👤 Profile":
         display_name = doc.get("username") or doc.get("first_name") or str(user_id)
-        limit_str    = "∞ Unlimited" if doc.get("is_free") else str(doc.get("limit", 0))
         bot.send_message(
             message.chat.id,
             "<b>👤 𝗠𝘆 𝗣𝗿𝗼𝗳𝗶𝗹𝗲</b>\n\n"
             f"<blockquote>• 𝗡𝗮𝗺𝗲  ——  {h(display_name)}\n"
             f"• 𝗜𝗗  ——  {user_id}\n"
-            f"• 𝗟𝗶𝗺𝗶𝘁  ——  {h(limit_str)}\n"
+            "• 𝗩𝗶𝗱𝗲𝗼 𝗔𝗰𝗰𝗲𝘀𝘀  ——  ∞ Unlimited\n"
             f"• 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {doc.get('shares', 0)} ဦး</blockquote>",
             parse_mode='HTML'
         )
@@ -2366,8 +2186,7 @@ def handle_text(message):
             message.chat.id,
             "<b>🔗 𝗦𝗵𝗮𝗿𝗲 &amp; 𝗥𝗲𝗳𝗲𝗿</b>\n\n"
             "<blockquote>• သူငယ်ချင်းများကို ဖိတ်ခေါ်ပြီး\n"
-            "  ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 ထပ်ရယူနိုင်ပါသည်။\n\n"
-            f"⚡️ တစ်ဦး Join ဖြစ်တိုင်း ——— 𝗟𝗶𝗺𝗶𝘁 +𝟱 ရမည်\n\n"
+            "  Bot ကို မျှဝေပေးနိုင်ပါသည်။\n\n"
             f"🔗 𝗬𝗼𝘂𝗿 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹 𝗟𝗶𝗻𝗸:\n"
             f"https://t.me/{BOT_USERNAME}?start={user_id}</blockquote>",
             parse_mode='HTML',
@@ -2413,20 +2232,6 @@ def handle_text(message):
     # ── Video search (vN pattern) ─────────────────────────────────────────────
     if re.fullmatch(r"v\d+", text, re.IGNORECASE):
         vid_key = text.lower()
-        is_free = doc.get("is_free", False)
-        limit   = doc.get("limit", 0)
-
-        if not is_free and limit <= 0:
-            bot.send_message(
-                message.chat.id,
-                "<b>⚠️ 𝗟𝗶𝗺𝗶𝘁 𝗘𝘅𝗰𝗲𝗲𝗱𝗲𝗱</b>\n\n"
-                "<blockquote>• ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 ကုန်ဆုံးသွားပါပြီ။\n\n"
-                "• သူငယ်ချင်းများ ဖိတ်ခေါ်ပြီး\n"
-                "  𝗟𝗶𝗺𝗶𝘁 ထပ်ရယူနိုင်ပါသည်။</blockquote>",
-                parse_mode='HTML',
-                reply_markup=share_markup(user_id)
-            )
-            return
 
         vid_doc = videos.find_one({"_id": vid_key})
         if not vid_doc:
@@ -2464,17 +2269,6 @@ def handle_text(message):
 
         # Increment view count
         videos.update_one({"_id": vid_key}, {"$inc": {"views": 1}})
-
-        # Deduct limit
-        if not is_free:
-            result_upd = users.find_one_and_update(
-                {"_id": user_id},
-                {"$inc": {"limit": -1}},
-                return_document=True
-            )
-            remaining = result_upd.get("limit", 0) if result_upd else 0
-        else:
-            remaining = None
 
         # Send video(s)
         caption   = vid_doc.get("caption", "")
@@ -2525,17 +2319,6 @@ def handle_text(message):
             )
         except Exception:
             pass
-
-        # Limit warning
-        if remaining is not None and remaining == 3:
-            bot.send_message(
-                message.chat.id,
-                "<b>⚠️ 𝗟𝗶𝗺𝗶𝘁 သတိပေးချက်</b>\n\n"
-                "<blockquote>• ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 <b>𝟯</b> သာ ကျန်တော့သည်။\n"
-                "• သူငယ်ချင်း ဖိတ်ခေါ်ပြီး Limit ထပ်တိုးနိုင်သည်။</blockquote>",
-                parse_mode='HTML',
-                reply_markup=share_markup(user_id)
-            )
 
         return
 
@@ -2634,19 +2417,6 @@ def handle_text(message):
 
     # ── Public photo search (pN pattern) ─────────────────────────────────────
     if re.fullmatch(r"p\d+", text, re.IGNORECASE):
-        is_free = doc.get("is_free", False)
-        limit   = doc.get("limit", 0)
-        if not is_free and limit <= 0:
-            bot.send_message(
-                message.chat.id,
-                "<b>⚠️ 𝗟𝗶𝗺𝗶𝘁 𝗘𝘅𝗰𝗲𝗲𝗱𝗲𝗱</b>\n\n"
-                "<blockquote>• ကြည့်ရှုခွင့် 𝗟𝗶𝗺𝗶𝘁 ကုန်ဆုံးသွားပါပြီ။\n\n"
-                "• သူငယ်ချင်းများ ဖိတ်ခေါ်ပြီး\n"
-                "  𝗟𝗶𝗺𝗶𝘁 ထပ်ရယူနိုင်ပါသည်။</blockquote>",
-                parse_mode='HTML',
-                reply_markup=share_markup(user_id)
-            )
-            return
         pid_key = text.lower()
         pid_doc = videos.find_one({"_id": pid_key})
         if not pid_doc or pid_doc.get("type") != "photo_only":
@@ -2657,8 +2427,6 @@ def handle_text(message):
                 parse_mode='HTML'
             )
             return
-        if not is_free:
-            users.update_one({"_id": user_id}, {"$inc": {"limit": -1}})
         caption   = pid_doc.get("caption", "")
         photo_ids = pid_doc.get("photo_ids", [])
         try:
