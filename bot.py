@@ -271,15 +271,18 @@ def channel_join_markup():
             style="danger"
         ))
     markup.add(InlineKeyboardButton(
-        "🔄 Join ပြီးပါပြီ — စစ်ဆေးမည်",
-        callback_data="check_channel_join",
+        "🔄 Refresh",
+        callback_data="refresh_channel",
         style="primary"
     ))
     return markup
 
 def send_channel_join_prompt(chat_id, reply_to_message_id=None):
     channel = get_required_channel()
-    text = "ဇာတ်ကားကြည့်ရန် Channel အရင် Join ပေးပါ။"
+    text = (
+        "ဇာတ်ကားကြည့်ရန် Channel အရင် Join ပေးပါ။\n\n"
+        "Join ပြီးပါက အောက်တွင် Refresh ကိုနှိပ်၍ Video ကိုကြည့်ရှုနိုင်သည်။"
+    )
     if not channel:
         text += "\n\n⚠️ Owner က Channel link ကို အရင်သတ်မှတ်ပေးရပါမည်။"
     bot.send_message(
@@ -759,8 +762,8 @@ def resume_pending_channel_action(call):
     else:
         handle_text(pending_message)
 
-@bot.callback_query_handler(func=lambda c: c.data == "check_channel_join")
-def cb_check_channel_join(call):
+@bot.callback_query_handler(func=lambda c: c.data in ("check_channel_join", "refresh_channel"))
+def cb_refresh_channel(call):
     resume_pending_channel_action(call)
 
 @bot.callback_query_handler(func=lambda c: c.data == "channel_not_configured")
