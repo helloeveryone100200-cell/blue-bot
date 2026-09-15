@@ -166,7 +166,7 @@ def get_total_videos():
     counter = settings.find_one({"_id": "video_counter"})
     return counter["count"] if counter else 0
 
-def main_menu_keyboard():
+def main_menu_keyboard(user_id=None):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         KeyboardButton("👤 Profile", style="success"),
@@ -179,6 +179,55 @@ def main_menu_keyboard():
     markup.add(
         KeyboardButton("🏆 Top Videos", style="primary"),
     )
+    if user_id in OWNER_IDS:
+        markup.add(
+            KeyboardButton("⚙️ Control Panel", style="success"),
+        )
+    return markup
+
+def owner_panel_keyboard():
+    markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(
+        KeyboardButton("/panel", style="primary"),
+        KeyboardButton("/ownerhelp", style="primary"),
+    )
+    markup.add(
+        KeyboardButton("/autobroadcast", style="success"),
+        KeyboardButton("/ref", style="primary"),
+    )
+    markup.add(
+        KeyboardButton("/setchannel", style="success"),
+        KeyboardButton("/removechannel", style="danger"),
+    )
+    markup.add(
+        KeyboardButton("/userinfo", style="primary"),
+        KeyboardButton("/userlist", style="primary"),
+    )
+    markup.add(
+        KeyboardButton("/ban", style="danger"),
+        KeyboardButton("/unban", style="success"),
+    )
+    markup.add(
+        KeyboardButton("/broadcast", style="primary"),
+        KeyboardButton("/accept", style="success"),
+    )
+    markup.add(
+        KeyboardButton("/setadmingroup", style="success"),
+        KeyboardButton("/setadmingroup_private", style="success"),
+    )
+    markup.add(
+        KeyboardButton("/deletevideo", style="danger"),
+        KeyboardButton("/deletephoto", style="danger"),
+    )
+    markup.add(
+        KeyboardButton("/deleteprivatevideo", style="danger"),
+        KeyboardButton("/deleteprivatephoto", style="danger"),
+    )
+    markup.add(
+        KeyboardButton("/setthumb", style="primary"),
+        KeyboardButton("/removethumb", style="danger"),
+    )
+    markup.add(KeyboardButton("⬅️ Back", style="primary"))
     return markup
 
 def cancel_keyboard():
@@ -621,7 +670,7 @@ def cmd_start(message):
                 message.chat.id,
                 "<b>𝗕𝗹𝘂𝗲 𝗕𝗼𝘁 တွင် ကြိုဆိုပါသည်! 🎉</b>",
                 parse_mode='HTML',
-                reply_markup=main_menu_keyboard()
+                reply_markup=main_menu_keyboard(new_user.id)
             )
             send_welcome(message.chat.id, new_user.id)
 
@@ -2068,9 +2117,23 @@ def handle_text(message):
         bot.send_message(
             message.chat.id,
             "🏠 Main menu သို့ ပြန်ရောက်ပါပြီ။",
-            reply_markup=main_menu_keyboard()
+            reply_markup=main_menu_keyboard(user_id)
         )
         send_welcome(message.chat.id, user_id)
+        return
+
+    # ── Owner menu: ⚙️ Control Panel ───────────────────────────────────────────
+    if text == "⚙️ Control Panel":
+        if user_id not in OWNER_IDS:
+            return
+        bot.send_message(
+            message.chat.id,
+            "<b>⚙️ 𝗢𝘄𝗻𝗲𝗿 𝗖𝗼𝗻𝘁𝗿𝗼𝗹 𝗣𝗮𝗻𝗲𝗹</b>\n\n"
+            "<blockquote>အောက်ပါ Keyboard button များမှ Owner command ကို ရွေးချယ်နိုင်ပါသည်။\n"
+            "လိုအပ်သော user ID၊ video ID သို့မဟုတ် link ကို command ပြီးနောက် ရိုက်ထည့်ပါ။</blockquote>",
+            parse_mode='HTML',
+            reply_markup=owner_panel_keyboard()
+        )
         return
 
     # ── Owner broadcast reply step ────────────────────────────────────────────
@@ -2128,13 +2191,13 @@ def handle_text(message):
                 bot.send_message(
                     message.chat.id,
                     f"✅ User {target} ထံ ပေးပို့ပြီးပါပြီ။",
-                    reply_markup=main_menu_keyboard()
+                    reply_markup=main_menu_keyboard(user_id)
                 )
             except Exception as e:
                 bot.send_message(
                     message.chat.id,
                     f"❌ ပေးပို့မှု မအောင်မြင်ပါ: {e}",
-                    reply_markup=main_menu_keyboard()
+                    reply_markup=main_menu_keyboard(user_id)
                 )
         return
 
@@ -2147,7 +2210,7 @@ def handle_text(message):
             "<blockquote>• လူကြီးမင်းပေးပို့သော စာသားသည်\n"
             "  𝗕𝗼𝘁 𝗢𝘄𝗻𝗲𝗿 ထံ ရောက်ရှိသွားပါပြီ ✅</blockquote>",
             parse_mode='HTML',
-            reply_markup=main_menu_keyboard()
+            reply_markup=main_menu_keyboard(user_id)
         )
         uname = doc.get("username") or ""
         fname = doc.get("first_name") or ""
