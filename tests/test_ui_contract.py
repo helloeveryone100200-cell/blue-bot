@@ -82,6 +82,11 @@ class MiniAppUiContractTests(unittest.TestCase):
         self.assertIn("TELEGRAM MINI APP", html)
         self.assertNotIn("Sign in securely", html)
         self.assertNotIn("/admin/logout", html)
+        self.assertIn("browser-blocked", html)
+        js = (ROOT / "admin" / "app.js").read_text(encoding="utf-8")
+        css = (ROOT / "admin" / "styles.css").read_text(encoding="utf-8")
+        self.assertIn("telegram-ready", js)
+        self.assertIn("body.telegram-ready .app-shell{display:block}", css)
 
     def test_mini_app_authenticates_api_with_telegram_init_data(self):
         js = (ROOT / "admin" / "app.js").read_text(encoding="utf-8")
