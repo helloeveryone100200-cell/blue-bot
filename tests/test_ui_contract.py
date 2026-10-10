@@ -73,6 +73,16 @@ class WelcomeUiContractTests(unittest.TestCase):
             with self.subTest(function=name):
                 find_function(name)
 
+    def test_telegram_mini_app_menu_button_is_owner_scoped(self):
+        fn = find_function("configure_telegram_menu_buttons")
+        source = ast.get_source_segment(SOURCE, fn)
+        self.assertIn("MenuButtonCommands", source)
+        self.assertIn("MenuButtonWebApp", source)
+        self.assertIn("OWNER_IDS", source)
+        self.assertIn("ADMIN_WEBAPP_URL", source)
+        self.assertIn("startswith(\"https://\")", source)
+        self.assertIn("chat_id=owner_id", source)
+
     def test_existing_callback_identifiers_remain_in_source(self):
         for callback in (
             "view_profile",
