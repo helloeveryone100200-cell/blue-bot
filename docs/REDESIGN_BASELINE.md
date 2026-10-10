@@ -30,6 +30,8 @@
 - The API returns aggregate overview counts only; no user records, media identifiers, or write operations are exposed.
 - The browser shell does not render the dashboard outside Telegram. Static assets are necessarily hosted over HTTPS so Telegram can load the Mini App.
 - Telegram menu-button configuration sets the default Commands button and assigns the Web App menu button only to configured owner IDs.
+- The `/start` welcome keyboard adds a direct **Admin Panel** Web App button only for owner IDs, so owners can launch the Mini App without changing ordinary users' keyboard.
+- Mini App URLs are HTTPS-only; configured `/admin` URLs are normalized and fallback base URLs ending in `/webhook` are normalized to the service root.
 - User Management, Media Library, and Bot Settings shortcuts are explicitly placeholders; they are not represented as implemented features.
 
 ## Metrics definition
@@ -39,7 +41,9 @@
 - Media: videos plus photos. This avoids classifying private photo IDs (`zpN`) as videos.
 
 ## Verification status
-- GitHub Actions run `38058507498` passed on commit `e10611dc7311ff9011dfd7469603ae87e3c08d4a` before the follow-up metric correction.
-- Follow-up metric correction requires a new CI run before being considered validated.
-- Telegram owner/non-owner live integration and Render deployment health have not been verified.
-- This is a proposal branch; `main` has not been changed by this work.
+- Latest automated checks are tracked in [GitHub Actions](https://github.com/helloeveryone100200-cell/blue-bot/actions); the current PR head is `b3a1fdb8a9a9cbb81fba8cc8d4978a9cc06c1a45`. The documentation-only commit is awaiting its CI run.
+- Prior run `38059778006` passed on commit `bb0c39198a3a34b7f978e492c4db7a8cdbbc1c2e`, including Python compilation, regression tests, and JavaScript syntax validation.
+- The regression suite includes initData authentication, aggregate API behavior, database-failure handling, body-size limits, owner-only launch UI, and runtime HTTPS URL resolution tests.
+- Render service `blue-bot` currently tracks `main`; the PR branch is intentionally not deployed to production.
+- Telegram owner/non-owner live integration, production MongoDB correctness, and deployment health for this PR branch have not been verified.
+- PR #2 remains open and Draft; `main` has not been changed by this work.
