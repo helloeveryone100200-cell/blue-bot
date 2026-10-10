@@ -139,6 +139,9 @@
         userList.hidden = false;
         byId('user-list-status').hidden = false;
         byId('user-total').hidden = false;
+        byId('user-search-label').hidden = false;
+        byId('user-search').hidden = false;
+        byId('user-pagination').hidden = false;
       });
       const fields = makeElement('div', 'user-detail-fields');
       const addField = (label, value) => {
@@ -157,6 +160,9 @@
       userList.hidden = true;
       byId('user-list-status').hidden = true;
       byId('user-total').hidden = true;
+      byId('user-search-label').hidden = true;
+      byId('user-search').hidden = true;
+      byId('user-pagination').hidden = true;
       const previous = byId('user-detail-panel');
       if (previous) previous.remove();
       card.id = 'user-detail-panel';
@@ -309,6 +315,14 @@
   }
 
   function openUsers() {
+    const detailPanel = byId('user-detail-panel');
+    if (detailPanel) detailPanel.remove();
+    userList.hidden = false;
+    byId('user-list-status').hidden = false;
+    byId('user-total').hidden = false;
+    byId('user-search-label').hidden = false;
+    byId('user-search').hidden = false;
+    byId('user-pagination').hidden = false;
     overviewView.hidden = true;
     mediaView.hidden = true;
     settingsView.hidden = true;
