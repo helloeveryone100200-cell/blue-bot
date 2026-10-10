@@ -95,8 +95,8 @@ class DashboardPrototypeTests(unittest.TestCase):
     def test_dashboard_is_explicitly_marked_as_preview(self):
         self.assertIn("Prototype preview", self.html)
         self.assertIn("sample data only", self.html)
-        self.assertIn('href="./styles.css"', self.html)
-        self.assertIn('src="./app.js"', self.html)
+        self.assertIn('href="/admin/styles.css"', self.html)
+        self.assertIn('src="/admin/app.js"', self.html)
 
     def test_dashboard_uses_premium_dark_design_tokens(self):
         self.assertIn("--bg:#080d1a", self.css)
@@ -109,6 +109,8 @@ class DashboardPrototypeTests(unittest.TestCase):
         self.assertNotIn("XMLHttpRequest", self.js)
         self.assertNotIn("WebSocket", self.js)
         self.assertIn("No production services were contacted", self.js)
+        self.assertIn("fetch(", self.js)
+        self.assertIn("/admin/api/overview", self.js)
 
 if __name__ == "__main__":
     unittest.main()
