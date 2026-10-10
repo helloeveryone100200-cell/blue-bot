@@ -57,6 +57,26 @@
       </div>
       <p class="read-only-note">Read-only access. No user records can be changed from this screen.</p>
     </section>
+    <section id="media-library-view" class="media-library-view" hidden>
+      <button id="back-from-media" class="back-button">‹ <span>Back to overview</span></button>
+      <div class="section-heading user-heading"><div><p class="eyebrow">CONTENT INVENTORY</p><h2>Media library</h2></div><span id="media-total" class="count-pill">— items</span></div>
+      <label class="search-label" for="media-search">Search media</label>
+      <input id="media-search" class="search-input" type="search" maxlength="80" placeholder="Media ID or caption" autocomplete="off">
+      <label class="search-label" for="media-kind">Content type</label>
+      <select id="media-kind" class="search-input">
+        <option value="all">All media</option>
+        <option value="videos">Videos</option>
+        <option value="photos">Photos</option>
+      </select>
+      <p id="media-list-status" class="list-status" role="status" aria-live="polite">Load authenticated media inventory.</p>
+      <div id="media-list" class="media-list" aria-live="polite"></div>
+      <div class="pagination">
+        <button id="media-prev" class="page-button" disabled>Previous</button>
+        <span id="media-page-label">Page 1 of 1</span>
+        <button id="media-next" class="page-button" disabled>Next</button>
+      </div>
+      <p class="read-only-note">Metadata only. Telegram file IDs are never returned to the browser and no media can be deleted from this screen.</p>
+    </section>
     <p class="notice" id="notice" role="status" aria-live="polite">Opening inside Telegram is required to verify the owner identity.</p>
     <footer>BLUE BOT <span>·</span> SECURE OWNER MINI APP</footer>
   </main>
