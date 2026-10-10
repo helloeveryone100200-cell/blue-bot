@@ -129,18 +129,21 @@ class WelcomeUiContractTests(unittest.TestCase):
 
     def test_owner_control_action_dispatch_is_separate_from_existing_handlers(self):
         for name in (
-            "handle_owner_action", "cmd_autobroadcast", "cmd_setchannel", "cmd_removechannel",
+            "handle_owner_action", "_execute_owner_action", "_record_owner_action", "cmd_autobroadcast", "cmd_setchannel", "cmd_removechannel",
             "cmd_ban", "cmd_unban", "cmd_userinfo", "cmd_userlist", "cmd_broadcast",
             "cmd_accept", "cmd_deletevideo", "cmd_deleteprivatevideo", "cmd_deletephoto",
             "cmd_deleteprivatephoto", "cmd_setthumb", "cmd_removethumb",
         ):
             with self.subTest(function=name):
                 find_function(name)
-        action_fn = find_function("handle_owner_action")
+        action_fn = find_function("_execute_owner_action")
         self.assertIn("OWNER_IDS", ast.get_source_segment(SOURCE, action_fn))
         self.assertIn("set_broadcast_new_video", call_names(action_fn))
         self.assertIn("accept_user", call_names(action_fn))
         self.assertIn("remove_accepted_user", call_names(action_fn))
+        audit_source = ast.get_source_segment(SOURCE, find_function("_record_owner_action"))
+        self.assertIn("owner_action_audit", audit_source)
+        self.assertIn('"$slice": -500', audit_source)
 
     def test_existing_callback_identifiers_remain_in_source(self):
         for callback in ("view_profile", "channel_not_configured", "gender_male", "gender_female", "noop"):
