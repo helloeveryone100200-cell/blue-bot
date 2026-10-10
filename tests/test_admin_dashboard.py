@@ -80,6 +80,10 @@ class TelegramInitDataTests(unittest.TestCase):
         data = make_init_data() + "&auth_date=1800000000"
         self.assertIsNone(admin_dashboard.validate_telegram_init_data(data, BOT_TOKEN, {1234}, now=1800000000))
 
+    def test_init_data_with_too_many_fields_is_rejected(self):
+        data = make_init_data() + "&" + "&".join(f"extra{i}=x" for i in range(70))
+        self.assertIsNone(admin_dashboard.validate_telegram_init_data(data, BOT_TOKEN, {1234}, now=1800000000))
+
     def test_missing_bot_token_is_rejected(self):
         self.assertIsNone(admin_dashboard.validate_telegram_init_data(make_init_data(), "", {1234}, now=1800000000))
 
@@ -292,9 +296,11 @@ class MiniAppRouteTests(unittest.TestCase):
         self.assertFalse(json.loads(handler.response_body)["is_banned"])
 
     def test_user_detail_rejects_invalid_ids(self):
-        handler = self.authed_request("/admin/api/user-detail", {"userId": "12x"})
-        self.assertEqual(handler.status, 400)
-        self.assertEqual(json.loads(handler.response_body), {"error": "invalid_user_id"})
+        for invalid_id in ("12x", "9223372036854775808"):
+            with self.subTest(user_id=invalid_id):
+                handler = self.authed_request("/admin/api/user-detail", {"userId": invalid_id})
+                self.assertEqual(handler.status, 400)
+                self.assertEqual(json.loads(handler.response_body), {"error": "invalid_user_id"})
         self.users.find_one.assert_not_called()
 
     def test_user_detail_returns_not_found_for_unknown_user(self):
