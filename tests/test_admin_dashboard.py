@@ -6,7 +6,7 @@ import json
 import os
 import unittest
 from urllib.parse import urlencode
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import admin_dashboard
 
@@ -142,7 +142,7 @@ class MiniAppRouteTests(unittest.TestCase):
         self.assertIsNone(payload["requests_today"])
 
     def test_owner_user_directory_returns_only_allowlisted_fields(self):
-        cursor = Mock()
+        cursor = MagicMock()
         cursor.sort.return_value = cursor
         cursor.skip.return_value = cursor
         cursor.limit.return_value = cursor
