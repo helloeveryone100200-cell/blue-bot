@@ -104,6 +104,8 @@ class DashboardPrototypeTests(unittest.TestCase):
         self.assertNotIn("8.2%", self.html)
         self.assertNotIn("4.6%", self.html)
         self.assertIn("Waiting for live API", self.html)
+        self.assertIn('action="/admin/logout"', self.html)
+        self.assertIn("Sign out", self.html)
         self.assertIn("Checking…", self.html)
 
     def test_dashboard_uses_premium_dark_design_tokens(self):
