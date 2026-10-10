@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import time
 from http.cookies import SimpleCookie
 from pathlib import Path
@@ -29,22 +30,26 @@ def _configuration():
 
 def _make_session_token(secret, timestamp=None):
     issued_at = int(time.time() if timestamp is None else timestamp)
-    payload = str(issued_at)
+    payload = str(issued_at) + "." + secrets.token_urlsafe(24)
     signature = hmac.new(secret, payload.encode("ascii"), hashlib.sha256).hexdigest()
     return payload + "." + signature
 
 
 def _verify_session_token(token, secret, now=None):
-    if not token or "." not in token:
+    if not token:
         return False
-    timestamp_text, signature = token.split(".", 1)
-    if not timestamp_text.isdigit() or len(signature) != 64:
+    parts = token.split(".", 2)
+    if len(parts) != 3:
+        return False
+    timestamp_text, nonce, signature = parts
+    if not timestamp_text.isdigit() or not nonce or len(signature) != 64:
         return False
     issued_at = int(timestamp_text)
     current_time = int(time.time() if now is None else now)
     if issued_at > current_time + 60 or current_time - issued_at > SESSION_TTL_SECONDS:
         return False
-    expected = hmac.new(secret, timestamp_text.encode("ascii"), hashlib.sha256).hexdigest()
+    payload = timestamp_text + "." + nonce
+    expected = hmac.new(secret, payload.encode("ascii"), hashlib.sha256).hexdigest()
     return hmac.compare_digest(signature, expected)
 
 
