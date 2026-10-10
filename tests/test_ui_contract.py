@@ -151,6 +151,10 @@ class MiniAppUiContractTests(unittest.TestCase):
         self.assertIn("textContent", js)
         self.assertNotIn("innerHTML", js)
         self.assertIn("usersPages", js)
+        self.assertIn('id="media-library-view"', html)
+        self.assertIn("/admin/api/media", js)
+        self.assertIn("Telegram file IDs are never returned", html)
+        self.assertIn("mediaPages", js)
 
     def test_mini_app_uses_premium_dark_mobile_tokens(self):
         css = (ROOT / "admin" / "styles.css").read_text(encoding="utf-8")
