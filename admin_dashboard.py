@@ -76,6 +76,17 @@ def _safe_nonnegative_int(value):
     return value if type(value) is int and value >= 0 else 0
 
 
+def _parse_pagination(payload):
+    """Validate JSON pagination fields without coercing booleans, floats, or strings."""
+    page = payload.get("page", 1)
+    page_size = payload.get("pageSize", 20)
+    if type(page) is not int or type(page_size) is not int:
+        return None
+    if page < 1 or page > 1_000_000:
+        return None
+    return page, min(max(page_size, 1), MAX_USER_PAGE_SIZE)
+
+
 def _read_owner_payload(handler):
     """Read a bounded JSON request and authenticate its Telegram owner initData."""
     try:
@@ -147,15 +158,11 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
             if not isinstance(raw_query, str) or len(raw_query) > 80:
                 _json(handler, 400, {"error": "invalid_query"})
                 return True
-            try:
-                page = int(payload.get("page", 1))
-                page_size = min(max(int(payload.get("pageSize", 20)), 1), MAX_USER_PAGE_SIZE)
-            except (ValueError, TypeError, OverflowError):
+            pagination = _parse_pagination(payload)
+            if pagination is None:
                 _json(handler, 400, {"error": "invalid_pagination"})
                 return True
-            if page < 1 or page > 1_000_000:
-                _json(handler, 400, {"error": "invalid_pagination"})
-                return True
+            page, page_size = pagination
             query = raw_query.strip()
             filters = {}
             if query:
