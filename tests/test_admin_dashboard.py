@@ -255,6 +255,44 @@ class MiniAppRouteTests(unittest.TestCase):
         self.assertEqual(handler.status, 503)
         self.assertEqual(json.loads(handler.response_body), {"error": "media_unavailable"})
 
+    def test_settings_endpoint_returns_only_safe_configuration_status(self):
+        documents = {
+            "required_channel": {"_id": "required_channel", "chat_id": "@example", "link": "https://t.me/example", "title": "Example channel"},
+            "admin_group": {"_id": "admin_group", "chat_id": -100123},
+            "private_admin_group": {"_id": "private_admin_group", "chat_id": -100456},
+            "broadcast_new_video": {"_id": "broadcast_new_video", "enabled": False},
+            "accepted_users": {"_id": "accepted_users", "ids": [10, 20, 30]},
+        }
+        self.settings.find_one.side_effect = lambda query, projection=None: documents.get(query["_id"])
+        handler = self.authed_request("/admin/api/settings", {})
+        self.assertEqual(handler.status, 200)
+        payload = json.loads(handler.response_body)
+        self.assertEqual(payload, {
+            "channel_gate": {"enabled": True, "title": "Example channel"},
+            "public_media_group_configured": True,
+            "private_media_group_configured": True,
+            "auto_broadcast_new_video": False,
+            "private_access_users": 3,
+        })
+        self.assertNotIn("@example", handler.response_body.decode())
+        self.assertNotIn("-100123", handler.response_body.decode())
+        self.assertNotIn('"ids"', handler.response_body.decode())
+
+    def test_settings_endpoint_defaults_auto_broadcast_to_enabled(self):
+        self.settings.find_one.return_value = None
+        handler = self.authed_request("/admin/api/settings", {})
+        self.assertEqual(handler.status, 200)
+        payload = json.loads(handler.response_body)
+        self.assertTrue(payload["auto_broadcast_new_video"])
+        self.assertFalse(payload["channel_gate"]["enabled"])
+        self.assertEqual(payload["private_access_users"], 0)
+
+    def test_settings_endpoint_database_failure_returns_service_unavailable(self):
+        self.settings.find_one.side_effect = RuntimeError("database unavailable")
+        handler = self.authed_request("/admin/api/settings", {})
+        self.assertEqual(handler.status, 503)
+        self.assertEqual(json.loads(handler.response_body), {"error": "settings_unavailable"})
+
     def test_metrics_database_failure_returns_service_unavailable(self):
         self.users.count_documents.side_effect = RuntimeError("database unavailable")
         handler = self.authed_request("/admin/api/overview", {})
