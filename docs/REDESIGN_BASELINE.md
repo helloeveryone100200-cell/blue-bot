@@ -41,5 +41,6 @@ The `send_welcome` message copy and presentation were refreshed for clearer hier
 - Static regression tests parse the source without importing `bot.py`, avoiding Telegram/MongoDB initialization and secrets.
 - Telegram integration/runtime tests: pending; no bot token or live test environment used.
 - Render deployment/health verification: pending.
-- Dashboard frontend work is the next isolated phase; no dashboard route or API is exposed by this baseline change.
+- Added a static dashboard prototype under `admin/` with responsive Premium Dark styling and clearly labelled illustrative data. It does not expose a dashboard route, call live APIs, or read production state.
+- Dashboard authentication, server-side owner authorization, read-only API integration, and Render routing remain future work.
 - This branch is a proposal; `main` has not been changed by this branch operation.
