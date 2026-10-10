@@ -128,7 +128,7 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
         _send(handler, 200, body, content_type)
         return True
 
-    if path in ("/admin/api/overview", "/admin/api/users", "/admin/api/media"):
+    if path in ("/admin/api/overview", "/admin/api/users", "/admin/api/media", "/admin/api/settings"):
         if method != "POST":
             _json(handler, 405, {"error": "method_not_allowed"})
             return True
@@ -259,6 +259,32 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
                 "page_size": page_size,
                 "total": total,
                 "pages": max(1, (total + page_size - 1) // page_size),
+            })
+            return True
+
+        if path == "/admin/api/settings":
+            try:
+                channel = settings.find_one({"_id": "required_channel"}, {"chat_id": 1, "link": 1, "title": 1})
+                public_group = settings.find_one({"_id": "admin_group"}, {"chat_id": 1})
+                private_group = settings.find_one({"_id": "private_admin_group"}, {"chat_id": 1})
+                broadcast = settings.find_one({"_id": "broadcast_new_video"}, {"enabled": 1})
+                accepted = settings.find_one({"_id": "accepted_users"}, {"ids": 1})
+                accepted_ids = accepted.get("ids", []) if accepted else []
+                if not isinstance(accepted_ids, list):
+                    accepted_ids = []
+            except Exception:
+                _json(handler, 503, {"error": "settings_unavailable"})
+                return True
+            channel_enabled = bool(channel and channel.get("chat_id") and channel.get("link"))
+            _json(handler, 200, {
+                "channel_gate": {
+                    "enabled": channel_enabled,
+                    "title": str(channel.get("title") or "Required channel")[:120] if channel_enabled else "",
+                },
+                "public_media_group_configured": bool(public_group and public_group.get("chat_id") is not None),
+                "private_media_group_configured": bool(private_group and private_group.get("chat_id") is not None),
+                "auto_broadcast_new_video": broadcast.get("enabled", True) if broadcast else True,
+                "private_access_users": len(accepted_ids),
             })
             return True
 
