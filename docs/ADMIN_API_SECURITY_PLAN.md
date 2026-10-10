@@ -71,12 +71,13 @@ Keep the work on `redesign/premium-dark-safe-ui` until all automated checks pass
 - `GET /admin/login` provides a password form. Successful login issues a signed, eight-hour session cookie with `HttpOnly`, `Secure`, and `SameSite=Strict` attributes. Invalid logins are throttled per client address in-process.
 - `/admin`, its CSS/JS assets, and `GET /admin/api/overview` require a valid session. The API returns only aggregate counts and does not expose user documents, identifiers, tokens, or media records.
 - The API intentionally reports request analytics as unavailable because the current database schema does not establish a reliable daily request count. The dashboard updates live user/media totals after authenticated login; the chart remains labelled as illustrative.
-- Added session-token and configuration contract tests. These tests do not connect to Telegram or MongoDB.
+- Added session-token, configuration-boundary, fail-closed, anonymous API denial, authenticated aggregate response allow-list, and login-form length contract tests. The test suite uses fake handlers and mocked collections; it does not connect to Telegram or a live MongoDB instance.
+- Replaced fabricated initial user/media totals and percentage trends with neutral loading placeholders so database/API failure cannot leave demo numbers looking like production data.
 - Before enabling this feature on Render, set both environment variables in the service Environment settings. The configured policy accepts a 6–16 character dashboard password and a 6–20 character session secret, but this short secret policy is not recommended for production because it weakens session-cookie integrity. Use HTTPS only. Keep credentials out of source control and logs.
 
 ## Remaining release gates
 
 - Confirm GitHub Actions passes on the current branch.
-- Exercise login, session expiry, anonymous access denial, rate limiting, and API responses against a test server/database.
+- Exercise a complete browser login/logout lifecycle, session expiry, login rate limiting, and API behavior against a test server/database. Unit-level tests currently cover token validation, fail-closed configuration, anonymous denial, and aggregate response fields.
 - Verify Render proxy/TLS behavior and the Telegram webhook after deployment.
 - No live Render deployment has been performed by this change.
