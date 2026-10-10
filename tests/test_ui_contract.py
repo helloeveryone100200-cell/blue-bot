@@ -98,6 +98,14 @@ class DashboardPrototypeTests(unittest.TestCase):
         self.assertIn('href="/admin/styles.css"', self.html)
         self.assertIn('src="/admin/app.js"', self.html)
 
+    def test_live_metrics_never_start_with_fabricated_totals(self):
+        self.assertNotIn("12,846", self.html)
+        self.assertNotIn("3,284", self.html)
+        self.assertNotIn("8.2%", self.html)
+        self.assertNotIn("4.6%", self.html)
+        self.assertIn("Waiting for live API", self.html)
+        self.assertIn("Checking…", self.html)
+
     def test_dashboard_uses_premium_dark_design_tokens(self):
         self.assertIn("--bg:#080d1a", self.css)
         self.assertIn("--indigo:#7775ff", self.css)
