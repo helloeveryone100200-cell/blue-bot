@@ -25,3 +25,5 @@ jobs:
         run: python -m py_compile bot.py
       - name: Run static regression tests
         run: python -m unittest discover -s tests -v
+      - name: Check dashboard JavaScript syntax
+        run: node --check admin/app.js
