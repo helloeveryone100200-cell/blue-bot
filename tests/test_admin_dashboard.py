@@ -14,6 +14,13 @@ class SessionTokenTests(unittest.TestCase):
         token = admin_dashboard._make_session_token(self.secret, timestamp=1000)
         self.assertTrue(admin_dashboard._verify_session_token(token, self.secret, now=1000))
 
+    def test_sessions_created_at_same_time_are_unique(self):
+        first = admin_dashboard._make_session_token(self.secret, timestamp=1000)
+        second = admin_dashboard._make_session_token(self.secret, timestamp=1000)
+        self.assertNotEqual(first, second)
+        self.assertTrue(admin_dashboard._verify_session_token(first, self.secret, now=1000))
+        self.assertTrue(admin_dashboard._verify_session_token(second, self.secret, now=1000))
+
     def test_tampered_session_token_is_rejected(self):
         token = admin_dashboard._make_session_token(self.secret, timestamp=1000)
         replacement = "0" if token[-1] != "0" else "1"
