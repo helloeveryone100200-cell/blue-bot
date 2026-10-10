@@ -7,6 +7,8 @@
   const userList = byId('user-list');
   const mediaView = byId('media-library-view');
   const mediaList = byId('media-list');
+  const settingsView = byId('bot-settings-view');
+  const settingsList = byId('settings-list');
   let usersPage = 1;
   let usersPages = 1;
   let mediaPage = 1;
@@ -15,6 +17,7 @@
   let mediaSearchTimer = null;
   let usersRequest = 0;
   let mediaRequest = 0;
+  let settingsRequest = 0;
 
   if (webApp && webApp.initData) document.body.classList.add('telegram-ready');
 
@@ -209,9 +212,52 @@
     }
   }
 
+  function renderSetting(title, value, detail, enabled) {
+    const row = makeElement('article', 'setting-card');
+    const details = makeElement('div', 'setting-details');
+    details.append(makeElement('strong', 'setting-title', title), makeElement('small', 'setting-description', detail));
+    const status = makeElement('span', enabled ? 'setting-value enabled' : 'setting-value disabled', value);
+    row.append(details, status);
+    settingsList.append(row);
+  }
+
+  async function loadSettings() {
+    if (!ownerInitData()) {
+      byId('settings-list-status').textContent = 'Open this screen inside the authorized Telegram Mini App.';
+      return;
+    }
+    const requestId = ++settingsRequest;
+    byId('settings-list-status').textContent = 'Loading current configuration securely…';
+    settingsList.replaceChildren();
+    try {
+      const payload = await postOwnerApi('/admin/api/settings');
+      if (requestId !== settingsRequest) return;
+      const channelEnabled = Boolean(payload.channel_gate && payload.channel_gate.enabled);
+      renderSetting('Required channel gate', channelEnabled ? 'Enabled' : 'Disabled',
+        channelEnabled ? (payload.channel_gate.title || 'A required channel is configured') : 'No required channel is active',
+        channelEnabled);
+      renderSetting('Public media group', payload.public_media_group_configured ? 'Connected' : 'Not configured',
+        'Source for public video and photo uploads', Boolean(payload.public_media_group_configured));
+      renderSetting('Private media group', payload.private_media_group_configured ? 'Connected' : 'Not configured',
+        'Source for private media uploads', Boolean(payload.private_media_group_configured));
+      renderSetting('New-video auto broadcast', payload.auto_broadcast_new_video ? 'Enabled' : 'Disabled',
+        'Automatically notify users when a new public video is added', Boolean(payload.auto_broadcast_new_video));
+      renderSetting('Private-access users', formatCount(payload.private_access_users),
+        'Users granted private-group access; user IDs are not exposed here', Number(payload.private_access_users) > 0);
+      byId('settings-list-status').textContent = 'Current configuration loaded · inspection only';
+    } catch (error) {
+      if (requestId !== settingsRequest) return;
+      byId('settings-list-status').textContent = error.status === 403
+        ? 'Owner access denied. Reopen the Mini App from your owner Telegram account.'
+        : 'Unable to load settings. Check the connection and try again.';
+      setNotice('Bot settings could not be loaded.', 'error');
+    }
+  }
+
   function openUsers() {
     overviewView.hidden = true;
     mediaView.hidden = true;
+    settingsView.hidden = true;
     usersView.hidden = false;
     usersPage = 1;
     loadUsers();
@@ -220,20 +266,31 @@
   function openMedia() {
     overviewView.hidden = true;
     usersView.hidden = true;
+    settingsView.hidden = true;
     mediaView.hidden = false;
     mediaPage = 1;
     loadMedia();
   }
 
+  function openSettings() {
+    overviewView.hidden = true;
+    usersView.hidden = true;
+    mediaView.hidden = true;
+    settingsView.hidden = false;
+    loadSettings();
+  }
+
   function showOverview() {
     usersView.hidden = true;
     mediaView.hidden = true;
+    settingsView.hidden = true;
     overviewView.hidden = false;
   }
 
   byId('refresh-button').addEventListener('click', loadOverview);
   byId('back-to-overview').addEventListener('click', showOverview);
   byId('back-from-media').addEventListener('click', showOverview);
+  byId('back-from-settings').addEventListener('click', showOverview);
   byId('user-search').addEventListener('input', () => {
     if (userSearchTimer) clearTimeout(userSearchTimer);
     userSearchTimer = setTimeout(() => { usersPage = 1; loadUsers(); }, 250);
@@ -267,7 +324,8 @@
         setNotice('Media inventory opened with read-only metadata access.', 'success');
         return;
       }
-      setNotice('Bot settings are not connected yet. Overview, users, and media inventory are available in this phase.', 'info');
+      openSettings();
+      setNotice('Current bot configuration opened in read-only mode.', 'success');
     });
   });
   if (webApp) {
