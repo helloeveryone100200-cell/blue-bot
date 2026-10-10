@@ -221,6 +221,47 @@ class MiniAppRouteTests(unittest.TestCase):
         self.assertEqual(handler.status, 503)
         self.assertEqual(json.loads(handler.response_body), {"error": "users_unavailable"})
 
+    def test_user_detail_returns_only_allowlisted_fields(self):
+        self.users.find_one.return_value = {
+            "_id": 1234, "username": "blue_owner", "first_name": "Blue",
+            "shares": 7, "referrals": 3, "is_banned": False, "state": "normal",
+            "joined_at": "2026-10-01", "gender": "must-not-leak", "secret": "must-not-leak",
+        }
+        handler = self.authed_request("/admin/api/user-detail", {"userId": "1234"})
+        self.assertEqual(handler.status, 200)
+        payload = json.loads(handler.response_body)
+        self.assertEqual(payload, {
+            "id": "1234", "username": "blue_owner", "first_name": "Blue",
+            "shares": 7, "referrals": 3, "is_banned": False, "state": "normal",
+            "joined_at": "2026-10-01",
+        })
+        self.assertNotIn("gender", handler.response_body.decode())
+        self.assertNotIn("secret", handler.response_body.decode())
+        self.users.find_one.assert_called_once_with(
+            {"_id": 1234},
+            {"_id": 1, "username": 1, "first_name": 1, "shares": 1,
+             "is_banned": 1, "referrals": 1, "state": 1, "joined_at": 1},
+        )
+
+    def test_user_detail_rejects_invalid_ids(self):
+        handler = self.authed_request("/admin/api/user-detail", {"userId": "12x"})
+        self.assertEqual(handler.status, 400)
+        self.assertEqual(json.loads(handler.response_body), {"error": "invalid_user_id"})
+        self.users.find_one.assert_not_called()
+
+    def test_user_detail_returns_not_found_for_unknown_user(self):
+        self.users.find_one.return_value = None
+        handler = self.authed_request("/admin/api/user-detail", {"userId": "9876"})
+        self.assertEqual(handler.status, 404)
+        self.assertEqual(json.loads(handler.response_body), {"error": "user_not_found"})
+
+    def test_user_detail_database_failure_returns_generic_error(self):
+        self.users.find_one.side_effect = RuntimeError("database secret")
+        handler = self.authed_request("/admin/api/user-detail", {"userId": "1234"})
+        self.assertEqual(handler.status, 503)
+        self.assertEqual(json.loads(handler.response_body), {"error": "user_detail_unavailable"})
+        self.assertNotIn("database secret", handler.response_body.decode())
+
     def test_media_directory_returns_metadata_without_telegram_file_ids(self):
         cursor = MagicMock()
         cursor.sort.return_value = cursor
