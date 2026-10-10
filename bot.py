@@ -136,6 +136,34 @@ bot = telebot.TeleBot(BOT_TOKEN, parse_mode=None)
 ADMIN_WEBAPP_URL = os.environ.get("ADMIN_WEBAPP_URL", "").strip()
 
 
+def resolve_admin_webapp_url(base_url: str = "") -> str:
+    """Return the HTTPS Mini App URL, normalizing a base or webhook URL."""
+    configured = ADMIN_WEBAPP_URL
+    if configured:
+        if not configured.startswith("https://"):
+            return ""
+        parsed = urlparse(configured)
+        path = parsed.path.rstrip("/")
+        if path == "/admin":
+            return configured.rstrip("/") + "/"
+        if path in ("", "/"):
+            return configured.rstrip("/") + "/admin/"
+        return configured
+
+    candidate = (
+        base_url
+        or os.environ.get("WEBHOOK_URL", "")
+        or os.environ.get("RENDER_EXTERNAL_URL", "")
+    ).strip()
+    if not candidate.startswith("https://"):
+        return ""
+    parsed = urlparse(candidate)
+    path = parsed.path.rstrip("/")
+    if path.endswith("/webhook"):
+        path = path[:-len("/webhook")]
+    return f"{parsed.scheme}://{parsed.netloc}{path}/admin/"
+
+
 def configure_telegram_menu_buttons(base_url: str):
     """Expose the Mini App menu button only in configured owners' private chats."""
     try:
@@ -143,7 +171,7 @@ def configure_telegram_menu_buttons(base_url: str):
     except Exception as exc:
         print(f"Could not set default Telegram menu button: {exc}")
 
-    webapp_url = ADMIN_WEBAPP_URL or (base_url.rstrip("/") + "/admin/" if base_url else "")
+    webapp_url = resolve_admin_webapp_url(base_url)
     if not webapp_url.startswith("https://"):
         print("Owner Mini App menu button skipped: configure an HTTPS ADMIN_WEBAPP_URL or RENDER_EXTERNAL_URL.")
         return
@@ -275,6 +303,14 @@ def welcome_markup(user_id):
         InlineKeyboardButton("👤 Profile", callback_data="view_profile"),
         InlineKeyboardButton("🔗 Share",   url=share_url),
     )
+    # Direct Mini App entry for owners; regular users retain the existing keyboard.
+    if user_id in OWNER_IDS:
+        webapp_url = resolve_admin_webapp_url()
+        if webapp_url:
+            markup.add(InlineKeyboardButton(
+                "⚙️ Admin Panel",
+                web_app=telebot.types.WebAppInfo(url=webapp_url),
+            ))
     return markup
 
 def share_markup(user_id):
