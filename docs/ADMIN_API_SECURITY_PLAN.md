@@ -1,83 +1,56 @@
-# Blue Bot Admin Dashboard — Secure Integration Plan
+# Blue Bot Telegram Mini App — Security and Release Plan
 
-## Current state
+## Current implementation
 
-The `admin/` dashboard is a static design prototype. Its displayed metrics and activity are illustrative, and it must remain explicitly labelled as preview data until live integration is implemented. The existing production process is `python3 bot.py`; that process owns the Telegram webhook at `/webhook` and the existing health endpoints.
+The owner dashboard is a Telegram Mini App served by the existing Python webhook process at `/admin/`. It is not a standalone browser login dashboard. The Mini App loads Telegram's Web App SDK and sends `Telegram.WebApp.initData` to `POST /admin/api/overview`.
 
-## Non-negotiable invariants
+The server verifies Telegram's HMAC signature using `BOT_TOKEN`, validates the signed `auth_date`, and authorizes the numeric Telegram user ID against `OWNER_IDS` (with `OWNER_ID` as a legacy fallback). Invalid, expired, duplicate-parameter, tampered, or non-owner init data is rejected. The API is read-only and returns aggregate counts only.
 
-- Do not change Telegram command names, callback identifiers, keyboard labels, referral flows, video/photo delivery, rating counters, or owner checks as part of dashboard work.
-- Preserve MongoDB database `BlueBotDB`, collections `users`, `videos`, and `settings`, their document keys, and current update semantics.
-- Preserve `POST /webhook`, `GET /`, `HEAD /`, `PORT`, `WEBHOOK_URL`, `RENDER_EXTERNAL_URL`, and the Render start command.
-- Never expose `BOT_TOKEN`, `MONGO_URI`, owner IDs, database documents, or exception tracebacks to the browser.
-- Do not merge or deploy the dashboard until authentication, authorization, regression checks, and deployment behavior have been validated.
+The owner Mini App is launched by the owner-specific Telegram menu button and the owner-only **Admin Panel** button in the `/start` welcome message. Ordinary users retain the existing welcome keyboard and default Telegram Commands menu. A normal browser shows an instruction to open the Mini App in Telegram and cannot retrieve overview data without valid owner-authenticated init data.
 
-## Proposed implementation sequence
+## Non-negotiable behavior invariants
 
-### 1. Authentication and authorization first
+- Do not change existing command names, callback identifiers, referral flows, gender/channel gates, media delivery, rating counters, or owner checks beyond additive presentation-only changes.
+- Preserve MongoDB database `BlueBotDB`, collections `users`, `videos`, and `settings`, their document keys, and existing write/update semantics.
+- Preserve `POST /webhook`, `GET /`, `HEAD /`, `PORT`, `WEBHOOK_URL`, `RENDER_EXTERNAL_URL`, and the Render start command `python3 bot.py`.
+- Never expose `BOT_TOKEN`, `MONGO_URI`, owner lists, database documents, media file IDs, or exception tracebacks to the Mini App.
+- Do not merge or deploy to production until automated checks and owner/non-owner Telegram tests are complete.
 
-- Add a dedicated dashboard password/secret configuration through Render environment variables; never hard-code secrets.
-- Fail closed: dashboard API requests must be denied when required auth configuration is absent or invalid.
-- Use server-validated sessions with signed, time-limited cookies marked `HttpOnly`, `SameSite=Strict`, and `Secure` when served over HTTPS. Do not place credentials or session secrets in browser local storage.
-- Verify authorization on every protected server request, not just by hiding UI controls.
-- Add login throttling and generic failure responses; never log submitted credentials.
-- Keep all dashboard operations read-only in the first live integration phase. No broadcast, delete, configuration-write, or user-mutation endpoints.
+## Authentication and authorization
 
-### 2. Read-only metrics API
+- Telegram `initData` is validated server-side; never trust `initDataUnsafe` as an authorization source.
+- Reject invalid HMACs, stale or future timestamps outside the allowed clock tolerance, duplicate query parameters, malformed JSON, missing tokens, and IDs not in `OWNER_IDS`.
+- Keep all overview data behind `POST /admin/api/overview`. The static HTML/CSS/JS assets contain no secrets or private database content.
+- The API returns only the allow-listed aggregate response: owner display identity, total users, media, videos, photos, status, and `requests_today: null` because reliable daily request history is not stored.
+- The API limits request bodies, uses no-store response caching, sets security headers, and returns a generic 503 when aggregate queries fail.
+- Keep the dashboard read-only in this phase. Do not add broadcast, delete, configuration-write, or user-mutation endpoints.
 
-Expose only aggregated, allow-listed values needed by the Overview:
-- user count from the existing users collection;
-- media counts grouped by supported media type;
-- request/view counters only where the existing schema provides reliable values;
-- health/readiness state without returning connection strings or raw exceptions.
+## Metrics definitions
 
-Use bounded queries and explicit response schemas. Treat missing fields and database failures safely. Do not invent historical analytics when the database does not store time-series events; show “Not available” rather than fabricated charts. Do not return raw user lists or media documents in this phase.
+- Users: count of documents in the existing `users` collection.
+- Videos: count of existing `videos` documents whose IDs match `vN` or `zN`.
+- Photos: count of documents with `type: "photo_only"` (including public `pN` and private `zpN` IDs).
+- Media: videos plus photo-only documents.
+- Daily request analytics: unavailable until the application stores a reliable time-based event history. Do not display fabricated values.
 
-### 3. HTTP integration without breaking the bot
+## Automated validation
 
-- Extend the existing HTTP handler deliberately or introduce a separately reviewed server arrangement; do not accidentally replace the Telegram webhook server.
-- Route matching must be exact. Unknown paths return 404; unauthorized API calls return 401/403 with no sensitive details.
-- Serve the dashboard only after the authentication behavior is designed and tested. Keep the static preview clearly marked until it consumes authenticated, real responses.
-- Preserve webhook response behavior and startup/shutdown semantics.
+The GitHub Actions workflow `.github/workflows/validate.yml` runs Python compilation, the unittest suite, and JavaScript syntax validation. Tests cover Telegram init-data verification, owner authorization, stale/future/tampered data, duplicate parameters, method restrictions, aggregate response allow-listing, database failures, oversized bodies, UI behavior contracts, and HTTPS Mini App URL resolution.
 
-### 4. Regression and security tests
+These automated tests use fake request handlers and mocked collections. They do not establish live Telegram Bot API behavior, production MongoDB correctness, or Render deployment health.
 
-Required before merge:
-- existing static UI contract tests and Python/JavaScript syntax checks;
-- route tests for the existing root, HEAD, webhook, unknown paths, and malformed request bodies;
-- authentication tests for missing, invalid, expired, and valid sessions;
-- authorization tests proving every protected endpoint denies anonymous access;
-- API tests proving only allow-listed aggregate fields are returned;
-- failure tests for unavailable MongoDB and absent auth environment variables;
-- a check that secrets and raw database documents never appear in API responses;
-- review of dashboard HTML/JS for safe DOM updates and no credential persistence.
+## Release gates before merge
 
-### 5. Release gate
+1. Confirm the latest CI run passes on the exact PR head commit.
+2. Verify Render's service branch and deployment configuration without changing the production service during review.
+3. Confirm the HTTPS Mini App URL resolves to `/admin/` and the API returns expected responses in a controlled environment.
+4. Test in Telegram with an account listed in `OWNER_IDS`: the owner-only menu button and `/start` Admin Panel button must open the Mini App, and aggregate metrics must load.
+5. Test with a non-owner: the Admin Panel button must not appear and the overview API must deny access.
+6. Verify existing `/start`, referral, channel/gender gates, video/photo lookup, and webhook behavior remain intact.
+7. Only after these gates pass, review and merge the PR; production deployment requires a separate explicit go-ahead.
 
-Keep the work on `redesign/premium-dark-safe-ui` until all automated checks pass and the owner has reviewed the result. Deploy only after Render environment variables and HTTPS behavior are verified. Then verify the existing Telegram webhook and health endpoint before declaring completion.
+## Current limitations
 
-## Explicitly out of scope for the first live phase
-
-- Dashboard-triggered broadcasts or destructive actions.
-- Editing bot settings or user permissions from the web.
-- User-level personal data tables.
-- Analytics that require event history not currently stored.
-- Changes to Telegram business logic or MongoDB schema.
-
-## Implemented first integration slice
-
-- Added `admin_dashboard.py`, an isolated route handler invoked before the existing root/webhook handlers. Existing `GET /`, `HEAD /`, and `POST /webhook` paths retain their prior code paths.
-- Dashboard routes fail closed with HTTP 503 unless `ADMIN_DASHBOARD_PASSWORD` is 6–16 characters and `ADMIN_SESSION_SECRET` is 6–20 characters. This is the requested compatibility policy; short passwords and especially short session secrets materially weaken production security. Prefer a long, randomly generated session secret for a production deployment.
-- `GET /admin/login` provides a password form. Successful login issues a signed, eight-hour session cookie with `HttpOnly`, `Secure`, and `SameSite=Strict` attributes. Invalid logins are throttled per client address in-process. A POST-only `/admin/logout` endpoint expires the session cookie; the dashboard provides a Sign out control.
-- `/admin`, its CSS/JS assets, and `GET /admin/api/overview` require a valid session. The API returns only aggregate counts and does not expose user documents, identifiers, tokens, or media records.
-- The API intentionally reports request analytics as unavailable because the current database schema does not establish a reliable daily request count. The dashboard updates live user/media totals after authenticated login; the chart remains labelled as illustrative.
-- Added session-token, configuration-boundary, fail-closed, anonymous API denial, authenticated aggregate response allow-list, login-form length, valid login cookie issuance, failed-login throttling, and POST-only logout contract tests. The test suite uses fake handlers and mocked collections; it does not connect to Telegram or a live MongoDB instance.
-- Replaced fabricated initial user/media totals and percentage trends with neutral loading placeholders so database/API failure cannot leave demo numbers looking like production data.
-- Before enabling this feature on Render, set both environment variables in the service Environment settings. The configured policy accepts a 6–16 character dashboard password and a 6–20 character session secret, but this short secret policy is not recommended for production because it weakens session-cookie integrity. Use HTTPS only. Keep credentials out of source control and logs.
-
-## Remaining release gates
-
-- Confirm GitHub Actions passes on the current branch.
-- Exercise a complete browser login/logout lifecycle, session expiry, login rate limiting, and API behavior against a test server/database. Unit-level tests currently cover token validation, fail-closed configuration, anonymous denial, and aggregate response fields.
-- Verify Render proxy/TLS behavior and the Telegram webhook after deployment.
-- No live Render deployment has been performed by this change.
+- User Management, Media Library, and Bot Settings are visual placeholders, not implemented workflows.
+- No live Render deployment, production MongoDB test, or live owner/non-owner Telegram integration test has been completed for this branch.
+- The production Render service currently tracks `main`; this PR branch is intentionally not deployed before the release gates pass.
