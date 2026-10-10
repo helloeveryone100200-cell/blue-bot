@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from pymongo import MongoClient
+from admin_dashboard import handle_admin_request
 
 def h(s):
     """Escape HTML special characters in dynamic content."""
@@ -2602,11 +2603,15 @@ def cb_rate(call):
 class WebhookHandler(BaseHTTPRequestHandler):
 
     def do_HEAD(self):
+        if handle_admin_request(self, users, videos, settings, head_only=True):
+            return
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
 
     def do_GET(self):
+        if handle_admin_request(self, users, videos, settings):
+            return
         body = b"Blue Bot is Alive!"
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
@@ -2615,6 +2620,8 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
+        if handle_admin_request(self, users, videos, settings):
+            return
         if self.path == "/webhook":
             length  = int(self.headers.get("Content-Length", 0))
             payload = self.rfile.read(length)
