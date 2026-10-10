@@ -13,12 +13,13 @@ import admin_dashboard
 BOT_TOKEN = "123456:TEST_TOKEN"
 
 
-def make_init_data(user_id=1234, token=BOT_TOKEN, now=1800000000):
+def make_init_data(user_id=1234, token=BOT_TOKEN, now=1800000000, extra_fields=None):
     values = {
         "auth_date": str(now),
         "query_id": "AAE-test-query",
         "user": json.dumps({"id": user_id, "first_name": "Owner"}, separators=(",", ":")),
     }
+    values.update(extra_fields or {})
     check_string = "\n".join(f"{key}={value}" for key, value in sorted(values.items()))
     secret_key = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
     values["hash"] = hmac.new(secret_key, check_string.encode(), hashlib.sha256).hexdigest()
@@ -81,7 +82,7 @@ class TelegramInitDataTests(unittest.TestCase):
         self.assertIsNone(admin_dashboard.validate_telegram_init_data(data, BOT_TOKEN, {1234}, now=1800000000))
 
     def test_init_data_with_too_many_fields_is_rejected(self):
-        data = make_init_data() + "&" + "&".join(f"extra{i}=x" for i in range(70))
+        data = make_init_data(extra_fields={f"extra{i}": "x" for i in range(70)})
         self.assertIsNone(admin_dashboard.validate_telegram_init_data(data, BOT_TOKEN, {1234}, now=1800000000))
 
     def test_missing_bot_token_is_rejected(self):
