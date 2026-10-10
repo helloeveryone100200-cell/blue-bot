@@ -37,8 +37,9 @@ The `send_welcome` message copy and presentation were refreshed for clearer hier
 
 ## Verification status
 - Repository source and key UI handlers inspected before editing.
-- Reviewed the branch diff against `main`: only `bot.py` welcome-message presentation and this baseline document are changed.
-- Compiled the modified `send_welcome` function snippet successfully; full-file syntax and automated test suite are still pending.
+- Reviewed the branch diff against `main`: changes are limited to `bot.py` welcome-message presentation, this baseline document, and `.github/workflows/validate.yml`.
+- Compiled the modified `send_welcome` function snippet successfully; full-file syntax check is configured in GitHub Actions but no workflow run result has been observed yet.
+- No automated unit/integration test suite currently exists in the repository.
 - Telegram integration/runtime tests: pending; no bot token or live test environment used.
 - Render deployment/health verification: pending.
 - This branch is a proposal; `main` has not been changed by this branch operation.
