@@ -63,6 +63,10 @@ class TelegramInitDataTests(unittest.TestCase):
         data = make_init_data(user_id=9999)
         self.assertIsNone(admin_dashboard.validate_telegram_init_data(data, BOT_TOKEN, {1234}, now=1800000000))
 
+    def test_boolean_user_id_is_rejected_even_when_owner_id_is_one(self):
+        data = make_init_data(user_id=True)
+        self.assertIsNone(admin_dashboard.validate_telegram_init_data(data, BOT_TOKEN, {1}, now=1800000000))
+
     def test_expired_init_data_is_rejected(self):
         data = make_init_data()
         now = 1800000000 + admin_dashboard.INIT_DATA_MAX_AGE_SECONDS + 1
