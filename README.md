@@ -8,7 +8,8 @@ A Telegram bot with a Telegram-only owner Mini App, video database, referral sys
 - Album (media group) and single video support
 - User limit system with referral tracking (+5 limit per referral)
 - Customer support system (/contact_to_owner)
-- Owner control panel (/panel, /free, /broadcast)\n- Telegram Mini App for owner-only aggregate dashboard access (no browser password dashboard)
+- Owner control panel (/panel, /free, /broadcast)
+- Telegram Mini App for owner-only aggregate dashboard access (no browser password dashboard)
 - Anti-spam animation before video delivery
 - HTTP keep-alive server for UptimeRobot on port 8080
 
