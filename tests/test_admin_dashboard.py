@@ -201,6 +201,60 @@ class MiniAppRouteTests(unittest.TestCase):
         self.assertEqual(handler.status, 503)
         self.assertEqual(json.loads(handler.response_body), {"error": "users_unavailable"})
 
+    def test_media_directory_returns_metadata_without_telegram_file_ids(self):
+        cursor = MagicMock()
+        cursor.sort.return_value = cursor
+        cursor.skip.return_value = cursor
+        cursor.limit.return_value = cursor
+        cursor.__iter__.return_value = iter([{
+            "_id": "v8", "type": "album", "caption": "Example title",
+            "video_ids": ["secret-video-file-id"], "photo_ids": ["secret-photo-file-id"],
+            "likes": 4, "dislikes": 1, "views": 99,
+        }])
+        self.videos.find.return_value = cursor
+        self.videos.count_documents.return_value = 1
+
+        handler = self.authed_request("/admin/api/media", {"query": "Example", "kind": "videos", "page": 1})
+        self.assertEqual(handler.status, 200)
+        payload = json.loads(handler.response_body)
+        self.assertEqual(payload["items"], [{
+            "id": "v8", "kind": "video", "visibility": "public", "caption": "Example title",
+            "likes": 4, "dislikes": 1, "views": 99, "video_parts": 1, "photo_parts": 1,
+        }])
+        self.assertNotIn("secret-video-file-id", handler.response_body.decode())
+        self.assertNotIn("secret-photo-file-id", handler.response_body.decode())
+        self.assertEqual(self.videos.find.call_args.args[0], {
+            "$and": [
+                {"_id": {"$regex": "^[vz][0-9]+$"}},
+                {"$or": [
+                    {"_id": {"$regex": "Example", "$options": "i"}},
+                    {"caption": {"$regex": "Example", "$options": "i"}},
+                ]},
+            ],
+        })
+        cursor.sort.assert_called_once_with("_id", -1)
+        cursor.limit.assert_called_once_with(20)
+
+    def test_media_directory_filters_photos_and_escapes_search(self):
+        self.videos.find.return_value.sort.return_value.skip.return_value.limit.return_value = []
+        handler = self.authed_request("/admin/api/media", {"query": ".*", "kind": "photos", "pageSize": 100})
+        self.assertEqual(handler.status, 200)
+        filters = self.videos.find.call_args.args[0]
+        self.assertEqual(filters["$and"][0], {"type": "photo_only"})
+        self.assertEqual(filters["$and"][1]["$or"][0]["_id"]["$regex"], r"\.\*")
+        self.videos.find.return_value.sort.return_value.skip.return_value.limit.assert_called_once_with(50)
+
+    def test_media_directory_rejects_invalid_kind(self):
+        handler = self.authed_request("/admin/api/media", {"kind": "delete"})
+        self.assertEqual(handler.status, 400)
+        self.videos.find.assert_not_called()
+
+    def test_media_directory_database_failure_returns_service_unavailable(self):
+        self.videos.find.side_effect = RuntimeError("database unavailable")
+        handler = self.authed_request("/admin/api/media", {})
+        self.assertEqual(handler.status, 503)
+        self.assertEqual(json.loads(handler.response_body), {"error": "media_unavailable"})
+
     def test_metrics_database_failure_returns_service_unavailable(self):
         self.users.count_documents.side_effect = RuntimeError("database unavailable")
         handler = self.authed_request("/admin/api/overview", {})
