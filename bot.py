@@ -348,15 +348,17 @@ def send_channel_join_prompt(chat_id, reply_to_message_id=None):
 def send_welcome(chat_id, user_id):
     total = get_total_videos()
     text = (
-        "<b>𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐟𝐫𝐨𝐦 𝗕𝗹𝘂𝗲 𝗕𝗼𝘁</b>\n\n"
+        "<b>✦ BLUE BOT | Welcome</b>\n\n"
         "<blockquote>"
-        "ဒီ 𝗕𝗼𝘁 က မင်းရဲ့စိတ်ကို ဖြေလျော့ဖို့အတွက် အလွယ်တကူ 𝗩𝗶𝗱𝗲𝗼𝘀 များ ရှာဖွေကြည့်ရှုနိုင်ပါတယ်။\n\n"
-        "<b>⚡️ 𝗟𝗮𝘁𝗲𝘀𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀</b>\n"
-        f"• လက်ရှိ ဗီဒီယိုအရေအတွက် ——— 𝟎{total} ခု\n\n"
-        "<b>🔍 𝗛𝗼𝘄 𝘁𝗼 𝗦𝗲𝗮𝗿𝗰𝗵</b> <i>(ရှာဖွေနည်း)</i>\n"
-        "• ဗီဒီယိုများ ရှာလိုပါက v1, v2, v3 စသဖြင့် v အနောက်တွင် နံပါတ်ထည့်ပြီး ရိုက်ရှာနိုင်ပါသည်။\n\n"
-        "<b>🔄 𝗩𝗶𝗱𝗲𝗼𝘀 𝗨𝗽𝗱𝗮𝘁𝗲</b>\n"
-        "• [ 📹 Videos Update ] ခလုတ်ကို နှိပ်ပြီး နောက်ဆုံး ဗီဒီယိုအရေအတွက်ကို အချိန်မရွေး စစ်ဆေးနိုင်ပါသည်။"
+        "Blue Bot မှ ကြိုဆိုပါတယ်။ ✨\n"
+        "သင်လိုအပ်သော ဗီဒီယိုများကို ID ဖြင့် လွယ်ကူစွာ ရှာဖွေနိုင်ပါသည်။\n\n"
+        "<b>📊 Library Overview</b>\n"
+        f"• Available videos: <b>{total}</b> ခု\n\n"
+        "<b>🔎 How to Find Videos</b>\n"
+        "• v1, v2, v3 စသဖြင့် video ID ကို ရိုက်ထည့်ပြီး ရှာဖွေပါ။\n\n"
+        "<b>🔄 Latest Updates</b>\n"
+        "• [ 📹 Videos Update ] ခလုတ်မှ နောက်ဆုံး video အရေအတွက်ကို စစ်ဆေးနိုင်ပါသည်။\n\n"
+        "<i>အောက်ပါ menu မှ Profile နှင့် Share လုပ်ဆောင်ချက်များကို အသုံးပြုနိုင်ပါသည်။</i>"
         "</blockquote>"
     )
     bot.send_message(chat_id, text, parse_mode='HTML', reply_markup=welcome_markup(user_id))
