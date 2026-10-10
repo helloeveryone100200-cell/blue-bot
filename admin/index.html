@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#080d1a">
+  <title>Blue Bot — Owner Mini App</title>
+  <link rel="stylesheet" href="/admin/styles.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/admin/app.js" defer></script>
+</head>
+<body>
+  <main id="browser-blocked" class="browser-blocked"><div class="brand-mark">B</div><h1>Open Blue Bot in Telegram</h1><p>This owner console is available only from the authorized Telegram Mini App menu.</p></main>
+  <main class="app-shell">
+    <header class="app-header">
+      <div class="brand-mark">B</div>
+      <div class="brand-copy"><span>BLUE BOT</span><small>OWNER CONSOLE</small></div>
+      <span class="secure-pill"><i></i> OWNER</span>
+    </header>
+    <section class="welcome">
+      <p class="eyebrow">TELEGRAM MINI APP</p>
+      <h1 id="greeting">Welcome, Owner</h1>
+      <p class="subheading">Your bot workspace at a glance.</p>
+    </section>
+    <section class="status-card" aria-live="polite">
+      <span class="status-orb"><i></i></span>
+      <div class="status-copy"><strong id="connection-title">Checking secure connection</strong><small id="connection-description">Verifying Telegram owner identity…</small></div>
+      <button id="refresh-button" class="refresh-button" aria-label="Refresh overview">↻</button>
+    </section>
+    <section class="section-heading"><div><p class="eyebrow">LIVE OVERVIEW</p><h2>Workspace statistics</h2></div><span class="live-tag"><i></i> LIVE</span></section>
+    <section class="metric-grid" aria-label="Live workspace statistics">
+      <article class="metric-card"><span class="metric-label">Total users</span><span class="metric-icon">♙</span><strong id="metric-users">—</strong><small>Registered users</small></article>
+      <article class="metric-card"><span class="metric-label">Media library</span><span class="metric-icon">▣</span><strong id="metric-media">—</strong><small id="media-breakdown">Videos and photos</small></article>
+      <article class="metric-card"><span class="metric-label">Videos</span><span class="metric-icon">▷</span><strong id="metric-videos">—</strong><small>Indexed videos</small></article>
+      <article class="metric-card"><span class="metric-label">Photos</span><span class="metric-icon">▧</span><strong id="metric-photos">—</strong><small>Photo-only items</small></article>
+    </section>
+    <section class="section-heading lower-heading"><div><p class="eyebrow">QUICK ACCESS</p><h2>Management</h2></div></section>
+    <section class="management-list">
+      <button class="management-item" data-feature="users"><span class="management-icon">♙</span><span><strong>User management</strong><small>Access and user records</small></span><span class="management-arrow">›</span></button>
+      <button class="management-item" data-feature="media"><span class="management-icon">▣</span><span><strong>Media library</strong><small>Videos and photo inventory</small></span><span class="management-arrow">›</span></button>
+      <button class="management-item" data-feature="settings"><span class="management-icon">⚙</span><span><strong>Bot settings</strong><small>Configuration and controls</small></span><span class="management-arrow">›</span></button>
+    </section>
+    <p class="notice" id="notice" role="status" aria-live="polite">Opening inside Telegram is required to verify the owner identity.</p>
+    <footer>BLUE BOT <span>·</span> SECURE OWNER MINI APP</footer>
+  </main>
+</body>
+</html>

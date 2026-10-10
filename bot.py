@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from pymongo import MongoClient
+from admin_dashboard import handle_admin_request
 
 def h(s):
     """Escape HTML special characters in dynamic content."""
@@ -130,6 +131,66 @@ def get_total_z_photos():
 # ─── BOT INIT ─────────────────────────────────────────────────────────────────
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode=None)
 
+# Telegram's default menu remains the standard Commands button for all users.
+# Only configured OWNER_IDS receive the Web App menu button in their private chat.
+ADMIN_WEBAPP_URL = os.environ.get("ADMIN_WEBAPP_URL", "").strip()
+
+
+def resolve_admin_webapp_url(base_url: str = "") -> str:
+    """Return the HTTPS Mini App URL, normalizing a base or webhook URL."""
+    configured = ADMIN_WEBAPP_URL
+    if configured:
+        if not configured.startswith("https://"):
+            return ""
+        parsed = urlparse(configured)
+        path = parsed.path.rstrip("/")
+        if path == "/admin":
+            return configured.rstrip("/") + "/"
+        if path in ("", "/"):
+            return configured.rstrip("/") + "/admin/"
+        return configured
+
+    candidate = (
+        base_url
+        or os.environ.get("WEBHOOK_URL", "")
+        or os.environ.get("RENDER_EXTERNAL_URL", "")
+    ).strip()
+    if not candidate.startswith("https://"):
+        return ""
+    parsed = urlparse(candidate)
+    path = parsed.path.rstrip("/")
+    if path.endswith("/webhook"):
+        path = path[:-len("/webhook")]
+    return f"{parsed.scheme}://{parsed.netloc}{path}/admin/"
+
+
+def configure_telegram_menu_buttons(base_url: str):
+    """Expose the Mini App menu button only in configured owners' private chats."""
+    try:
+        bot.set_chat_menu_button(menu_button=telebot.types.MenuButtonCommands())
+    except Exception as exc:
+        print(f"Could not set default Telegram menu button: {exc}")
+
+    webapp_url = resolve_admin_webapp_url(base_url)
+    if not webapp_url.startswith("https://"):
+        print("Owner Mini App menu button skipped: configure an HTTPS ADMIN_WEBAPP_URL or RENDER_EXTERNAL_URL.")
+        return
+
+    for owner_id in OWNER_IDS:
+        try:
+            bot.set_chat_menu_button(
+                chat_id=owner_id,
+                menu_button=telebot.types.MenuButtonWebApp(
+                    text="Admin Panel",
+                    web_app=telebot.types.WebAppInfo(url=webapp_url),
+                ),
+            )
+            print(f"Owner Mini App menu button configured for OWNER_IDS entry {owner_id}.")
+        except Exception as exc:
+            print(f"Could not configure owner menu button for {owner_id}: {exc}")
+
+
+
 # Fetch bot username dynamically from Telegram (no env var needed)
 BOT_USERNAME = bot.get_me().username
 
@@ -242,6 +303,14 @@ def welcome_markup(user_id):
         InlineKeyboardButton("👤 Profile", callback_data="view_profile"),
         InlineKeyboardButton("🔗 Share",   url=share_url),
     )
+    # Direct Mini App entry for owners; regular users retain the existing keyboard.
+    if user_id in OWNER_IDS:
+        webapp_url = resolve_admin_webapp_url()
+        if webapp_url:
+            markup.add(InlineKeyboardButton(
+                "⚙️ Admin Panel",
+                web_app=telebot.types.WebAppInfo(url=webapp_url),
+            ))
     return markup
 
 def share_markup(user_id):
@@ -348,15 +417,17 @@ def send_channel_join_prompt(chat_id, reply_to_message_id=None):
 def send_welcome(chat_id, user_id):
     total = get_total_videos()
     text = (
-        "<b>𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐟𝐫𝐨𝐦 𝗕𝗹𝘂𝗲 𝗕𝗼𝘁</b>\n\n"
+        "<b>✦ BLUE BOT | Welcome</b>\n\n"
         "<blockquote>"
-        "ဒီ 𝗕𝗼𝘁 က မင်းရဲ့စိတ်ကို ဖြေလျော့ဖို့အတွက် အလွယ်တကူ 𝗩𝗶𝗱𝗲𝗼𝘀 များ ရှာဖွေကြည့်ရှုနိုင်ပါတယ်။\n\n"
-        "<b>⚡️ 𝗟𝗮𝘁𝗲𝘀𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀</b>\n"
-        f"• လက်ရှိ ဗီဒီယိုအရေအတွက် ——— 𝟎{total} ခု\n\n"
-        "<b>🔍 𝗛𝗼𝘄 𝘁𝗼 𝗦𝗲𝗮𝗿𝗰𝗵</b> <i>(ရှာဖွေနည်း)</i>\n"
-        "• ဗီဒီယိုများ ရှာလိုပါက v1, v2, v3 စသဖြင့် v အနောက်တွင် နံပါတ်ထည့်ပြီး ရိုက်ရှာနိုင်ပါသည်။\n\n"
-        "<b>🔄 𝗩𝗶𝗱𝗲𝗼𝘀 𝗨𝗽𝗱𝗮𝘁𝗲</b>\n"
-        "• [ 📹 Videos Update ] ခလုတ်ကို နှိပ်ပြီး နောက်ဆုံး ဗီဒီယိုအရေအတွက်ကို အချိန်မရွေး စစ်ဆေးနိုင်ပါသည်။"
+        "Blue Bot မှ ကြိုဆိုပါတယ်။ ✨\n"
+        "သင်လိုအပ်သော ဗီဒီယိုများကို ID ဖြင့် လွယ်ကူစွာ ရှာဖွေနိုင်ပါသည်။\n\n"
+        "<b>📊 Library Overview</b>\n"
+        f"• Available videos: <b>{total}</b> ခု\n\n"
+        "<b>🔎 How to Find Videos</b>\n"
+        "• v1, v2, v3 စသဖြင့် video ID ကို ရိုက်ထည့်ပြီး ရှာဖွေပါ။\n\n"
+        "<b>🔄 Latest Updates</b>\n"
+        "• [ 📹 Videos Update ] ခလုတ်မှ နောက်ဆုံး video အရေအတွက်ကို စစ်ဆေးနိုင်ပါသည်။\n\n"
+        "<i>အောက်ပါ menu မှ Profile နှင့် Share လုပ်ဆောင်ချက်များကို အသုံးပြုနိုင်ပါသည်။</i>"
         "</blockquote>"
     )
     bot.send_message(chat_id, text, parse_mode='HTML', reply_markup=welcome_markup(user_id))
@@ -2600,11 +2671,15 @@ def cb_rate(call):
 class WebhookHandler(BaseHTTPRequestHandler):
 
     def do_HEAD(self):
+        if handle_admin_request(self, users, videos, settings, head_only=True):
+            return
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
 
     def do_GET(self):
+        if handle_admin_request(self, users, videos, settings):
+            return
         body = b"Blue Bot is Alive!"
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
@@ -2613,6 +2688,8 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
+        if handle_admin_request(self, users, videos, settings):
+            return
         if self.path == "/webhook":
             length  = int(self.headers.get("Content-Length", 0))
             payload = self.rfile.read(length)
@@ -2644,6 +2721,9 @@ if __name__ == "__main__":
         or os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")
     )
     webhook_url = f"{base_url}/webhook"
+
+    # Set a non-Web-App default for everyone, then add the Web App only per owner.
+    configure_telegram_menu_buttons(base_url)
 
     # Register webhook with Telegram (replaces any previous polling session).
     bot.remove_webhook()
