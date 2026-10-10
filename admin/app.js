@@ -18,6 +18,7 @@
   let usersRequest = 0;
   let mediaRequest = 0;
   let settingsRequest = 0;
+  let userDetailRequest = 0;
 
   if (webApp && webApp.initData) document.body.classList.add('telegram-ready');
 
@@ -109,9 +110,62 @@
       const state = makeElement('span', user.is_banned ? 'user-state banned' : 'user-state active', user.is_banned ? 'Banned' : 'Active');
       details.append(name, handle, userId);
       meta.append(shares, state);
-      card.append(avatar, details, meta);
+      const actions = makeElement('div', 'user-card-actions');
+      const detailButton = makeElement('button', 'user-detail-button', 'View details');
+      detailButton.type = 'button';
+      detailButton.addEventListener('click', () => loadUserDetail(user.id));
+      actions.append(detailButton);
+      card.append(avatar, details, meta, actions);
       userList.append(card);
     });
+  }
+
+  async function loadUserDetail(userId) {
+    const requestId = ++userDetailRequest;
+    setNotice('Loading user details securely…', 'info');
+    try {
+      const user = await postOwnerApi('/admin/api/user-detail', {userId: String(userId)});
+      if (requestId !== userDetailRequest) return;
+      const card = makeElement('section', 'user-detail-panel');
+      const heading = makeElement('div', 'user-detail-heading');
+      heading.append(
+        makeElement('p', 'eyebrow', 'USER RECORD'),
+        makeElement('h3', '', user.first_name || (user.username ? '@' + user.username : 'User ' + user.id))
+      );
+      const close = makeElement('button', 'back-button', '‹ Back to user list');
+      close.type = 'button';
+      close.addEventListener('click', () => {
+        card.remove();
+        userList.hidden = false;
+        byId('user-list-status').hidden = false;
+        byId('user-total').hidden = false;
+      });
+      const fields = makeElement('div', 'user-detail-fields');
+      const addField = (label, value) => {
+        const item = makeElement('div', 'user-detail-field');
+        item.append(makeElement('small', '', label), makeElement('strong', '', String(value)));
+        fields.append(item);
+      };
+      addField('Telegram ID', user.id);
+      addField('Username', user.username ? '@' + user.username : 'Not set');
+      addField('Shares', formatCount(user.shares));
+      addField('Referrals', formatCount(user.referrals));
+      addField('Account status', user.is_banned ? 'Banned' : 'Active');
+      addField('Current state', user.state || 'normal');
+      addField('Joined', user.joined_at || '—');
+      card.append(heading, close, fields, makeElement('p', 'read-only-note', 'Read-only user details. No account changes are available here.'));
+      userList.hidden = true;
+      byId('user-list-status').hidden = true;
+      byId('user-total').hidden = true;
+      const previous = byId('user-detail-panel');
+      if (previous) previous.remove();
+      card.id = 'user-detail-panel';
+      userList.parentNode.insertBefore(card, userList);
+      setNotice('User details loaded in read-only mode.', 'success');
+    } catch (error) {
+      if (requestId !== userDetailRequest) return;
+      setNotice(error.status === 404 ? 'User record was not found.' : 'Unable to load user details securely.', 'error');
+    }
   }
 
   async function loadUsers() {
