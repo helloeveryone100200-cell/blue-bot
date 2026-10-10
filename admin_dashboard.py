@@ -226,7 +226,7 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
                 "first_name": str(doc.get("first_name") or "")[:128],
                 "shares": safe_count(doc.get("shares", 0)),
                 "referrals": safe_count(doc.get("referrals", 0)),
-                "is_banned": bool(doc.get("is_banned", False)),
+                "is_banned": doc.get("is_banned") is True,
                 "state": str(doc.get("state") or "normal")[:64],
                 "joined_at": str(joined_at)[:80],
             })
