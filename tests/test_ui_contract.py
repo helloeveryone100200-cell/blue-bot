@@ -167,6 +167,9 @@ class MiniAppUiContractTests(unittest.TestCase):
         self.assertIn("function invalidateUserDetailView()", js)
         self.assertIn("function activateView(view)", js)
         self.assertIn("requestId !== overviewRequest || activeView !== 'overview'", js)
+        self.assertIn("requestId !== usersRequest || activeView !== 'users'", js)
+        self.assertIn("requestId !== mediaRequest || activeView !== 'media'", js)
+        self.assertIn("requestId !== settingsRequest || activeView !== 'settings'", js)
         for navigation in ("openUsers", "openMedia", "openSettings", "showOverview"):
             with self.subTest(navigation=navigation):
                 start = js.index("function " + navigation + "()")
