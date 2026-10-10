@@ -162,6 +162,8 @@ class MiniAppUiContractTests(unittest.TestCase):
         self.assertIn("View details", js)
         self.assertIn("user-detail-panel", js)
         self.assertIn("user-pagination", js)
+        self.assertIn("userDetailRequest += 1", js)
+        self.assertIn("late response cannot reopen this view", js)
         self.assertIn("function openUsers()", js)
         self.assertNotIn("innerHTML", js)
 
