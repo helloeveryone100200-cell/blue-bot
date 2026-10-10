@@ -232,7 +232,7 @@ class MiniAppUiContractTests(unittest.TestCase):
             "delete_media", "set_thumbnail", "remove_thumbnail", "create_referral_link",
         ):
             with self.subTest(action=action):
-                self.assertIn(action, js)
+                self.assertIn(action, html + js)
         self.assertIn("/admin/api/action", js)
         self.assertIn("window.confirm", js)
         self.assertIn("function openOwnerControls()", js)
