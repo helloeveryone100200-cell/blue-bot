@@ -45,7 +45,7 @@ def validate_telegram_init_data(init_data, bot_token, owner_ids=None, now=None):
         if auth_date <= 0 or auth_date > current_time + 60 or current_time - auth_date > INIT_DATA_MAX_AGE_SECONDS:
             return None
         user = json.loads(values.get("user", ""))
-        if not isinstance(user, dict) or not isinstance(user.get("id"), int):
+        if not isinstance(user, dict) or type(user.get("id")) is not int:
             return None
         authorized_ids = _owner_ids() if owner_ids is None else set(owner_ids)
         return user if user["id"] in authorized_ids else None
