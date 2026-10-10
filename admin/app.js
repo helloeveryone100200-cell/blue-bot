@@ -10,6 +10,36 @@
     toastTimer = window.setTimeout(() => toast.classList.remove('show'), 3600);
   }
 
+  async function loadOverview() {
+    try {
+      const response = await fetch('/admin/api/overview', {
+        method: 'GET', credentials: 'same-origin',
+        headers: { Accept: 'application/json' }, cache: 'no-store'
+      });
+      if (response.status === 401) { window.location.replace('/admin/login'); return; }
+      if (!response.ok) { notify('Live metrics are temporarily unavailable. No sample values were substituted.'); return; }
+      const data = await response.json();
+      const values = document.querySelectorAll('.metric-card .metric-value');
+      const bottoms = document.querySelectorAll('.metric-card .metric-bottom');
+      if (values.length >= 4) {
+        values[0].textContent = Number.isSafeInteger(data.users) ? data.users.toLocaleString() : 'Unavailable';
+        values[1].textContent = Number.isSafeInteger(data.media) ? data.media.toLocaleString() : 'Unavailable';
+        values[2].textContent = data.requests_today == null ? 'Not tracked' : Number(data.requests_today).toLocaleString();
+        values[3].textContent = data.status === 'connected' ? 'Connected' : 'Unavailable';
+      }
+      if (bottoms.length >= 4) {
+        bottoms[0].textContent = 'Live database count';
+        bottoms[1].textContent = Number.isSafeInteger(data.videos) && Number.isSafeInteger(data.photos)
+          ? data.videos.toLocaleString() + ' videos · ' + data.photos.toLocaleString() + ' photos'
+          : 'Live database count';
+        bottoms[3].textContent = data.status === 'connected' ? 'Read-only API reachable' : 'Status unavailable';
+      }
+      notify('Live overview loaded from the authenticated read-only API.');
+    } catch (_error) {
+      notify('Unable to load live metrics. Check the dashboard connection and sign-in status.');
+    }
+  }
+
   const viewCopy = {
     overview: ['Overview', 'Good afternoon, Admin', 'A clear view of your Blue Bot workspace and content activity.'],
     users: ['Users', 'User management', 'A future view for user lookup, access status, and account activity.'],
@@ -36,9 +66,8 @@
     });
   });
 
-  document.getElementById('refresh-button').addEventListener('click', () => {
-    notify('Preview refreshed. No production services were contacted.');
-  });
+  document.getElementById('refresh-button').addEventListener('click', loadOverview);
+  loadOverview();
   document.getElementById('notice-dismiss').addEventListener('click', () => {
     document.querySelector('.preview-notice').remove();
   });
