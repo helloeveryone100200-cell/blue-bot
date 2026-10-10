@@ -104,13 +104,14 @@ class DashboardPrototypeTests(unittest.TestCase):
         self.assertIn("@media(max-width:600px)", self.css)
         self.assertIn("prefers-reduced-motion", self.css)
 
-    def test_dashboard_does_not_call_live_services(self):
-        self.assertNotIn("fetch(", self.js)
+    def test_dashboard_uses_only_authenticated_same_origin_read_only_api(self):
         self.assertNotIn("XMLHttpRequest", self.js)
         self.assertNotIn("WebSocket", self.js)
+        self.assertIn("fetch('/admin/api/overview'", self.js)
+        self.assertIn("credentials: 'same-origin'", self.js)
+        self.assertIn("cache: 'no-store'", self.js)
+        self.assertIn("requests_today == null", self.js)
         self.assertIn("No production services were contacted", self.js)
-        self.assertIn("fetch(", self.js)
-        self.assertIn("/admin/api/overview", self.js)
 
 if __name__ == "__main__":
     unittest.main()
