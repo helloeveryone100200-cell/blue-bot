@@ -5,7 +5,7 @@
 - Baseline branch: `main`
 - Implementation branch: `redesign/premium-dark-safe-ui`
 - Design direction: Premium Dark (Deep Navy + Indigo)
-- First change scope: Telegram welcome-message presentation only.
+- Initial bot UI scope: Telegram welcome-message presentation only; a separate static dashboard prototype was added afterward.
 
 ## Baseline architecture observed
 - Main application: `bot.py` (2,657 lines in the inspected baseline).
@@ -37,8 +37,8 @@ The `send_welcome` message copy and presentation were refreshed for clearer hier
 
 ## Verification status
 - Repository source and key UI handlers inspected before editing.
-- GitHub Actions run [`38055860013`](https://github.com/helloeveryone100200-cell/blue-bot/actions/runs/38055860013) passed: full-file `python -m py_compile bot.py` and five static regression tests.
-- Static regression tests parse the source without importing `bot.py`, avoiding Telegram/MongoDB initialization and secrets.
+- GitHub Actions run [`38056033779`](https://github.com/helloeveryone100200-cell/blue-bot/actions/runs/38056033779) passed on the dashboard-inclusive revision: full-file `python -m py_compile bot.py`, eight static regression tests, and `node --check admin/app.js`.
+- Static regression tests parse the source without importing `bot.py`, avoiding Telegram/MongoDB initialization and secrets, and verify the dashboard remains a non-connected prototype.
 - Telegram integration/runtime tests: pending; no bot token or live test environment used.
 - Render deployment/health verification: pending.
 - Added a static dashboard prototype under `admin/` with responsive Premium Dark styling and clearly labelled illustrative data. It does not expose a dashboard route, call live APIs, or read production state.
