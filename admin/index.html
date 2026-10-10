@@ -46,11 +46,11 @@
     <section id="user-management-view" class="user-management-view" hidden>
       <button id="back-to-overview" class="back-button">‹ <span>Back to overview</span></button>
       <div class="section-heading user-heading"><div><p class="eyebrow">USER DIRECTORY</p><h2>User management</h2></div><span id="user-total" class="count-pill">— users</span></div>
-      <label class="search-label" for="user-search">Search users</label>
+      <label id="user-search-label" class="search-label" for="user-search">Search users</label>
       <input id="user-search" class="search-input" type="search" maxlength="80" placeholder="Name, username or exact ID" autocomplete="off">
       <p id="user-list-status" class="list-status" role="status" aria-live="polite">Load authenticated user records.</p>
       <div id="user-list" class="user-list" aria-live="polite"></div>
-      <div class="pagination">
+      <div id="user-pagination" class="pagination">
         <button id="users-prev" class="page-button" disabled>Previous</button>
         <span id="users-page-label">Page 1 of 1</span>
         <button id="users-next" class="page-button" disabled>Next</button>
