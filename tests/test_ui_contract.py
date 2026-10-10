@@ -161,6 +161,8 @@ class MiniAppUiContractTests(unittest.TestCase):
         self.assertIn("/admin/api/user-detail", js)
         self.assertIn("View details", js)
         self.assertIn("user-detail-panel", js)
+        self.assertIn("user-pagination", js)
+        self.assertIn("function openUsers()", js)
         self.assertNotIn("innerHTML", js)
 
     def test_mini_app_uses_premium_dark_mobile_tokens(self):
