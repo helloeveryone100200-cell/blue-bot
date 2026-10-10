@@ -1,6 +1,8 @@
 """Static regression guards for the Mini App and presentation-only changes."""
 import ast
+import os
 import unittest
+from urllib.parse import urlparse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +28,14 @@ def call_names(node):
             elif isinstance(func, ast.Attribute):
                 names.add(func.attr)
     return names
+
+
+def load_url_resolver(configured_url=""):
+    fn = find_function("resolve_admin_webapp_url")
+    module = ast.Module(body=[fn], type_ignores=[])
+    namespace = {"os": os, "urlparse": urlparse, "ADMIN_WEBAPP_URL": configured_url}
+    exec(compile(module, "<admin-url-resolver>", "exec"), namespace)
+    return namespace["resolve_admin_webapp_url"]
 
 
 class WelcomeUiContractTests(unittest.TestCase):
@@ -83,6 +93,18 @@ class WelcomeUiContractTests(unittest.TestCase):
         self.assertIn('startswith("https://")', source)
         self.assertIn('path.endswith("/webhook")', source)
         self.assertIn('"/admin/"', source)
+
+        resolve_url = load_url_resolver()
+        self.assertEqual(resolve_url("https://blue-bot.example"), "https://blue-bot.example/admin/")
+        self.assertEqual(resolve_url("https://blue-bot.example/webhook"), "https://blue-bot.example/admin/")
+        self.assertEqual(resolve_url("http://blue-bot.example"), "")
+
+    def test_explicit_admin_url_is_normalized_and_non_https_is_rejected(self):
+        self.assertEqual(
+            load_url_resolver("https://blue-bot.example/admin")(),
+            "https://blue-bot.example/admin/",
+        )
+        self.assertEqual(load_url_resolver("http://blue-bot.example/admin")(), "")
 
     def test_existing_callback_identifiers_remain_in_source(self):
         for callback in ("view_profile", "channel_not_configured", "gender_male", "gender_female", "noop"):
