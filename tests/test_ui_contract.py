@@ -158,6 +158,10 @@ class MiniAppUiContractTests(unittest.TestCase):
         self.assertIn('id="bot-settings-view"', html)
         self.assertIn("/admin/api/settings", js)
         self.assertIn("inspection only", js)
+        self.assertIn("/admin/api/user-detail", js)
+        self.assertIn("View details", js)
+        self.assertIn("user-detail-panel", js)
+        self.assertNotIn("innerHTML", js)
 
     def test_mini_app_uses_premium_dark_mobile_tokens(self):
         css = (ROOT / "admin" / "styles.css").read_text(encoding="utf-8")
