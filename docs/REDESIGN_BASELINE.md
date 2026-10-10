@@ -37,7 +37,8 @@ The `send_welcome` message copy and presentation were refreshed for clearer hier
 
 ## Verification status
 - Repository source and key UI handlers inspected before editing.
-- Automated syntax and diff checks: pending.
+- Reviewed the branch diff against `main`: only `bot.py` welcome-message presentation and this baseline document are changed.
+- Compiled the modified `send_welcome` function snippet successfully; full-file syntax and automated test suite are still pending.
 - Telegram integration/runtime tests: pending; no bot token or live test environment used.
 - Render deployment/health verification: pending.
 - This branch is a proposal; `main` has not been changed by this branch operation.
