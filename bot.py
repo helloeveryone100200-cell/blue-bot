@@ -131,6 +131,38 @@ def get_total_z_photos():
 # ─── BOT INIT ─────────────────────────────────────────────────────────────────
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode=None)
 
+# Telegram's default menu remains the standard Commands button for all users.
+# Only configured OWNER_IDS receive the Web App menu button in their private chat.
+ADMIN_WEBAPP_URL = os.environ.get("ADMIN_WEBAPP_URL", "").strip()
+
+
+def configure_telegram_menu_buttons(base_url: str):
+    """Expose the Mini App menu button only in configured owners' private chats."""
+    try:
+        bot.set_chat_menu_button(menu_button=telebot.types.MenuButtonCommands())
+    except Exception as exc:
+        print(f"Could not set default Telegram menu button: {exc}")
+
+    webapp_url = ADMIN_WEBAPP_URL or (base_url.rstrip("/") + "/admin/" if base_url else "")
+    if not webapp_url.startswith("https://"):
+        print("Owner Mini App menu button skipped: configure an HTTPS ADMIN_WEBAPP_URL or RENDER_EXTERNAL_URL.")
+        return
+
+    for owner_id in OWNER_IDS:
+        try:
+            bot.set_chat_menu_button(
+                chat_id=owner_id,
+                menu_button=telebot.types.MenuButtonWebApp(
+                    text="Admin Panel",
+                    web_app=telebot.types.WebAppInfo(url=webapp_url),
+                ),
+            )
+            print(f"Owner Mini App menu button configured for OWNER_IDS entry {owner_id}.")
+        except Exception as exc:
+            print(f"Could not configure owner menu button for {owner_id}: {exc}")
+
+
+
 # Fetch bot username dynamically from Telegram (no env var needed)
 BOT_USERNAME = bot.get_me().username
 
@@ -2653,6 +2685,9 @@ if __name__ == "__main__":
         or os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")
     )
     webhook_url = f"{base_url}/webhook"
+
+    # Set a non-Web-App default for everyone, then add the Web App only per owner.
+    configure_telegram_menu_buttons(base_url)
 
     # Register webhook with Telegram (replaces any previous polling session).
     bot.remove_webhook()
