@@ -61,8 +61,8 @@
       document.getElementById('page-subtitle').textContent = copy[2];
       document.querySelector('.eyebrow').innerHTML = 'PREVIEW WORKSPACE <span class="eyebrow-line"></span> ' + copy[0].toUpperCase();
       document.getElementById('sidebar').classList.remove('open');
-      if (view !== 'overview') notify('This section is a design placeholder. Live data and actions are not connected.');
-      else notify('Overview preview selected. All displayed values are illustrative.');
+      if (view !== 'overview') notify('This section is a design placeholder. Only aggregate overview metrics are connected.');
+      else notify('Overview selected. Live totals are read-only; chart data remains illustrative.');
     });
   });
 
