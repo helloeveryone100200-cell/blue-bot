@@ -240,6 +240,8 @@ def _start_owner_broadcast(owner_id, target, message_text):
                     owner_broadcast_jobs.pop(old_id, None)
                 if len(owner_broadcast_jobs) < 80:
                     break
+            if len(owner_broadcast_jobs) >= 100:
+                raise ValueError("too_many_broadcast_jobs")
         owner_broadcast_jobs[job_id] = job
 
     def send_messages():
@@ -312,6 +314,14 @@ def handle_owner_action(owner, payload):
             raise ValueError("group_not_found")
         if chat.type not in ("group", "supergroup"):
             raise ValueError("target_is_not_group")
+        try:
+            member = bot.get_chat_member(chat.id, bot.get_me().id)
+            if member.status in ("left", "kicked"):
+                raise ValueError("bot_not_in_group")
+        except ValueError:
+            raise
+        except Exception:
+            raise ValueError("bot_not_in_group")
         if action == "set_public_admin_group":
             set_admin_group_id(chat.id)
         else:
@@ -399,6 +409,10 @@ def handle_owner_action(owner, payload):
         if not isinstance(file_id, str) or not file_id.strip() or len(file_id) > 1024:
             raise ValueError("invalid_thumbnail_file_id")
         media_id = media_id.lower()
+        try:
+            bot.get_file(file_id.strip())
+        except Exception:
+            raise ValueError("invalid_thumbnail_file_id")
         result = videos.update_one({"_id": media_id}, {"$set": {"thumbnail": file_id.strip()}})
         if result.matched_count == 0:
             raise ValueError("media_not_found")
