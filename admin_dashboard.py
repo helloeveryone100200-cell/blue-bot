@@ -128,7 +128,7 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
         _send(handler, 200, body, content_type)
         return True
 
-    if path in ("/admin/api/overview", "/admin/api/users"):
+    if path in ("/admin/api/overview", "/admin/api/users", "/admin/api/media"):
         if method != "POST":
             _json(handler, 405, {"error": "method_not_allowed"})
             return True
@@ -185,6 +185,73 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
                     })
             except Exception:
                 _json(handler, 503, {"error": "users_unavailable"})
+                return True
+            _json(handler, 200, {
+                "items": items,
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "pages": max(1, (total + page_size - 1) // page_size),
+            })
+            return True
+
+        if path == "/admin/api/media":
+            raw_query = payload.get("query", "")
+            kind = payload.get("kind", "all")
+            if not isinstance(raw_query, str) or len(raw_query) > 80:
+                _json(handler, 400, {"error": "invalid_query"})
+                return True
+            if kind not in ("all", "videos", "photos"):
+                _json(handler, 400, {"error": "invalid_media_kind"})
+                return True
+            try:
+                page = int(payload.get("page", 1))
+                page_size = min(max(int(payload.get("pageSize", 20)), 1), MAX_USER_PAGE_SIZE)
+            except (ValueError, TypeError, OverflowError):
+                _json(handler, 400, {"error": "invalid_pagination"})
+                return True
+            if page < 1 or page > 1_000_000:
+                _json(handler, 400, {"error": "invalid_pagination"})
+                return True
+            filters = {}
+            if kind == "videos":
+                filters["_id"] = {"$regex": "^[vz][0-9]+$"}
+            elif kind == "photos":
+                filters["type"] = "photo_only"
+            query = raw_query.strip()
+            if query:
+                escaped_query = re.escape(query)
+                search_filter = {"$or": [
+                    {"_id": {"$regex": escaped_query, "$options": "i"}},
+                    {"caption": {"$regex": escaped_query, "$options": "i"}},
+                ]}
+                filters = {"$and": [filters, search_filter]} if filters else search_filter
+            try:
+                total = videos.count_documents(filters)
+                cursor = videos.find(
+                    filters,
+                    {"_id": 1, "type": 1, "caption": 1, "private": 1, "likes": 1,
+                     "dislikes": 1, "views": 1, "video_ids": 1, "photo_ids": 1},
+                ).sort("_id", -1).skip((page - 1) * page_size).limit(page_size)
+                items = []
+                for doc in cursor:
+                    media_id = doc.get("_id")
+                    if not isinstance(media_id, str) or not re.fullmatch(r"(?:v|z|p|zp)[0-9]+", media_id):
+                        continue
+                    is_photo = doc.get("type") == "photo_only"
+                    items.append({
+                        "id": media_id,
+                        "kind": "photo" if is_photo else "video",
+                        "visibility": "private" if doc.get("private") or media_id.startswith(("z", "zp")) else "public",
+                        "caption": str(doc.get("caption") or "")[:180],
+                        "likes": doc.get("likes", 0) if isinstance(doc.get("likes", 0), int) and not isinstance(doc.get("likes", 0), bool) else 0,
+                        "dislikes": doc.get("dislikes", 0) if isinstance(doc.get("dislikes", 0), int) and not isinstance(doc.get("dislikes", 0), bool) else 0,
+                        "views": doc.get("views", 0) if isinstance(doc.get("views", 0), int) and not isinstance(doc.get("views", 0), bool) else 0,
+                        "video_parts": len(doc.get("video_ids", [])) if isinstance(doc.get("video_ids", []), list) else 0,
+                        "photo_parts": len(doc.get("photo_ids", [])) if isinstance(doc.get("photo_ids", []), list) else 0,
+                    })
+            except Exception:
+                _json(handler, 503, {"error": "media_unavailable"})
                 return True
             _json(handler, 200, {
                 "items": items,
