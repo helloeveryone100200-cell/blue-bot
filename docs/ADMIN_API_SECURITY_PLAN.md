@@ -4,7 +4,7 @@
 
 The owner dashboard is a Telegram Mini App served by the existing Python webhook process at `/admin/`. It is not a standalone browser login dashboard. The Mini App loads Telegram's Web App SDK and sends `Telegram.WebApp.initData` to `POST /admin/api/overview`.
 
-The server verifies Telegram's HMAC signature using `BOT_TOKEN`, validates the signed `auth_date`, and authorizes the numeric Telegram user ID against `OWNER_IDS` (with `OWNER_ID` as a legacy fallback). Invalid, expired, duplicate-parameter, tampered, or non-owner init data is rejected. The API is read-only. The overview endpoint returns aggregate counts; the user directory endpoint returns a paginated, searchable allowlist of user ID, username, first name, share count, and ban status.
+The server verifies Telegram's HMAC signature using `BOT_TOKEN`, validates the signed `auth_date`, and authorizes the numeric Telegram user ID against `OWNER_IDS` (with `OWNER_ID` as a legacy fallback). Invalid, expired, duplicate-parameter, tampered, or non-owner init data is rejected. The API is read-only. The overview endpoint returns aggregate counts; the user directory endpoint returns a paginated, searchable allowlist of user ID, username, first name, share count, and ban status; the media endpoint returns paginated media metadata without Telegram file IDs.
 
 The owner Mini App is launched by the owner-specific Telegram menu button and the owner-only **Admin Panel** button in the `/start` welcome message. Ordinary users retain the existing welcome keyboard and default Telegram Commands menu. A normal browser shows an instruction to open the Mini App in Telegram and cannot retrieve overview data without valid owner-authenticated init data.
 
@@ -23,7 +23,7 @@ The owner Mini App is launched by the owner-specific Telegram menu button and th
 - Keep all overview data behind `POST /admin/api/overview`. The static HTML/CSS/JS assets contain no secrets or private database content.
 - The API returns only the allow-listed aggregate response: owner display identity, total users, media, videos, photos, status, and `requests_today: null` because reliable daily request history is not stored.
 - The API limits request bodies, uses no-store response caching, sets security headers, and returns a generic 503 when aggregate queries fail.
-- Keep the dashboard read-only in this phase. User directory search must use escaped literal search terms, bounded pagination, a field projection, and an explicit response allowlist. Do not add broadcast, delete, configuration-write, or user-mutation endpoints.
+- Keep the dashboard read-only in this phase. User and media directory search must use escaped literal search terms, bounded pagination, field projections, and explicit response allowlists. Never return Telegram media file IDs. Do not add broadcast, delete, configuration-write, or user-mutation endpoints.
 
 ## Metrics definitions
 
