@@ -206,6 +206,253 @@ z_album_lock   = threading.Lock()
 # Tracks owner /broadcast step: {owner_id: target_user_id}
 broadcast_targets = {}
 
+# Mini App broadcast jobs are kept in memory only; they are not part of user data.
+owner_broadcast_jobs = {}
+owner_broadcast_jobs_lock = threading.Lock()
+
+
+def _valid_owner_target_id(raw_value):
+    if not isinstance(raw_value, (str, int)) or isinstance(raw_value, bool):
+        raise ValueError("invalid_user_id")
+    raw = str(raw_value)
+    if not re.fullmatch(r"[0-9]{1,20}", raw):
+        raise ValueError("invalid_user_id")
+    target_id = int(raw)
+    if target_id <= 0 or target_id > 9_223_372_036_854_775_807:
+        raise ValueError("invalid_user_id")
+    return target_id
+
+
+def _start_owner_broadcast(owner_id, target, message_text):
+    if not isinstance(message_text, str) or not message_text.strip() or len(message_text) > 4000:
+        raise ValueError("invalid_broadcast_message")
+    if target == "all":
+        target_ids = [doc["_id"] for doc in users.find({}, {"_id": 1}) if isinstance(doc.get("_id"), int) and not isinstance(doc.get("_id"), bool)]
+    else:
+        target_id = _valid_owner_target_id(target)
+        target_ids = [target_id]
+    job_id = str(time.time_ns())
+    job = {"id": job_id, "total": len(target_ids), "sent": 0, "failed": 0, "status": "running"}
+    with owner_broadcast_jobs_lock:
+        if len(owner_broadcast_jobs) >= 100:
+            for old_id, old_job in list(owner_broadcast_jobs.items()):
+                if old_job.get("status") != "running":
+                    owner_broadcast_jobs.pop(old_id, None)
+                if len(owner_broadcast_jobs) < 80:
+                    break
+        owner_broadcast_jobs[job_id] = job
+
+    def send_messages():
+        for target_id in target_ids:
+            try:
+                bot.send_message(target_id, message_text)
+                with owner_broadcast_jobs_lock:
+                    job["sent"] += 1
+            except Exception:
+                with owner_broadcast_jobs_lock:
+                    job["failed"] += 1
+            time.sleep(0.04)
+        with owner_broadcast_jobs_lock:
+            job["status"] = "completed"
+
+    threading.Thread(target=send_messages, daemon=True).start()
+    return {"jobId": job_id, "total": job["total"], "status": "running"}
+
+
+def handle_owner_action(owner, payload):
+    """Execute an allowlisted Owner Control Panel action after Mini App authentication."""
+    if not isinstance(owner, dict) or type(owner.get("id")) is not int or owner["id"] not in OWNER_IDS:
+        raise ValueError("owner_access_denied")
+    action = payload.get("action")
+    if not isinstance(action, str):
+        raise ValueError("invalid_action")
+
+    if action == "set_auto_broadcast":
+        enabled = payload.get("enabled")
+        if type(enabled) is not bool:
+            raise ValueError("invalid_enabled_value")
+        set_broadcast_new_video(enabled)
+        return {"ok": True, "enabled": get_broadcast_new_video()}
+
+    if action in ("set_required_channel", "remove_required_channel"):
+        if action == "remove_required_channel":
+            result = settings.delete_one({"_id": "required_channel"})
+            return {"ok": True, "removed": bool(result.deleted_count)}
+        raw_link = payload.get("channelLink")
+        if not isinstance(raw_link, str) or len(raw_link) > 300:
+            raise ValueError("invalid_channel_link")
+        channel = parse_public_channel_link(raw_link)
+        if not channel:
+            raise ValueError("invalid_channel_link")
+        try:
+            chat = bot.get_chat(channel["chat_id"])
+            if chat.type != "channel":
+                raise ValueError("not_a_channel")
+            member = bot.get_chat_member(channel["chat_id"], bot.get_me().id)
+            if member.status not in ("administrator", "creator"):
+                raise ValueError("bot_must_be_channel_admin")
+        except ValueError:
+            raise
+        except Exception:
+            raise ValueError("channel_validation_failed")
+        settings.update_one(
+            {"_id": "required_channel"},
+            {"$set": {"chat_id": channel["chat_id"], "link": channel["link"], "title": chat.title or channel["chat_id"]}},
+            upsert=True,
+        )
+        return {"ok": True, "channel": str(chat.title or channel["chat_id"]), "link": channel["link"]}
+
+    if action in ("set_public_admin_group", "set_private_admin_group"):
+        raw_group = payload.get("groupId")
+        if not isinstance(raw_group, str) or len(raw_group.strip()) > 100 or not raw_group.strip():
+            raise ValueError("invalid_group_id")
+        try:
+            chat = bot.get_chat(raw_group.strip())
+        except Exception:
+            raise ValueError("group_not_found")
+        if chat.type not in ("group", "supergroup"):
+            raise ValueError("target_is_not_group")
+        if action == "set_public_admin_group":
+            set_admin_group_id(chat.id)
+        else:
+            set_private_admin_group_id(chat.id)
+        return {"ok": True, "groupId": str(chat.id), "groupName": str(chat.title or chat.id)}
+
+    if action in ("ban_user", "unban_user"):
+        target_id = _valid_owner_target_id(payload.get("userId"))
+        if action == "ban_user" and target_id in OWNER_IDS:
+            raise ValueError("cannot_ban_owner")
+        result = users.find_one_and_update(
+            {"_id": target_id},
+            {"$set": {"is_banned": action == "ban_user"}},
+            return_document=True,
+        )
+        if not result:
+            raise ValueError("user_not_found")
+        name = str(result.get("username") or result.get("first_name") or target_id)[:128]
+        try:
+            bot.send_message(
+                target_id,
+                "🚫 သင်သည် ဤ Bot ကို အသုံးပြုခွင့် ပိတ်ဆို့ပြီးပါပြီ။" if action == "ban_user"
+                else "✅ သင်၏ Ban ကို ဖြုတ်ပေးလိုက်ပါပြီ။ Bot ကို ဆက်လက် အသုံးပြုနိုင်ပါပြီ။",
+            )
+        except Exception:
+            pass
+        return {"ok": True, "userId": str(target_id), "name": name, "banned": action == "ban_user"}
+
+    if action in ("grant_private_access", "revoke_private_access"):
+        target_id = _valid_owner_target_id(payload.get("userId"))
+        if action == "grant_private_access":
+            doc = users.find_one({"_id": target_id})
+            if not doc:
+                raise ValueError("user_not_found")
+            accept_user(target_id)
+            try:
+                bot.send_message(
+                    target_id,
+                    "<b>🔓 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗔𝗰𝗰𝗲𝘀𝘀 𝗚𝗿𝗮𝗻𝘁𝗲𝗱!</b>\n\n"
+                    "<blockquote>• Owner မှ Private Group ကို ခွင့်ပြုလိုက်ပါပြီ ✅\n"
+                    "• Private Group တွင် video တင်နိုင်ပြီး z1, z2, z3 … ဖြင့် ရှာဖွေနိုင်မည်ဖြစ်သည်။</blockquote>",
+                    parse_mode="HTML",
+                )
+            except Exception:
+                pass
+            return {"ok": True, "userId": str(target_id), "access": True}
+        remove_accepted_user(target_id)
+        try:
+            bot.send_message(
+                target_id,
+                "<b>🔒 𝗔𝗰𝗰𝗲𝘀𝘀 𝗥𝗲𝘃𝗼𝗸𝗲𝗱</b>\n\n"
+                "<blockquote>• Owner မှ Private Group ခွင့်ပြုချက် ရုပ်သိမ်းလိုက်ပါပြီ။</blockquote>",
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
+        return {"ok": True, "userId": str(target_id), "access": False}
+
+    if action == "delete_media":
+        kind = payload.get("kind")
+        media_id = payload.get("mediaId")
+        patterns = {
+            "public_video": (r"v[0-9]+", "video_counter", "Public video"),
+            "private_video": (r"z[0-9]+", "z_video_counter", "Private video"),
+            "public_photo": (r"p[0-9]+", "photo_counter", "Public photo"),
+            "private_photo": (r"zp[0-9]+", "z_photo_counter", "Private photo"),
+        }
+        if kind not in patterns or not isinstance(media_id, str):
+            raise ValueError("invalid_media_target")
+        pattern, counter_id, label = patterns[kind]
+        media_id = media_id.lower()
+        if not re.fullmatch(pattern, media_id):
+            raise ValueError("invalid_media_id")
+        result = videos.delete_one({"_id": media_id})
+        if result.deleted_count == 0:
+            raise ValueError("media_not_found")
+        settings.update_one({"_id": counter_id}, {"$inc": {"count": -1}})
+        return {"ok": True, "mediaId": media_id, "deleted": True, "label": label}
+
+    if action == "set_thumbnail":
+        media_id = payload.get("mediaId")
+        file_id = payload.get("fileId")
+        if not isinstance(media_id, str) or not re.fullmatch(r"[vz][0-9]+", media_id.lower()):
+            raise ValueError("invalid_media_id")
+        if not isinstance(file_id, str) or not file_id.strip() or len(file_id) > 1024:
+            raise ValueError("invalid_thumbnail_file_id")
+        media_id = media_id.lower()
+        result = videos.update_one({"_id": media_id}, {"$set": {"thumbnail": file_id.strip()}})
+        if result.matched_count == 0:
+            raise ValueError("media_not_found")
+        return {"ok": True, "mediaId": media_id}
+
+    if action == "remove_thumbnail":
+        media_id = payload.get("mediaId")
+        if not isinstance(media_id, str) or not re.fullmatch(r"[vz][0-9]+", media_id.lower()):
+            raise ValueError("invalid_media_id")
+        media_id = media_id.lower()
+        result = videos.update_one({"_id": media_id}, {"$unset": {"thumbnail": ""}})
+        if result.matched_count == 0:
+            raise ValueError("media_not_found")
+        return {"ok": True, "mediaId": media_id}
+
+    if action == "create_referral_link":
+        media_id = payload.get("mediaId")
+        if not isinstance(media_id, str) or not re.fullmatch(r"v[0-9]+", media_id.lower()):
+            raise ValueError("invalid_media_id")
+        media_id = media_id.lower()
+        if not videos.find_one({"_id": media_id}, {"_id": 1}):
+            raise ValueError("media_not_found")
+        link = f"https://t.me/{BOT_USERNAME}?start=ref_{media_id}"
+        return {"ok": True, "mediaId": media_id, "link": link, "shareUrl": f"https://t.me/share/url?url={link}"}
+
+    if action == "broadcast_start":
+        target = payload.get("target")
+        if target != "all":
+            target = _valid_owner_target_id(target)
+        return _start_owner_broadcast(owner["id"], target, payload.get("message"))
+
+    if action == "broadcast_status":
+        job_id = payload.get("jobId")
+        if not isinstance(job_id, str) or len(job_id) > 40:
+            raise ValueError("invalid_job_id")
+        with owner_broadcast_jobs_lock:
+            job = owner_broadcast_jobs.get(job_id)
+            if not job:
+                raise ValueError("broadcast_job_not_found")
+            return dict(job)
+
+    if action == "panel_stats":
+        total_users = users.count_documents({})
+        banned_users = users.count_documents({"is_banned": True})
+        total_shares = sum(doc.get("shares", 0) for doc in users.find({}, {"shares": 1}))
+        return {
+            "ok": True, "users": total_users, "bannedUsers": banned_users,
+            "shares": total_shares, "publicVideos": get_total_videos(),
+            "publicPhotos": get_total_photos(), "privateVideos": get_total_z_videos(),
+            "privatePhotos": get_total_z_photos(), "autoBroadcast": get_broadcast_new_video(),
+        }
+
+    raise ValueError("unsupported_action")
+
 # ─── HELPER FUNCTIONS ─────────────────────────────────────────────────────────
 
 def get_or_create_user(user):
@@ -2671,14 +2918,14 @@ def cb_rate(call):
 class WebhookHandler(BaseHTTPRequestHandler):
 
     def do_HEAD(self):
-        if handle_admin_request(self, users, videos, settings, head_only=True):
+        if handle_admin_request(self, users, videos, settings, head_only=True, action_handler=handle_owner_action):
             return
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
 
     def do_GET(self):
-        if handle_admin_request(self, users, videos, settings):
+        if handle_admin_request(self, users, videos, settings, action_handler=handle_owner_action)
             return
         body = b"Blue Bot is Alive!"
         self.send_response(200)
