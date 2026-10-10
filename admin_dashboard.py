@@ -258,15 +258,11 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
             if kind not in ("all", "videos", "photos"):
                 _json(handler, 400, {"error": "invalid_media_kind"})
                 return True
-            try:
-                page = int(payload.get("page", 1))
-                page_size = min(max(int(payload.get("pageSize", 20)), 1), MAX_USER_PAGE_SIZE)
-            except (ValueError, TypeError, OverflowError):
+            pagination = _parse_pagination(payload)
+            if pagination is None:
                 _json(handler, 400, {"error": "invalid_pagination"})
                 return True
-            if page < 1 or page > 1_000_000:
-                _json(handler, 400, {"error": "invalid_pagination"})
-                return True
+            page, page_size = pagination
             filters = {}
             if kind == "videos":
                 filters["_id"] = {"$regex": "^[vz][0-9]+$"}
