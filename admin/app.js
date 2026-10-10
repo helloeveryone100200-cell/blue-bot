@@ -8,6 +8,7 @@
   const mediaView = byId('media-library-view');
   const mediaList = byId('media-list');
   const settingsView = byId('bot-settings-view');
+  const ownerControlsView = byId('owner-controls-view');
   const settingsList = byId('settings-list');
   let usersPage = 1;
   let usersPages = 1;
@@ -309,6 +310,10 @@
         'Source for private media uploads', Boolean(payload.private_media_group_configured));
       renderSetting('New-video auto broadcast', payload.auto_broadcast_new_video ? 'Enabled' : 'Disabled',
         'Automatically notify users when a new public video is added', Boolean(payload.auto_broadcast_new_video));
+      byId('auto-broadcast-toggle').checked = Boolean(payload.auto_broadcast_new_video);
+      byId('auto-broadcast-state').textContent = payload.auto_broadcast_new_video
+        ? 'Currently enabled · new public videos trigger notifications.'
+        : 'Currently disabled · new public videos will not trigger notifications.';
       renderSetting('Private-access users', formatCount(payload.private_access_users),
         'Users granted private-group access; user IDs are not exposed here', Number(payload.private_access_users) > 0);
       byId('settings-list-status').textContent = 'Current configuration loaded · inspection only';
@@ -318,6 +323,97 @@
         ? 'Owner access denied. Reopen the Mini App from your owner Telegram account.'
         : 'Unable to load settings. Check the connection and try again.';
       setNotice('Bot settings could not be loaded.', 'error');
+    }
+  }
+
+  const actionErrors = {
+    invalid_action: 'That action is not supported.',
+    invalid_user_id: 'Enter a valid numeric Telegram user ID.',
+    user_not_found: 'The user was not found in the database.',
+    cannot_ban_owner: 'An owner account cannot be banned.',
+    invalid_channel_link: 'Enter a valid public Telegram channel link or @username.',
+    channel_validation_failed: 'Could not verify the channel. Check the link and bot access.',
+    bot_must_be_channel_admin: 'The bot must be an administrator in that channel.',
+    not_a_channel: 'The supplied link does not point to a channel.',
+    group_not_found: 'Could not find that group. Ensure the bot has access to it.',
+    target_is_not_group: 'That chat is not a group or supergroup.',
+    invalid_group_id: 'Enter a group ID or public @username.',
+    invalid_media_id: 'Enter a valid media ID for the selected action.',
+    invalid_media_target: 'Select a valid media type and ID.',
+    media_not_found: 'That media record was not found.',
+    invalid_thumbnail_file_id: 'Enter a valid Telegram photo file_id.',
+    invalid_broadcast_message: 'Enter a message of 1–4000 characters.',
+    broadcast_job_not_found: 'Broadcast status is no longer available. It may have expired after a restart.',
+    owner_access_denied: 'Owner authorization failed. Reopen the Mini App from your owner Telegram account.'
+  };
+
+  function actionErrorMessage(error) {
+    if (error && error.status === 403) return 'Owner access denied. Reopen this Mini App from the authorized Telegram account.';
+    return actionErrors[error && error.message] || 'The action could not be completed. Please check the values and try again.';
+  }
+
+  async function runOwnerAction(payload, successMessage) {
+    try {
+      const result = await postOwnerApi('/admin/api/action', payload);
+      if (successMessage) setNotice(successMessage, 'success');
+      return result;
+    } catch (error) {
+      setNotice(actionErrorMessage(error), 'error');
+      throw error;
+    }
+  }
+
+  function renderOwnerStats(payload) {
+    const container = byId('owner-stats');
+    container.replaceChildren();
+    const metrics = [
+      ['Total users', payload.users], ['Banned users', payload.bannedUsers],
+      ['Total shares', payload.shares], ['Public videos', payload.publicVideos],
+      ['Public photos', payload.publicPhotos], ['Private videos', payload.privateVideos],
+      ['Private photos', payload.privatePhotos], ['Auto broadcast', payload.autoBroadcast ? 'ON' : 'OFF']
+    ];
+    metrics.forEach(([label, value]) => {
+      const item = makeElement('div', 'owner-stat');
+      item.append(makeElement('small', '', label), makeElement('strong', '', typeof value === 'number' ? formatCount(value) : String(value)));
+      container.append(item);
+    });
+    byId('auto-broadcast-toggle').checked = Boolean(payload.autoBroadcast);
+    byId('auto-broadcast-state').textContent = payload.autoBroadcast
+      ? 'Currently enabled · new public videos trigger notifications.'
+      : 'Currently disabled · new public videos will not trigger notifications.';
+  }
+
+  async function loadOwnerStats() {
+    byId('owner-stats').replaceChildren(makeElement('p', 'list-status', 'Loading owner statistics…'));
+    try {
+      const payload = await runOwnerAction({action: 'panel_stats'});
+      renderOwnerStats(payload);
+      const settingsPayload = await postOwnerApi('/admin/api/settings');
+      const channel = settingsPayload.channel_gate;
+      byId('channel-link').placeholder = channel && channel.enabled
+        ? 'Current channel: ' + (channel.title || 'configured') + ' · enter new link to replace'
+        : 'https://t.me/your_channel';
+    } catch (_error) {
+      byId('owner-stats').replaceChildren(makeElement('p', 'list-status', 'Unable to load owner statistics.'));
+    }
+  }
+
+  async function pollBroadcast(jobId, attempts = 0) {
+    if (attempts >= 120) {
+      byId('broadcast-status').textContent = 'Broadcast is still running. Reopen this panel to check status.';
+      return;
+    }
+    try {
+      const job = await postOwnerApi('/admin/api/action', {action: 'broadcast_status', jobId});
+      byId('broadcast-status').textContent = 'Status: ' + job.status + ' · sent ' + formatCount(job.sent) +
+        ' / ' + formatCount(job.total) + ' · failed ' + formatCount(job.failed);
+      if (job.status === 'completed') {
+        setNotice('Broadcast finished. Sent: ' + formatCount(job.sent) + ', failed: ' + formatCount(job.failed) + '.', job.failed ? 'info' : 'success');
+        return;
+      }
+      setTimeout(() => pollBroadcast(jobId, attempts + 1), 1500);
+    } catch (_error) {
+      byId('broadcast-status').textContent = 'Could not retrieve progress. The bot may have restarted.';
     }
   }
 
@@ -352,6 +448,7 @@
     overviewView.hidden = true;
     mediaView.hidden = true;
     settingsView.hidden = true;
+    ownerControlsView.hidden = true;
     usersView.hidden = false;
     usersPage = 1;
     loadUsers();
@@ -363,6 +460,7 @@
     overviewView.hidden = true;
     usersView.hidden = true;
     settingsView.hidden = true;
+    ownerControlsView.hidden = true;
     mediaView.hidden = false;
     mediaPage = 1;
     loadMedia();
@@ -374,8 +472,20 @@
     overviewView.hidden = true;
     usersView.hidden = true;
     mediaView.hidden = true;
+    ownerControlsView.hidden = true;
     settingsView.hidden = false;
     loadSettings();
+  }
+
+  function openOwnerControls() {
+    activateView('owner-controls');
+    invalidateUserDetailView();
+    overviewView.hidden = true;
+    usersView.hidden = true;
+    mediaView.hidden = true;
+    settingsView.hidden = true;
+    ownerControlsView.hidden = false;
+    loadOwnerStats();
   }
 
   function showOverview() {
@@ -384,6 +494,7 @@
     usersView.hidden = true;
     mediaView.hidden = true;
     settingsView.hidden = true;
+    ownerControlsView.hidden = true;
     overviewView.hidden = false;
   }
 
@@ -391,6 +502,8 @@
   byId('back-to-overview').addEventListener('click', showOverview);
   byId('back-from-media').addEventListener('click', showOverview);
   byId('back-from-settings').addEventListener('click', showOverview);
+  byId('back-from-owner-controls').addEventListener('click', showOverview);
+  byId('load-owner-stats').addEventListener('click', loadOwnerStats);
   byId('user-search').addEventListener('input', () => {
     if (userSearchTimer) clearTimeout(userSearchTimer);
     userSearchTimer = setTimeout(() => { usersPage = 1; loadUsers(); }, 250);
@@ -412,6 +525,149 @@
   byId('media-next').addEventListener('click', () => {
     if (mediaPage < mediaPages) { mediaPage += 1; loadMedia(); }
   });
+  byId('save-auto-broadcast').addEventListener('click', async () => {
+    try {
+      const result = await runOwnerAction({action: 'set_auto_broadcast', enabled: byId('auto-broadcast-toggle').checked}, 'Auto broadcast setting updated.');
+      byId('auto-broadcast-toggle').checked = Boolean(result.enabled);
+      byId('auto-broadcast-state').textContent = result.enabled ? 'Currently enabled.' : 'Currently disabled.';
+      loadOwnerStats();
+    } catch (_error) {}
+  });
+
+  byId('save-channel').addEventListener('click', async () => {
+    const channelLink = byId('channel-link').value.trim();
+    try {
+      const result = await runOwnerAction({action: 'set_required_channel', channelLink}, 'Required channel configured successfully.');
+      byId('channel-link').value = '';
+      byId('channel-link').placeholder = 'Current channel: ' + (result.channel || result.link);
+    } catch (_error) {}
+  });
+
+  byId('remove-channel').addEventListener('click', async () => {
+    if (!window.confirm('Remove the required-channel join gate?')) return;
+    try {
+      await runOwnerAction({action: 'remove_required_channel'}, 'Required channel setting removed.');
+      byId('channel-link').placeholder = 'No required channel is configured';
+    } catch (_error) {}
+  });
+
+  byId('save-admin-group').addEventListener('click', async () => {
+    const groupId = byId('admin-group-id').value.trim();
+    const action = byId('admin-group-type').value === 'private' ? 'set_private_admin_group' : 'set_public_admin_group';
+    try {
+      const result = await runOwnerAction({action, groupId}, (action === 'set_private_admin_group' ? 'Private' : 'Public') + ' media group set to ' + resultSafeName(groupId) + '.');
+      byId('admin-group-id').value = '';
+      setNotice('Admin group configured: ' + (result.groupName || result.groupId), 'success');
+      loadOwnerStats();
+    } catch (_error) {}
+  });
+
+  function resultSafeName(value) {
+    return String(value || '').slice(0, 80);
+  }
+
+  byId('run-user-action').addEventListener('click', async () => {
+    const userId = byId('owner-user-id').value.trim();
+    const action = byId('owner-user-action').value;
+    if (!/^[0-9]{1,20}$/.test(userId)) {
+      setNotice('Enter a valid numeric Telegram user ID.', 'error');
+      return;
+    }
+    const destructive = action === 'ban_user' || action === 'revoke_private_access';
+    if (destructive && !window.confirm('Confirm ' + byId('owner-user-action').selectedOptions[0].textContent + ' for user ' + userId + '?')) return;
+    try {
+      const result = await runOwnerAction({action, userId}, 'User action completed for ID ' + resultSafeName(userId) + '.');
+      setNotice('User ' + result.userId + ': ' + (result.banned === true ? 'banned' : result.banned === false ? 'unbanned' : result.access ? 'private access granted' : 'private access revoked') + '.', 'success');
+    } catch (_error) {}
+  });
+
+  byId('start-broadcast').addEventListener('click', async () => {
+    const targetText = byId('broadcast-target').value.trim().toLowerCase();
+    const message = byId('broadcast-message').value;
+    if (!byId('broadcast-confirm').checked) {
+      setNotice('Confirm the broadcast before sending.', 'error');
+      return;
+    }
+    if (!targetText || (targetText !== 'all' && !/^[0-9]{1,20}$/.test(targetText))) {
+      setNotice('Recipient must be "all" or an exact numeric user ID.', 'error');
+      return;
+    }
+    if (!message.trim()) {
+      setNotice('Enter a message before starting the broadcast.', 'error');
+      return;
+    }
+    if (!window.confirm('Start sending this message to ' + (targetText === 'all' ? 'all registered users' : 'user ' + targetText) + '?')) return;
+    byId('start-broadcast').disabled = true;
+    byId('broadcast-status').textContent = 'Starting broadcast…';
+    try {
+      const result = await runOwnerAction({action: 'broadcast_start', target: targetText, message}, 'Broadcast job started.');
+      byId('broadcast-confirm').checked = false;
+      byId('broadcast-status').textContent = 'Queued for ' + formatCount(result.total) + ' recipient(s).';
+      pollBroadcast(result.jobId);
+    } catch (_error) {
+      byId('broadcast-status').textContent = 'Broadcast could not be started.';
+    } finally {
+      byId('start-broadcast').disabled = false;
+    }
+  });
+
+  byId('delete-media').addEventListener('click', async () => {
+    const mediaId = byId('owner-media-id').value.trim();
+    const kind = byId('owner-media-kind').value;
+    if (!mediaId) { setNotice('Enter a media ID.', 'error'); return; }
+    if (!window.confirm('Permanently delete media record ' + mediaId + '? This cannot be undone.')) return;
+    try {
+      await runOwnerAction({action: 'delete_media', kind, mediaId}, 'Media ' + mediaId + ' deleted.');
+      byId('owner-media-id').value = '';
+      loadOwnerStats();
+    } catch (_error) {}
+  });
+
+  byId('set-thumbnail').addEventListener('click', async () => {
+    const mediaId = byId('owner-media-id').value.trim();
+    const fileId = byId('owner-thumbnail-file-id').value.trim();
+    try {
+      await runOwnerAction({action: 'set_thumbnail', mediaId, fileId}, 'Thumbnail set for ' + mediaId + '.');
+      byId('owner-thumbnail-file-id').value = '';
+    } catch (_error) {}
+  });
+
+  byId('remove-thumbnail').addEventListener('click', async () => {
+    const mediaId = byId('owner-media-id').value.trim();
+    if (!mediaId) { setNotice('Enter a video ID (vN or zN).', 'error'); return; }
+    if (!window.confirm('Remove the thumbnail from ' + mediaId + '?')) return;
+    try {
+      await runOwnerAction({action: 'remove_thumbnail', mediaId}, 'Thumbnail removed from ' + mediaId + '.');
+    } catch (_error) {}
+  });
+
+  byId('create-referral-link').addEventListener('click', async () => {
+    const mediaId = byId('owner-media-id').value.trim();
+    try {
+      const result = await runOwnerAction({action: 'create_referral_link', mediaId}, 'Referral link created.');
+      byId('referral-result').replaceChildren();
+      const link = makeElement('a', 'referral-link', result.link);
+      link.href = result.link;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      const copy = makeElement('button', 'secondary-button', 'Copy link');
+      copy.type = 'button';
+      copy.addEventListener('click', async () => {
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(result.link);
+            setNotice('Referral link copied.', 'success');
+          } else {
+            setNotice('Open the referral link to copy it manually.', 'info');
+          }
+        } catch (_error) {
+          setNotice('Unable to copy link automatically.', 'error');
+        }
+      });
+      byId('referral-result').append(link, copy);
+    } catch (_error) {}
+  });
+
   document.querySelectorAll('[data-feature]').forEach(button => {
     button.addEventListener('click', () => {
       if (button.dataset.feature === 'users') {
@@ -422,6 +678,11 @@
       if (button.dataset.feature === 'media') {
         openMedia();
         setNotice('Media inventory opened with read-only metadata access.', 'success');
+        return;
+      }
+      if (button.dataset.feature === 'owner-controls') {
+        openOwnerControls();
+        setNotice('Owner controls opened. Write actions require Telegram owner authentication.', 'success');
         return;
       }
       openSettings();
