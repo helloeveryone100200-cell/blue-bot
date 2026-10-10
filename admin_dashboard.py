@@ -128,7 +128,7 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
         _send(handler, 200, body, content_type)
         return True
 
-    if path in ("/admin/api/overview", "/admin/api/users", "/admin/api/media", "/admin/api/settings"):
+    if path in ("/admin/api/overview", "/admin/api/users", "/admin/api/user-detail", "/admin/api/media", "/admin/api/settings"):
         if method != "POST":
             _json(handler, 405, {"error": "method_not_allowed"})
             return True
@@ -194,6 +194,41 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
                 "page_size": page_size,
                 "total": total,
                 "pages": max(1, (total + page_size - 1) // page_size),
+            })
+            return True
+
+        if path == "/admin/api/user-detail":
+            raw_user_id = payload.get("userId", "")
+            if not isinstance(raw_user_id, str) or not raw_user_id.isdigit() or len(raw_user_id) > 20:
+                _json(handler, 400, {"error": "invalid_user_id"})
+                return True
+            try:
+                user_id = int(raw_user_id)
+                doc = users.find_one(
+                    {"_id": user_id},
+                    {"_id": 1, "username": 1, "first_name": 1, "shares": 1,
+                     "is_banned": 1, "referrals": 1, "state": 1, "joined_at": 1},
+                )
+            except Exception:
+                _json(handler, 503, {"error": "user_detail_unavailable"})
+                return True
+            if not doc:
+                _json(handler, 404, {"error": "user_not_found"})
+                return True
+            def safe_count(value):
+                return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else 0
+            joined_at = doc.get("joined_at", "—")
+            if not isinstance(joined_at, (str, int, float)):
+                joined_at = "—"
+            _json(handler, 200, {
+                "id": str(doc.get("_id")),
+                "username": str(doc.get("username") or "")[:64],
+                "first_name": str(doc.get("first_name") or "")[:128],
+                "shares": safe_count(doc.get("shares", 0)),
+                "referrals": safe_count(doc.get("referrals", 0)),
+                "is_banned": bool(doc.get("is_banned", False)),
+                "state": str(doc.get("state") or "normal")[:64],
+                "joined_at": str(joined_at)[:80],
             })
             return True
 
