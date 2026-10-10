@@ -26,7 +26,9 @@ def validate_telegram_init_data(init_data, bot_token, owner_ids=None, now=None):
     if not bot_token or bot_token == "YOUR_BOT_TOKEN":
         return None
     try:
-        pairs = parse_qsl(init_data, keep_blank_values=True, strict_parsing=True)
+        # initData is small and normally contains only a handful of fields.
+        # Cap parsed fields to bound CPU/memory work for malformed signed payloads.
+        pairs = parse_qsl(init_data, keep_blank_values=True, strict_parsing=True, max_num_fields=64)
         values = {}
         for key, value in pairs:
             if key in values:
@@ -217,6 +219,10 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
         if path == "/admin/api/user-detail":
             raw_user_id = payload.get("userId", "")
             if not isinstance(raw_user_id, str) or not re.fullmatch(r"[0-9]{1,20}", raw_user_id):
+                _json(handler, 400, {"error": "invalid_user_id"})
+                return True
+            # User _id values are stored as BSON signed 64-bit integers.
+            if int(raw_user_id) > 9_223_372_036_854_775_807:
                 _json(handler, 400, {"error": "invalid_user_id"})
                 return True
             try:
