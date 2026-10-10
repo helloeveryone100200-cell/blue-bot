@@ -63,3 +63,20 @@ Keep the work on `redesign/premium-dark-safe-ui` until all automated checks pass
 - User-level personal data tables.
 - Analytics that require event history not currently stored.
 - Changes to Telegram business logic or MongoDB schema.
+
+## Implemented first integration slice
+
+- Added `admin_dashboard.py`, an isolated route handler invoked before the existing root/webhook handlers. Existing `GET /`, `HEAD /`, and `POST /webhook` paths retain their prior code paths.
+- Dashboard routes fail closed with HTTP 503 until both `ADMIN_DASHBOARD_PASSWORD` (at least 16 characters) and `ADMIN_SESSION_SECRET` (at least 32 characters) are configured.
+- `GET /admin/login` provides a password form. Successful login issues a signed, eight-hour session cookie with `HttpOnly`, `Secure`, and `SameSite=Strict` attributes. Invalid logins are throttled per client address in-process.
+- `/admin`, its CSS/JS assets, and `GET /admin/api/overview` require a valid session. The API returns only aggregate counts and does not expose user documents, identifiers, tokens, or media records.
+- The API intentionally reports request analytics as unavailable because the current database schema does not establish a reliable daily request count. The dashboard updates live user/media totals after authenticated login; the chart remains labelled as illustrative.
+- Added session-token and configuration contract tests. These tests do not connect to Telegram or MongoDB.
+- Before enabling this feature on Render, set both environment variables to unique strong values in the service's Environment settings. Use HTTPS only. Keep credentials out of source control and logs.
+
+## Remaining release gates
+
+- Confirm GitHub Actions passes on the current branch.
+- Exercise login, session expiry, anonymous access denial, rate limiting, and API responses against a test server/database.
+- Verify Render proxy/TLS behavior and the Telegram webhook after deployment.
+- No live Render deployment has been performed by this change.
