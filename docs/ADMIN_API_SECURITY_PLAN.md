@@ -4,7 +4,7 @@
 
 The owner dashboard is a Telegram Mini App served by the existing Python webhook process at `/admin/`. It is not a standalone browser login dashboard. The Mini App loads Telegram's Web App SDK and sends `Telegram.WebApp.initData` to `POST /admin/api/overview`.
 
-The server verifies Telegram's HMAC signature using `BOT_TOKEN`, validates the signed `auth_date`, and authorizes the numeric Telegram user ID against `OWNER_IDS` (with `OWNER_ID` as a legacy fallback). Invalid, expired, duplicate-parameter, tampered, or non-owner init data is rejected. The API is read-only. The overview endpoint returns aggregate counts; the user directory endpoint returns a paginated, searchable allowlist of user ID, username, first name, share count, and ban status; the media endpoint returns paginated media metadata without Telegram file IDs; and the settings endpoint returns safe configuration status only, without raw group IDs or private-access user IDs. A user-detail endpoint accepts one numeric Telegram user ID and returns an explicit allowlist of profile, shares/referrals, ban status, workflow state, and joined-at display fields.
+The server verifies Telegram's HMAC signature using `BOT_TOKEN`, validates the signed `auth_date`, and authorizes the numeric Telegram user ID against `OWNER_IDS` (with `OWNER_ID` as a legacy fallback). Invalid, expired, duplicate-parameter, tampered, or non-owner init data is rejected. The API is read-only. The overview endpoint returns aggregate counts; the user directory endpoint returns a paginated, searchable allowlist of user ID, username, first name, share count, and ban status; the media endpoint returns paginated media metadata without Telegram file IDs; and the settings endpoint returns safe configuration status only, without raw group IDs or private-access user IDs. A user-detail endpoint accepts one numeric Telegram user ID and returns an explicit allowlist of profile, shares/referrals, ban status, workflow state, and joined-at display fields when stored; older records may not contain referral or joined-at fields, so the UI uses safe fallbacks.
 
 The owner Mini App is launched by the owner-specific Telegram menu button and the owner-only **Admin Panel** button in the `/start` welcome message. Ordinary users retain the existing welcome keyboard and default Telegram Commands menu. A normal browser shows an instruction to open the Mini App in Telegram and cannot retrieve overview data without valid owner-authenticated init data.
 
@@ -45,9 +45,12 @@ These automated tests use fake request handlers and mocked collections. They do 
 2. Verify Render's service branch and deployment configuration without changing the production service during review.
 3. Confirm the HTTPS Mini App URL resolves to `/admin/` and the API returns expected responses in a controlled environment.
 4. Test in Telegram with an account listed in `OWNER_IDS`: the owner-only menu button and `/start` Admin Panel button must open the Mini App, and aggregate metrics must load.
-5. Test with a non-owner: the Admin Panel button must not appear and the overview API must deny access.
-6. Verify existing `/start`, referral, channel/gender gates, video/photo lookup, and webhook behavior remain intact.
-7. Only after these gates pass, review and merge the PR; production deployment requires a separate explicit go-ahead.
+5. Test with a non-owner: the Admin Panel button must not appear and all overview, user, user-detail, media, and settings API routes must deny access.
+6. In the owner Mini App, search users by name, username, and exact ID; open User Detail; verify optional legacy fields show a safe fallback when absent; return to the list and then Overview without stale panels or hidden controls.
+7. In Media Library, verify all/video/photo filters, pagination and search; confirm the browser response contains no Telegram `file_id`, `video_ids`, or `photo_ids` values.
+8. In Bot Settings, verify only status/count values appear; confirm no raw channel/group IDs or private-access user IDs are exposed. Confirm all management views remain read-only.
+9. Verify existing `/start`, referral, channel/gender gates, video/photo lookup, and webhook behavior remain intact.
+10. Only after these gates pass, review and merge the PR; production deployment requires a separate explicit go-ahead.
 
 ## Current limitations
 
