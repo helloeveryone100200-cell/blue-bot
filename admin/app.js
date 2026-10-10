@@ -196,7 +196,7 @@
         page: usersPage,
         pageSize: 20
       });
-      if (requestId !== usersRequest) return;
+      if (requestId !== usersRequest || activeView !== 'users') return;
       usersPages = Math.max(1, Number(payload.pages) || 1);
       usersPage = Math.min(Math.max(1, Number(payload.page) || 1), usersPages);
       byId('user-total').textContent = formatCount(payload.total) + ' users';
@@ -206,7 +206,7 @@
       byId('user-list-status').textContent = formatCount(payload.total) + ' matching users · read-only';
       renderUsers(payload.items);
     } catch (error) {
-      if (requestId !== usersRequest) return;
+      if (requestId !== usersRequest || activeView !== 'users') return;
       userList.replaceChildren();
       byId('user-list-status').textContent = error.status === 403
         ? 'Owner access denied. Reopen the Mini App from your owner Telegram account.'
@@ -260,7 +260,7 @@
         page: mediaPage,
         pageSize: 20
       });
-      if (requestId !== mediaRequest) return;
+      if (requestId !== mediaRequest || activeView !== 'media') return;
       mediaPages = Math.max(1, Number(payload.pages) || 1);
       mediaPage = Math.min(Math.max(1, Number(payload.page) || 1), mediaPages);
       byId('media-total').textContent = formatCount(payload.total) + ' items';
@@ -298,7 +298,7 @@
     settingsList.replaceChildren();
     try {
       const payload = await postOwnerApi('/admin/api/settings');
-      if (requestId !== settingsRequest) return;
+      if (requestId !== settingsRequest || activeView !== 'settings') return;
       const channelEnabled = Boolean(payload.channel_gate && payload.channel_gate.enabled);
       renderSetting('Required channel gate', channelEnabled ? 'Enabled' : 'Disabled',
         channelEnabled ? (payload.channel_gate.title || 'A required channel is configured') : 'No required channel is active',
