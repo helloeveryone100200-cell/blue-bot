@@ -37,7 +37,7 @@ The owner Mini App is launched by the owner-specific Telegram menu button and th
 
 The GitHub Actions workflow `.github/workflows/validate.yml` runs Python compilation, the unittest suite, and JavaScript syntax validation. Tests cover Telegram init-data verification, owner authorization, stale/future/tampered data, duplicate parameters, method restrictions, aggregate response allow-listing, database failures, oversized bodies, UI behavior contracts, and HTTPS Mini App URL resolution.
 
-These automated tests use fake request handlers and mocked collections. They do not establish live Telegram Bot API behavior, production MongoDB correctness, or Render deployment health.
+The regression suite also covers malformed stored metadata (strict private flags, non-negative integer counters, and safe broadcast-flag fallback), oversized numeric ID searches, and stale User Detail responses across all section-navigation routes. These automated tests use fake request handlers and mocked collections. They do not establish live Telegram Bot API behavior, production MongoDB correctness, or Render deployment health.
 
 ## Release gates before merge
 
