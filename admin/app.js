@@ -15,6 +15,8 @@
   let mediaPages = 1;
   let userSearchTimer = null;
   let mediaSearchTimer = null;
+  let overviewRequest = 0;
+  let activeView = 'overview';
   let usersRequest = 0;
   let mediaRequest = 0;
   let settingsRequest = 0;
@@ -56,6 +58,7 @@
   }
 
   async function loadOverview() {
+    const requestId = ++overviewRequest;
     if (!ownerInitData()) {
       byId('connection-title').textContent = 'Open from Telegram';
       byId('connection-description').textContent = 'Owner identity is not available in this browser.';
@@ -68,6 +71,7 @@
       if (webApp.setHeaderColor) webApp.setHeaderColor('#080d1a');
       if (webApp.setBackgroundColor) webApp.setBackgroundColor('#080d1a');
       const payload = await postOwnerApi('/admin/api/overview');
+      if (requestId !== overviewRequest || activeView !== 'overview') return;
       const ownerName = typeof payload.owner?.name === 'string' ? payload.owner.name : 'Owner';
       byId('greeting').textContent = 'Welcome, ' + ownerName;
       byId('metric-users').textContent = formatCount(payload.users);
@@ -79,6 +83,7 @@
       byId('connection-description').textContent = 'Authenticated as Telegram owner ID ' + payload.owner.id;
       setNotice('Live aggregate statistics loaded securely from Blue Bot.', 'success');
     } catch (error) {
+      if (requestId !== overviewRequest || activeView !== 'overview') return;
       byId('connection-title').textContent = error.status === 403 ? 'Owner access denied' : 'Connection unavailable';
       byId('connection-description').textContent = 'Telegram identity could not be authorized.';
       setNotice(error.status === 403 ? 'This Telegram account is not authorized as a bot owner.' : 'Unable to load the overview. Check your connection and retry.', 'error');
@@ -316,6 +321,12 @@
     }
   }
 
+  function activateView(view) {
+    activeView = view;
+    // Invalidate overview requests so a late response cannot overwrite another section's notice.
+    overviewRequest += 1;
+  }
+
   function invalidateUserDetailView() {
     // Invalidate outstanding detail requests whenever navigation leaves the detail view.
     userDetailRequest += 1;
@@ -330,6 +341,7 @@
   }
 
   function openUsers() {
+    activateView('users');
     invalidateUserDetailView();
     userList.hidden = false;
     byId('user-list-status').hidden = false;
@@ -346,6 +358,7 @@
   }
 
   function openMedia() {
+    activateView('media');
     invalidateUserDetailView();
     overviewView.hidden = true;
     usersView.hidden = true;
@@ -356,6 +369,7 @@
   }
 
   function openSettings() {
+    activateView('settings');
     invalidateUserDetailView();
     overviewView.hidden = true;
     usersView.hidden = true;
@@ -365,6 +379,7 @@
   }
 
   function showOverview() {
+    activateView('overview');
     invalidateUserDetailView();
     usersView.hidden = true;
     mediaView.hidden = true;
