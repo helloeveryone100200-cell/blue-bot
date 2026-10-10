@@ -190,6 +190,25 @@ class MiniAppRouteTests(unittest.TestCase):
         query = self.users.find.call_args.args[0]
         self.assertEqual(query["$or"][0]["username"]["$regex"], r"\.\*")
 
+    def test_user_directory_clamps_page_before_database_skip(self):
+        self.users.find.return_value.sort.return_value.skip.return_value.limit.return_value = []
+        handler = self.authed_request("/admin/api/users", {"page": 999999, "pageSize": 5})
+        self.assertEqual(handler.status, 200)
+        payload = json.loads(handler.response_body)
+        self.assertEqual(payload["page"], 3)
+        self.assertEqual(payload["pages"], 3)
+        self.users.find.return_value.sort.return_value.skip.assert_called_once_with(10)
+
+    def test_media_directory_clamps_page_before_database_skip(self):
+        self.videos.count_documents.return_value = 51
+        self.videos.find.return_value.sort.return_value.skip.return_value.limit.return_value = []
+        handler = self.authed_request("/admin/api/media", {"page": 999999, "pageSize": 20})
+        self.assertEqual(handler.status, 200)
+        payload = json.loads(handler.response_body)
+        self.assertEqual(payload["page"], 3)
+        self.assertEqual(payload["pages"], 3)
+        self.videos.find.return_value.sort.return_value.skip.assert_called_once_with(40)
+
     def test_user_directory_rejects_invalid_pagination(self):
         handler = self.authed_request("/admin/api/users", {"page": 0})
         self.assertEqual(handler.status, 400)
