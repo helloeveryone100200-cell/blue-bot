@@ -92,6 +92,15 @@ class MiniAppRouteTests(unittest.TestCase):
             else 0
         )
 
+    def authed_request(self, path, payload):
+        body = json.dumps({"initData": make_init_data(), **payload}).encode()
+        handler = FakeHandler(path, command="POST", headers={"Content-Length": str(len(body))}, body=body)
+        with patch.dict(os.environ, {"BOT_TOKEN": BOT_TOKEN, "OWNER_IDS": "1234"}, clear=False), patch(
+            "admin_dashboard.time.time", return_value=1800000000
+        ):
+            admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        return handler
+
     def test_mini_app_shell_is_served_without_browser_password(self):
         handler = FakeHandler("/admin/")
         self.assertTrue(admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings))
@@ -114,10 +123,7 @@ class MiniAppRouteTests(unittest.TestCase):
         self.users.count_documents.assert_not_called()
 
     def test_owner_receives_only_aggregate_metrics(self):
-        body = json.dumps({"initData": make_init_data()}).encode()
-        handler = FakeHandler("/admin/api/overview", command="POST", headers={"Content-Length": str(len(body))}, body=body)
-        with patch.dict(os.environ, {"BOT_TOKEN": BOT_TOKEN, "OWNER_IDS": "1234"}, clear=False), patch("admin_dashboard.time.time", return_value=1800000000):
-            admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        handler = self.authed_request("/admin/api/overview", {})
         self.assertEqual(handler.status, 200)
         payload = json.loads(handler.response_body)
         self.assertEqual(set(payload), {"owner", "users", "media", "videos", "photos", "requests_today", "status"})
@@ -135,19 +141,69 @@ class MiniAppRouteTests(unittest.TestCase):
         )
         self.assertIsNone(payload["requests_today"])
 
+    def test_owner_user_directory_returns_only_allowlisted_fields(self):
+        cursor = Mock()
+        cursor.sort.return_value = cursor
+        cursor.skip.return_value = cursor
+        cursor.limit.return_value = cursor
+        cursor.__iter__ = Mock(return_value=iter([{
+            "_id": 1234, "username": "blue_owner", "first_name": "Blue",
+            "shares": 7, "is_banned": False, "secret": "must-not-leak",
+        }]))
+        self.users.find.return_value = cursor
+        self.users.count_documents.return_value = 1
+
+        handler = self.authed_request("/admin/api/users", {"query": "Blue", "page": 1, "pageSize": 20})
+        self.assertEqual(handler.status, 200)
+        payload = json.loads(handler.response_body)
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(payload["page"], 1)
+        self.assertEqual(payload["pages"], 1)
+        self.assertEqual(payload["items"], [{
+            "id": "1234", "username": "blue_owner", "first_name": "Blue",
+            "shares": 7, "is_banned": False,
+        }])
+        self.assertNotIn("secret", handler.response_body.decode())
+        self.users.find.assert_called_once_with(
+            {"$or": [
+                {"username": {"$regex": "Blue", "$options": "i"}},
+                {"first_name": {"$regex": "Blue", "$options": "i"}},
+            ]},
+            {"_id": 1, "username": 1, "first_name": 1, "shares": 1, "is_banned": 1},
+        )
+        cursor.sort.assert_called_once_with("_id", -1)
+        cursor.skip.assert_called_once_with(0)
+        cursor.limit.assert_called_once_with(20)
+
+    def test_user_search_escapes_regex_and_matches_numeric_id_exactly(self):
+        self.users.find.return_value.sort.return_value.skip.return_value.limit.return_value = []
+        handler = self.authed_request("/admin/api/users", {"query": "1234", "page": 1, "pageSize": 500})
+        self.assertEqual(handler.status, 200)
+        query = self.users.find.call_args.args[0]
+        self.assertEqual(query["$or"][-1], {"_id": 1234})
+        self.assertEqual(query["$or"][0]["username"]["$regex"], "1234")
+        self.users.find.return_value.sort.return_value.skip.return_value.limit.assert_called_once_with(50)
+
+        self.users.find.reset_mock()
+        self.users.count_documents.return_value = 0
+        self.authed_request("/admin/api/users", {"query": ".*", "page": 1})
+        query = self.users.find.call_args.args[0]
+        self.assertEqual(query["$or"][0]["username"]["$regex"], r"\.\*")
+
+    def test_user_directory_rejects_invalid_pagination(self):
+        handler = self.authed_request("/admin/api/users", {"page": 0})
+        self.assertEqual(handler.status, 400)
+        self.users.find.assert_not_called()
+
+    def test_user_directory_database_failure_returns_service_unavailable(self):
+        self.users.find.side_effect = RuntimeError("database unavailable")
+        handler = self.authed_request("/admin/api/users", {})
+        self.assertEqual(handler.status, 503)
+        self.assertEqual(json.loads(handler.response_body), {"error": "users_unavailable"})
+
     def test_metrics_database_failure_returns_service_unavailable(self):
         self.users.count_documents.side_effect = RuntimeError("database unavailable")
-        body = json.dumps({"initData": make_init_data()}).encode()
-        handler = FakeHandler(
-            "/admin/api/overview",
-            command="POST",
-            headers={"Content-Length": str(len(body))},
-            body=body,
-        )
-        with patch.dict(os.environ, {"BOT_TOKEN": BOT_TOKEN, "OWNER_IDS": "1234"}, clear=False), patch(
-            "admin_dashboard.time.time", return_value=1800000000
-        ):
-            admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        handler = self.authed_request("/admin/api/overview", {})
         self.assertEqual(handler.status, 503)
         self.assertEqual(json.loads(handler.response_body), {"error": "metrics_unavailable"})
         self.videos.count_documents.assert_not_called()
