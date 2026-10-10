@@ -283,7 +283,7 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
                 },
                 "public_media_group_configured": bool(public_group and public_group.get("chat_id") is not None),
                 "private_media_group_configured": bool(private_group and private_group.get("chat_id") is not None),
-                "auto_broadcast_new_video": broadcast.get("enabled", True) if broadcast else True,
+                "auto_broadcast_new_video": bool(broadcast.get("enabled", True)) if broadcast else True,
                 "private_access_users": len(accepted_ids),
             })
             return True
