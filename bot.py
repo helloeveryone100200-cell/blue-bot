@@ -513,10 +513,22 @@ def _record_owner_action(owner, payload, outcome):
         print(f"Owner action audit write failed: {type(exc).__name__}")
 
 
+OWNER_MUTATING_ACTIONS = frozenset({
+    "set_auto_broadcast", "set_required_channel", "remove_required_channel",
+    "set_public_admin_group", "set_private_admin_group", "ban_user", "unban_user",
+    "grant_private_access", "revoke_private_access", "delete_media", "set_thumbnail",
+    "remove_thumbnail", "broadcast_start",
+})
+
+
 def handle_owner_action(owner, payload):
-    """Validate owner identity, execute an allowlisted action, and record the outcome."""
+    """Validate owner identity and audit only state-changing Owner Control Panel actions."""
     if not isinstance(owner, dict) or type(owner.get("id")) is not int or owner["id"] not in OWNER_IDS:
         raise ValueError("owner_access_denied")
+    if not isinstance(payload, dict):
+        raise ValueError("invalid_action")
+    if payload.get("action") not in OWNER_MUTATING_ACTIONS:
+        return _execute_owner_action(owner, payload)
     try:
         result = _execute_owner_action(owner, payload)
     except Exception:
