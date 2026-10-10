@@ -86,7 +86,11 @@ class MiniAppRouteTests(unittest.TestCase):
         self.videos = Mock()
         self.settings = Mock()
         self.users.count_documents.return_value = 12
-        self.videos.count_documents.side_effect = lambda query: 5 if query == {} else 2
+        self.videos.count_documents.side_effect = lambda query: (
+            3 if query == {"_id": {"$regex": "^[vz][0-9]+$"}}
+            else 2 if query == {"type": "photo_only"}
+            else 0
+        )
 
     def test_mini_app_shell_is_served_without_browser_password(self):
         handler = FakeHandler("/admin/")
@@ -122,6 +126,13 @@ class MiniAppRouteTests(unittest.TestCase):
         self.assertEqual(payload["media"], 5)
         self.assertEqual(payload["videos"], 3)
         self.assertEqual(payload["photos"], 2)
+        self.assertEqual(
+            self.videos.count_documents.call_args_list,
+            [
+                unittest.mock.call({"_id": {"$regex": "^[vz][0-9]+$"}}),
+                unittest.mock.call({"type": "photo_only"}),
+            ],
+        )
         self.assertIsNone(payload["requests_today"])
 
     def test_assets_are_public_but_do_not_expose_api_data(self):
