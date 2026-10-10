@@ -133,6 +133,27 @@ class AdminRouteAuthorizationTests(unittest.TestCase):
         self.assertIsNone(payload["requests_today"])
         self.assertEqual(payload["status"], "connected")
 
+    def test_logout_post_clears_session_cookie_and_redirects(self):
+        handler = FakeHandler("/admin/logout", command="POST")
+        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "pass123", "ADMIN_SESSION_SECRET": "secret123"}, clear=False):
+            handled = admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        self.assertTrue(handled)
+        self.assertEqual(handler.status, 303)
+        self.assertEqual(handler.response_headers["Location"], "/admin/login")
+        cookie = handler.response_headers["Set-Cookie"]
+        self.assertIn("Max-Age=0", cookie)
+        self.assertIn("HttpOnly", cookie)
+        self.assertIn("Secure", cookie)
+        self.assertIn("SameSite=Strict", cookie)
+
+    def test_logout_rejects_get_requests(self):
+        handler = FakeHandler("/admin/logout", command="GET")
+        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "pass123", "ADMIN_SESSION_SECRET": "secret123"}, clear=False):
+            handled = admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        self.assertTrue(handled)
+        self.assertEqual(handler.status, 405)
+        self.assertEqual(handler.response_headers["Allow"], "POST")
+
     def test_login_form_enforces_requested_password_length_in_browser(self):
         page = admin_dashboard._login_page().decode("utf-8")
         self.assertIn('minlength="6"', page)
