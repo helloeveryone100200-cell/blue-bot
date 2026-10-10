@@ -5,10 +5,16 @@
   const overviewView = byId('overview-view');
   const usersView = byId('user-management-view');
   const userList = byId('user-list');
+  const mediaView = byId('media-library-view');
+  const mediaList = byId('media-list');
   let usersPage = 1;
   let usersPages = 1;
-  let searchTimer = null;
+  let mediaPage = 1;
+  let mediaPages = 1;
+  let userSearchTimer = null;
+  let mediaSearchTimer = null;
   let usersRequest = 0;
+  let mediaRequest = 0;
 
   if (webApp && webApp.initData) document.body.classList.add('telegram-ready');
 
@@ -139,29 +145,115 @@
     }
   }
 
+  function renderMedia(items) {
+    mediaList.replaceChildren();
+    if (!Array.isArray(items) || items.length === 0) {
+      mediaList.append(makeElement('div', 'empty-users', 'No media matched this search.'));
+      return;
+    }
+    items.forEach(item => {
+      const card = makeElement('article', 'media-card');
+      const icon = makeElement('span', 'media-avatar', item.kind === 'photo' ? '▧' : '▷');
+      const details = makeElement('div', 'media-details');
+      const title = makeElement('strong', 'media-name', item.id);
+      const caption = makeElement('small', 'media-caption', item.caption || 'No caption');
+      const stats = makeElement('small', 'media-stats',
+        (item.kind === 'photo' ? item.photo_parts + ' photo(s)' : item.video_parts + ' video(s)') +
+        (item.photo_parts && item.kind === 'video' ? ' · ' + item.photo_parts + ' attached photo(s)' : '') +
+        (item.kind === 'video' ? ' · ' + formatCount(item.views) + ' views' : ''));
+      const meta = makeElement('div', 'media-meta');
+      const visibility = makeElement('span', item.visibility === 'private' ? 'media-state private' : 'media-state public', item.visibility);
+      const type = makeElement('span', 'media-type', item.kind);
+      details.append(title, caption, stats);
+      meta.append(visibility, type);
+      if (item.kind === 'video') {
+        meta.append(makeElement('small', 'media-rating', '👍 ' + formatCount(item.likes) + '  ·  👎 ' + formatCount(item.dislikes)));
+      }
+      card.append(icon, details, meta);
+      mediaList.append(card);
+    });
+  }
+
+  async function loadMedia() {
+    if (!ownerInitData()) {
+      byId('media-list-status').textContent = 'Open this screen inside the authorized Telegram Mini App.';
+      return;
+    }
+    const requestId = ++mediaRequest;
+    byId('media-list-status').textContent = 'Loading media metadata securely…';
+    byId('media-prev').disabled = true;
+    byId('media-next').disabled = true;
+    try {
+      const payload = await postOwnerApi('/admin/api/media', {
+        query: byId('media-search').value.trim(),
+        kind: byId('media-kind').value,
+        page: mediaPage,
+        pageSize: 20
+      });
+      if (requestId !== mediaRequest) return;
+      mediaPages = Math.max(1, Number(payload.pages) || 1);
+      mediaPage = Math.min(Math.max(1, Number(payload.page) || 1), mediaPages);
+      byId('media-total').textContent = formatCount(payload.total) + ' items';
+      byId('media-page-label').textContent = 'Page ' + mediaPage + ' of ' + mediaPages;
+      byId('media-prev').disabled = mediaPage <= 1;
+      byId('media-next').disabled = mediaPage >= mediaPages;
+      byId('media-list-status').textContent = formatCount(payload.total) + ' matching items · metadata only';
+      renderMedia(payload.items);
+    } catch (error) {
+      if (requestId !== mediaRequest) return;
+      mediaList.replaceChildren();
+      byId('media-list-status').textContent = error.status === 403
+        ? 'Owner access denied. Reopen the Mini App from your owner Telegram account.'
+        : 'Unable to load media. Check the connection and try again.';
+      setNotice('Media inventory could not be loaded.', 'error');
+    }
+  }
+
   function openUsers() {
     overviewView.hidden = true;
+    mediaView.hidden = true;
     usersView.hidden = false;
     usersPage = 1;
     loadUsers();
   }
 
+  function openMedia() {
+    overviewView.hidden = true;
+    usersView.hidden = true;
+    mediaView.hidden = false;
+    mediaPage = 1;
+    loadMedia();
+  }
+
   function showOverview() {
     usersView.hidden = true;
+    mediaView.hidden = true;
     overviewView.hidden = false;
   }
 
   byId('refresh-button').addEventListener('click', loadOverview);
   byId('back-to-overview').addEventListener('click', showOverview);
+  byId('back-from-media').addEventListener('click', showOverview);
   byId('user-search').addEventListener('input', () => {
-    if (searchTimer) clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => { usersPage = 1; loadUsers(); }, 250);
+    if (userSearchTimer) clearTimeout(userSearchTimer);
+    userSearchTimer = setTimeout(() => { usersPage = 1; loadUsers(); }, 250);
   });
+  byId('media-search').addEventListener('input', () => {
+    if (mediaSearchTimer) clearTimeout(mediaSearchTimer);
+    mediaSearchTimer = setTimeout(() => { mediaPage = 1; loadMedia(); }, 250);
+  });
+  byId('media-kind').addEventListener('change', () => { mediaPage = 1; loadMedia(); });
   byId('users-prev').addEventListener('click', () => {
     if (usersPage > 1) { usersPage -= 1; loadUsers(); }
   });
   byId('users-next').addEventListener('click', () => {
     if (usersPage < usersPages) { usersPage += 1; loadUsers(); }
+  });
+  byId('media-prev').addEventListener('click', () => {
+    if (mediaPage > 1) { mediaPage -= 1; loadMedia(); }
+  });
+  byId('media-next').addEventListener('click', () => {
+    if (mediaPage < mediaPages) { mediaPage += 1; loadMedia(); }
   });
   document.querySelectorAll('[data-feature]').forEach(button => {
     button.addEventListener('click', () => {
@@ -170,8 +262,12 @@
         setNotice('User directory opened with read-only access.', 'success');
         return;
       }
-      const labels = {media: 'Media library', settings: 'Bot settings'};
-      setNotice(labels[button.dataset.feature] + ' is not connected yet. User directory and overview are available in this phase.', 'info');
+      if (button.dataset.feature === 'media') {
+        openMedia();
+        setNotice('Media inventory opened with read-only metadata access.', 'success');
+        return;
+      }
+      setNotice('Bot settings are not connected yet. Overview, users, and media inventory are available in this phase.', 'info');
     });
   });
   if (webApp) {
