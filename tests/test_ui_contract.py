@@ -137,7 +137,7 @@ class WelcomeUiContractTests(unittest.TestCase):
             with self.subTest(function=name):
                 find_function(name)
         action_fn = find_function("handle_owner_action")
-        self.assertIn("OWNER_IDS", call_names(action_fn))
+        self.assertIn("OWNER_IDS", ast.get_source_segment(SOURCE, action_fn))
         self.assertIn("set_broadcast_new_video", call_names(action_fn))
         self.assertIn("accept_user", call_names(action_fn))
         self.assertIn("remove_accepted_user", call_names(action_fn))
