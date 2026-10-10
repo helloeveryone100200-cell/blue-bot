@@ -123,6 +123,29 @@ class MiniAppRouteTests(unittest.TestCase):
         self.assertEqual(handler.status, 405)
         self.users.count_documents.assert_not_called()
 
+    def test_no_user_or_media_mutation_routes_are_exposed(self):
+        for path in (
+            "/admin/api/delete-user", "/admin/api/update-user",
+            "/admin/api/delete-media", "/admin/api/broadcast",
+            "/admin/api/settings/update",
+        ):
+            with self.subTest(path=path):
+                handler = FakeHandler(path, command="POST")
+                admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+                self.assertEqual(handler.status, 404)
+        for collection in (self.users, self.videos, self.settings):
+            for method in ("insert_one", "update_one", "replace_one", "delete_one", "find_one_and_update"):
+                getattr(collection, method).assert_not_called()
+
+    def test_api_responses_include_no_store_and_security_headers(self):
+        handler = self.authed_request("/admin/api/overview", {})
+        self.assertEqual(handler.status, 200)
+        self.assertEqual(handler.response_headers["Cache-Control"], "no-store")
+        self.assertEqual(handler.response_headers["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(handler.response_headers["X-Frame-Options"], "SAMEORIGIN")
+        self.assertEqual(handler.response_headers["Referrer-Policy"], "no-referrer")
+        self.assertIn("default-src 'self'", handler.response_headers["Content-Security-Policy"])
+
     def test_api_rejects_invalid_owner_init_data(self):
         body = json.dumps({"initData": make_init_data(user_id=9999)}).encode()
         handler = FakeHandler("/admin/api/overview", command="POST", headers={"Content-Length": str(len(body))}, body=body)
