@@ -126,6 +126,27 @@ class MiniAppRouteTests(unittest.TestCase):
         self.assertEqual(handler.status, 403)
         self.users.count_documents.assert_not_called()
 
+    def test_every_admin_api_route_rejects_non_owner(self):
+        paths = (
+            "/admin/api/overview", "/admin/api/users", "/admin/api/user-detail",
+            "/admin/api/media", "/admin/api/settings",
+        )
+        body = json.dumps({"initData": make_init_data(user_id=9999)}).encode()
+        with patch.dict(os.environ, {"BOT_TOKEN": BOT_TOKEN, "OWNER_IDS": "1234"}, clear=False), patch(
+            "admin_dashboard.time.time", return_value=1800000000
+        ):
+            for path in paths:
+                with self.subTest(path=path):
+                    handler = FakeHandler(path, command="POST", headers={"Content-Length": str(len(body))}, body=body)
+                    admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+                    self.assertEqual(handler.status, 403)
+        self.users.count_documents.assert_not_called()
+        self.users.find.assert_not_called()
+        self.users.find_one.assert_not_called()
+        self.videos.count_documents.assert_not_called()
+        self.videos.find.assert_not_called()
+        self.settings.find_one.assert_not_called()
+
     def test_owner_receives_only_aggregate_metrics(self):
         handler = self.authed_request("/admin/api/overview", {})
         self.assertEqual(handler.status, 200)
