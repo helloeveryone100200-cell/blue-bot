@@ -130,6 +130,16 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
     password, secret = config
     method = "HEAD" if head_only else handler.command
 
+    if path == "/admin/logout":
+        if method != "POST":
+            _send(handler, 405, b"Method not allowed.", headers={"Allow": "POST"})
+            return True
+        _send(handler, 303, b"", headers={
+            "Location": "/admin/login",
+            "Set-Cookie": f"{COOKIE_NAME}=; Path=/admin; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Strict"
+        })
+        return True
+
     if path == "/admin/login":
         if method == "GET":
             _send(handler, 200, _login_page(), "text/html; charset=utf-8")
