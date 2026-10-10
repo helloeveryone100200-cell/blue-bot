@@ -215,6 +215,16 @@ class MiniAppRouteTests(unittest.TestCase):
         query = self.users.find.call_args.args[0]
         self.assertEqual(query["$or"][0]["username"]["$regex"], r"\.\*")
 
+    def test_oversized_numeric_user_search_does_not_build_out_of_range_bson_id(self):
+        self.users.find.return_value.sort.return_value.skip.return_value.limit.return_value = []
+        query_text = "9" * 80
+        handler = self.authed_request("/admin/api/users", {"query": query_text, "page": 1})
+        self.assertEqual(handler.status, 200)
+        filters = self.users.find.call_args.args[0]
+        self.assertEqual(set(filters), {"$or"})
+        self.assertEqual(len(filters["$or"]), 2)
+        self.assertNotIn("_id", str(filters))
+
     def test_user_directory_clamps_page_before_database_skip(self):
         self.users.find.return_value.sort.return_value.skip.return_value.limit.return_value = []
         handler = self.authed_request("/admin/api/users", {"page": 999999, "pageSize": 5})
@@ -336,6 +346,26 @@ class MiniAppRouteTests(unittest.TestCase):
         self.assertEqual(filters["$and"][1]["$or"][0]["_id"]["$regex"], r"\.\*")
         self.videos.find.return_value.sort.return_value.skip.return_value.limit.assert_called_once_with(50)
 
+    def test_media_metadata_uses_strict_private_flag_and_nonnegative_counters(self):
+        cursor = MagicMock()
+        cursor.sort.return_value = cursor
+        cursor.skip.return_value = cursor
+        cursor.limit.return_value = cursor
+        cursor.__iter__.return_value = iter([{
+            "_id": "v9", "type": "single", "private": "false",
+            "likes": -2, "dislikes": True, "views": -10,
+        }])
+        self.videos.find.return_value = cursor
+        self.videos.count_documents.return_value = 1
+
+        handler = self.authed_request("/admin/api/media", {"kind": "videos"})
+        self.assertEqual(handler.status, 200)
+        item = json.loads(handler.response_body)["items"][0]
+        self.assertEqual(item["visibility"], "public")
+        self.assertEqual(item["likes"], 0)
+        self.assertEqual(item["dislikes"], 0)
+        self.assertEqual(item["views"], 0)
+
     def test_media_directory_rejects_invalid_kind(self):
         handler = self.authed_request("/admin/api/media", {"kind": "delete"})
         self.assertEqual(handler.status, 400)
@@ -378,6 +408,13 @@ class MiniAppRouteTests(unittest.TestCase):
         self.assertTrue(payload["auto_broadcast_new_video"])
         self.assertFalse(payload["channel_gate"]["enabled"])
         self.assertEqual(payload["private_access_users"], 0)
+
+    def test_settings_endpoint_treats_malformed_broadcast_flag_as_default_enabled(self):
+        documents = {"broadcast_new_video": {"_id": "broadcast_new_video", "enabled": "false"}}
+        self.settings.find_one.side_effect = lambda query, projection=None: documents.get(query["_id"])
+        handler = self.authed_request("/admin/api/settings", {})
+        self.assertEqual(handler.status, 200)
+        self.assertTrue(json.loads(handler.response_body)["auto_broadcast_new_video"])
 
     def test_settings_endpoint_database_failure_returns_service_unavailable(self):
         self.settings.find_one.side_effect = RuntimeError("database unavailable")
