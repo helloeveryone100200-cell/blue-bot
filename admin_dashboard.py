@@ -327,7 +327,8 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
             channel_enabled = bool(channel and channel.get("chat_id") and channel.get("link"))
             # The stored setting is Boolean. Treat malformed values as the default
             # enabled state instead of truthiness-coercing strings such as "false".
-            broadcast_enabled = True if broadcast is None else broadcast.get("enabled", True) is True
+            broadcast_value = broadcast.get("enabled", True) if broadcast else True
+            broadcast_enabled = broadcast_value if isinstance(broadcast_value, bool) else True
             _json(handler, 200, {
                 "channel_gate": {
                     "enabled": channel_enabled,
