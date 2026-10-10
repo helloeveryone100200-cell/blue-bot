@@ -37,9 +37,9 @@ The `send_welcome` message copy and presentation were refreshed for clearer hier
 
 ## Verification status
 - Repository source and key UI handlers inspected before editing.
-- Reviewed the branch diff against `main`: changes are limited to `bot.py` welcome-message presentation, this baseline document, and `.github/workflows/validate.yml`.
-- Compiled the modified `send_welcome` function snippet successfully; full-file syntax check is configured in GitHub Actions but no workflow run result has been observed yet.
-- No automated unit/integration test suite currently exists in the repository.
+- GitHub Actions run [`38055860013`](https://github.com/helloeveryone100200-cell/blue-bot/actions/runs/38055860013) passed: full-file `python -m py_compile bot.py` and five static regression tests.
+- Static regression tests parse the source without importing `bot.py`, avoiding Telegram/MongoDB initialization and secrets.
 - Telegram integration/runtime tests: pending; no bot token or live test environment used.
 - Render deployment/health verification: pending.
+- Dashboard frontend work is the next isolated phase; no dashboard route or API is exposed by this baseline change.
 - This branch is a proposal; `main` has not been changed by this branch operation.
