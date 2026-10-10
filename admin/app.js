@@ -2,6 +2,7 @@
   const webApp = window.Telegram && window.Telegram.WebApp;
   const byId = id => document.getElementById(id);
   const notice = byId('notice');
+  if (webApp && webApp.initData) document.body.classList.add('telegram-ready');
 
   function setNotice(message, state) {
     notice.textContent = message;
