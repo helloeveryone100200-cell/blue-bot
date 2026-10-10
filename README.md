@@ -33,7 +33,7 @@ A Telegram bot with a Telegram-only owner Mini App, video database, referral sys
 
 
 
-The owner Mini App opens from the Telegram menu button and validates Telegram Web App `initData` server-side against `BOT_TOKEN` and `OWNER_IDS`. The API returns aggregate read-only counts only. Opening `/admin/` in an ordinary browser does not grant access to the overview API. No `ADMIN_DASHBOARD_PASSWORD` or `ADMIN_SESSION_SECRET` is required.
+The owner Mini App opens from the Telegram menu button and, for owner accounts, an **Admin Panel** button in the `/start` welcome message. Regular users do not receive that Web App button. The Mini App validates Telegram Web App `initData` server-side against `BOT_TOKEN` and `OWNER_IDS`. The API returns aggregate read-only counts only. Opening `/admin/` in an ordinary browser does not grant access to the overview API. No `ADMIN_DASHBOARD_PASSWORD` or `ADMIN_SESSION_SECRET` is required.
 
 ## Push to GitHub (secure method)
 
