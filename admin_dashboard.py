@@ -42,7 +42,10 @@ def _verify_session_token(token, secret, now=None):
     if len(parts) != 3:
         return False
     timestamp_text, nonce, signature = parts
-    if not timestamp_text.isdigit() or not nonce or len(signature) != 64:
+    if (not timestamp_text.isascii() or not timestamp_text.isdigit()
+            or not nonce.isascii() or not nonce
+            or len(signature) != 64
+            or any(char not in "0123456789abcdef" for char in signature)):
         return False
     issued_at = int(timestamp_text)
     current_time = int(time.time() if now is None else now)
