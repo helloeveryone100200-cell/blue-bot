@@ -1,8 +1,4 @@
-"""Static regression guards for presentation-only changes.
-
-These tests intentionally parse bot.py instead of importing it, because importing
-the bot initializes environment-dependent Telegram and MongoDB clients.
-"""
+"""Static regression guards for the Mini App and presentation-only changes."""
 import ast
 import unittest
 from pathlib import Path
@@ -48,28 +44,18 @@ class WelcomeUiContractTests(unittest.TestCase):
         fn = find_function("send_welcome")
         send_calls = [
             node for node in ast.walk(fn)
-            if isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Attribute)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
             and node.func.attr == "send_message"
         ]
         self.assertEqual(len(send_calls), 1)
         parse_modes = {
-            keyword.value.value
-            for call in send_calls
-            for keyword in call.keywords
-            if keyword.arg == "parse_mode"
-            and isinstance(keyword.value, ast.Constant)
+            keyword.value.value for call in send_calls for keyword in call.keywords
+            if keyword.arg == "parse_mode" and isinstance(keyword.value, ast.Constant)
         }
         self.assertIn("HTML", parse_modes)
 
     def test_critical_existing_flows_remain_declared(self):
-        required_functions = (
-            "is_user_channel_joined",
-            "resume_pending_channel_action",
-            "owner_panel_keyboard",
-            "welcome_markup",
-        )
-        for name in required_functions:
+        for name in ("is_user_channel_joined", "resume_pending_channel_action", "owner_panel_keyboard", "welcome_markup"):
             with self.subTest(function=name):
                 find_function(name)
 
@@ -84,53 +70,41 @@ class WelcomeUiContractTests(unittest.TestCase):
         self.assertIn("chat_id=owner_id", source)
 
     def test_existing_callback_identifiers_remain_in_source(self):
-        for callback in (
-            "view_profile",
-            "channel_not_configured",
-            "gender_male",
-            "gender_female",
-            "noop",
-        ):
+        for callback in ("view_profile", "channel_not_configured", "gender_male", "gender_female", "noop"):
             with self.subTest(callback=callback):
                 self.assertIn(callback, SOURCE)
 
 
+class MiniAppUiContractTests(unittest.TestCase):
+    def test_mini_app_loads_telegram_sdk_and_no_browser_login(self):
+        html = (ROOT / "admin" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("telegram.org/js/telegram-web-app.js", html)
+        self.assertIn("TELEGRAM MINI APP", html)
+        self.assertNotIn("Sign in securely", html)
+        self.assertNotIn("/admin/logout", html)
 
-class DashboardPrototypeTests(unittest.TestCase):
-    def setUp(self):
-        self.html = (ROOT / "admin" / "index.html").read_text(encoding="utf-8")
-        self.css = (ROOT / "admin" / "styles.css").read_text(encoding="utf-8")
-        self.js = (ROOT / "admin" / "app.js").read_text(encoding="utf-8")
+    def test_mini_app_authenticates_api_with_telegram_init_data(self):
+        js = (ROOT / "admin" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("webApp.initData", js)
+        self.assertIn("method: 'POST'", js)
+        self.assertIn("credentials: 'omit'", js)
+        self.assertNotIn("bluebot_admin_session", js)
 
-    def test_dashboard_is_explicitly_marked_as_preview(self):
-        self.assertIn("Limited live integration", self.html)
-        self.assertIn("Charts remain illustrative", self.html)
-        self.assertIn('href="/admin/styles.css"', self.html)
-        self.assertIn('src="/admin/app.js"', self.html)
+    def test_no_fabricated_metrics_or_activity_are_rendered(self):
+        html = (ROOT / "admin" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="metric-users">—', html)
+        self.assertIn('id="metric-media">—', html)
+        self.assertNotIn("12,846", html)
+        self.assertNotIn("Illustrative analytics", html)
+        self.assertNotIn("user_10482", html)
 
-    def test_live_metrics_never_start_with_fabricated_totals(self):
-        self.assertNotIn("12,846", self.html)
-        self.assertNotIn("3,284", self.html)
-        self.assertNotIn("8.2%", self.html)
-        self.assertNotIn("4.6%", self.html)
-        self.assertIn("Waiting for live API", self.html)
-        self.assertIn('action="/admin/logout"', self.html)
-        self.assertIn("Sign out", self.html)
-        self.assertIn("Checking…", self.html)
+    def test_mini_app_uses_premium_dark_mobile_tokens(self):
+        css = (ROOT / "admin" / "styles.css").read_text(encoding="utf-8")
+        self.assertIn("--bg:#080d1a", css)
+        self.assertIn("--indigo:#7775ff", css)
+        self.assertIn("env(safe-area-inset-bottom)", css)
+        self.assertIn("@media(min-width:520px)", css)
 
-    def test_dashboard_uses_premium_dark_design_tokens(self):
-        self.assertIn("--bg:#080d1a", self.css)
-        self.assertIn("--indigo:#7775ff", self.css)
-        self.assertIn("@media(max-width:600px)", self.css)
-        self.assertIn("prefers-reduced-motion", self.css)
-
-    def test_dashboard_uses_only_authenticated_same_origin_read_only_api(self):
-        self.assertNotIn("XMLHttpRequest", self.js)
-        self.assertNotIn("WebSocket", self.js)
-        self.assertIn("fetch('/admin/api/overview'", self.js)
-        self.assertIn("credentials: 'same-origin'", self.js)
-        self.assertIn("cache: 'no-store'", self.js)
-        self.assertIn("requests_today == null", self.js)
 
 if __name__ == "__main__":
     unittest.main()
