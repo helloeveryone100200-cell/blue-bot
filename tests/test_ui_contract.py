@@ -69,6 +69,21 @@ class WelcomeUiContractTests(unittest.TestCase):
         self.assertIn("startswith(\"https://\")", source)
         self.assertIn("chat_id=owner_id", source)
 
+    def test_start_welcome_exposes_mini_app_only_to_owners(self):
+        fn = find_function("welcome_markup")
+        source = ast.get_source_segment(SOURCE, fn)
+        self.assertIn("user_id in OWNER_IDS", source)
+        self.assertIn("resolve_admin_webapp_url", source)
+        self.assertIn("WebAppInfo", source)
+        self.assertIn("Admin Panel", source)
+
+    def test_mini_app_url_resolver_requires_https_and_normalizes_webhook_path(self):
+        fn = find_function("resolve_admin_webapp_url")
+        source = ast.get_source_segment(SOURCE, fn)
+        self.assertIn('startswith("https://")', source)
+        self.assertIn('path.endswith("/webhook")', source)
+        self.assertIn('"/admin/"', source)
+
     def test_existing_callback_identifiers_remain_in_source(self):
         for callback in ("view_profile", "channel_not_configured", "gender_male", "gender_female", "noop"):
             with self.subTest(callback=callback):
