@@ -28,6 +28,7 @@ A Telegram bot with video database, referral system, and owner control panel.
 | `ADMIN_GROUP_ID` | Your admin group ID (e.g. `-1001234567890`) |
 | `BOT_USERNAME` | Your bot's username without @ (e.g. `MyBlueBot`) |
 | `PORT` | `8080` |
+| `ADMIN_WEBAPP_URL` | Optional HTTPS URL for the owner-only Telegram Mini App menu button; defaults to `https://<your-render-service>/admin/` when `RENDER_EXTERNAL_URL` is available. |
 
 ## Push to GitHub (secure method)
 
