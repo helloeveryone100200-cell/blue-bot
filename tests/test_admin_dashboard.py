@@ -246,9 +246,16 @@ class MiniAppRouteTests(unittest.TestCase):
         self.videos.find.return_value.sort.return_value.skip.assert_called_once_with(40)
 
     def test_user_directory_rejects_invalid_pagination(self):
-        handler = self.authed_request("/admin/api/users", {"page": 0})
-        self.assertEqual(handler.status, 400)
+        for pagination in ({"page": 0}, {"page": True}, {"pageSize": 20.5}, {"page": "2"}):
+            with self.subTest(pagination=pagination):
+                handler = self.authed_request("/admin/api/users", pagination)
+                self.assertEqual(handler.status, 400)
         self.users.find.assert_not_called()
+
+    def test_media_directory_rejects_non_integer_pagination(self):
+        handler = self.authed_request("/admin/api/media", {"pageSize": False})
+        self.assertEqual(handler.status, 400)
+        self.videos.find.assert_not_called()
 
     def test_user_directory_database_failure_returns_service_unavailable(self):
         self.users.find.side_effect = RuntimeError("database unavailable")
