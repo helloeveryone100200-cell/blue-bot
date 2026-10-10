@@ -275,7 +275,7 @@ def _start_owner_broadcast(owner_id, target, message_text):
     return {"jobId": job_id, "total": job["total"], "status": "running"}
 
 
-def handle_owner_action(owner, payload):
+def _execute_owner_action(owner, payload):
     """Execute an allowlisted Owner Control Panel action after Mini App authentication."""
     if not isinstance(owner, dict) or type(owner.get("id")) is not int or owner["id"] not in OWNER_IDS:
         raise ValueError("owner_access_denied")
@@ -484,6 +484,47 @@ def handle_owner_action(owner, payload):
         }
 
     raise ValueError("unsupported_action")
+
+
+def _record_owner_action(owner, payload, outcome):
+    """Keep a bounded audit trail without storing broadcast message contents or secrets."""
+    try:
+        action = payload.get("action", "unknown")
+        target = (
+            payload.get("userId") or payload.get("mediaId") or payload.get("groupId")
+            or payload.get("channelLink") or payload.get("target")
+        )
+        if target is None and "enabled" in payload:
+            target = "enabled" if payload.get("enabled") is True else "disabled"
+        event = {
+            "owner_id": owner["id"],
+            "action": str(action)[:64],
+            "target": str(target)[:160] if target is not None else "",
+            "outcome": outcome,
+            "timestamp": int(time.time()),
+        }
+        settings.update_one(
+            {"_id": "owner_action_audit"},
+            {"$push": {"events": {"$each": [event], "$slice": -500}}},
+            upsert=True,
+        )
+    except Exception as exc:
+        # A logging failure must not turn a completed mutation into a false client error.
+        print(f"Owner action audit write failed: {type(exc).__name__}")
+
+
+def handle_owner_action(owner, payload):
+    """Validate owner identity, execute an allowlisted action, and record the outcome."""
+    if not isinstance(owner, dict) or type(owner.get("id")) is not int or owner["id"] not in OWNER_IDS:
+        raise ValueError("owner_access_denied")
+    try:
+        result = _execute_owner_action(owner, payload)
+    except Exception:
+        _record_owner_action(owner, payload, "failed")
+        raise
+    _record_owner_action(owner, payload, "success")
+    return result
+
 
 # ─── HELPER FUNCTIONS ─────────────────────────────────────────────────────────
 
