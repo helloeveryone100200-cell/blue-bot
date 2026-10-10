@@ -1,23 +1,38 @@
-"""Security contract tests for the read-only admin dashboard."""
+"""Security contract tests for the Telegram Mini App API."""
+import hashlib
+import hmac
 import io
 import json
 import os
 import unittest
+from urllib.parse import urlencode
 from unittest.mock import Mock, patch
 
 import admin_dashboard
 
+BOT_TOKEN = "123456:TEST_TOKEN"
 
+
+def make_init_data(user_id=1234, token=BOT_TOKEN, now=1800000000):
+    values = {
+        "auth_date": str(now),
+        "query_id": "AAE-test-query",
+        "user": json.dumps({"id": user_id, "first_name": "Owner"}, separators=(",", ":")),
+    }
+    check_string = "\n".join(f"{key}={value}" for key, value in sorted(values.items()))
+    secret_key = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
+    values["hash"] = hmac.new(secret_key, check_string.encode(), hashlib.sha256).hexdigest()
+    return urlencode(values)
 
 
 class FakeHandler:
-    def __init__(self, path="/admin", command="GET", headers=None, body=b"", client_ip="127.0.0.1"):
+    def __init__(self, path="/admin", command="GET", headers=None, body=b""):
         self.path = path
         self.command = command
         self.headers = headers or {}
         self.rfile = io.BytesIO(body)
         self.wfile = io.BytesIO()
-        self.client_address = (client_ip, 12345)
+        self.client_address = ("127.0.0.1", 12345)
         self.status = None
         self.response_headers = {}
 
@@ -35,59 +50,37 @@ class FakeHandler:
         return self.wfile.getvalue()
 
 
-class SessionTokenTests(unittest.TestCase):
-    def setUp(self):
-        self.secret = b"x" * 40
+class TelegramInitDataTests(unittest.TestCase):
+    def test_valid_owner_init_data_is_accepted(self):
+        user = admin_dashboard.validate_telegram_init_data(make_init_data(), BOT_TOKEN, {1234}, now=1800000000)
+        self.assertEqual(user["id"], 1234)
 
-    def test_valid_session_token(self):
-        token = admin_dashboard._make_session_token(self.secret, timestamp=1000)
-        self.assertTrue(admin_dashboard._verify_session_token(token, self.secret, now=1000))
+    def test_tampered_init_data_is_rejected(self):
+        data = make_init_data().replace("Owner", "Intruder")
+        self.assertIsNone(admin_dashboard.validate_telegram_init_data(data, BOT_TOKEN, {1234}, now=1800000000))
 
-    def test_sessions_created_at_same_time_are_unique(self):
-        first = admin_dashboard._make_session_token(self.secret, timestamp=1000)
-        second = admin_dashboard._make_session_token(self.secret, timestamp=1000)
-        self.assertNotEqual(first, second)
-        self.assertTrue(admin_dashboard._verify_session_token(first, self.secret, now=1000))
-        self.assertTrue(admin_dashboard._verify_session_token(second, self.secret, now=1000))
+    def test_non_owner_is_rejected(self):
+        data = make_init_data(user_id=9999)
+        self.assertIsNone(admin_dashboard.validate_telegram_init_data(data, BOT_TOKEN, {1234}, now=1800000000))
 
-    def test_tampered_session_token_is_rejected(self):
-        token = admin_dashboard._make_session_token(self.secret, timestamp=1000)
-        replacement = "0" if token[-1] != "0" else "1"
-        self.assertFalse(admin_dashboard._verify_session_token(token[:-1] + replacement, self.secret, now=1000))
+    def test_expired_init_data_is_rejected(self):
+        data = make_init_data()
+        now = 1800000000 + admin_dashboard.INIT_DATA_MAX_AGE_SECONDS + 1
+        self.assertIsNone(admin_dashboard.validate_telegram_init_data(data, BOT_TOKEN, {1234}, now=now))
 
-    def test_expired_session_token_is_rejected(self):
-        token = admin_dashboard._make_session_token(self.secret, timestamp=1000)
-        self.assertFalse(admin_dashboard._verify_session_token(token, self.secret, now=1000 + admin_dashboard.SESSION_TTL_SECONDS + 1))
+    def test_future_init_data_is_rejected(self):
+        data = make_init_data(now=1800000100)
+        self.assertIsNone(admin_dashboard.validate_telegram_init_data(data, BOT_TOKEN, {1234}, now=1800000000))
 
-    def test_malformed_non_ascii_token_is_rejected(self):
-        self.assertFalse(admin_dashboard._verify_session_token("١.bad." + "f" * 64, self.secret, now=1000))
+    def test_duplicate_parameters_are_rejected(self):
+        data = make_init_data() + "&auth_date=1800000000"
+        self.assertIsNone(admin_dashboard.validate_telegram_init_data(data, BOT_TOKEN, {1234}, now=1800000000))
 
-    def test_future_session_token_is_rejected(self):
-        token = admin_dashboard._make_session_token(self.secret, timestamp=2000)
-        self.assertFalse(admin_dashboard._verify_session_token(token, self.secret, now=1000))
-
-    def test_credentials_below_minimum_disable_dashboard(self):
-        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "abcde", "ADMIN_SESSION_SECRET": "12345"}, clear=False):
-            self.assertIsNone(admin_dashboard._configuration())
-
-    def test_credentials_above_maximum_disable_dashboard(self):
-        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "p" * 17, "ADMIN_SESSION_SECRET": "s" * 21}, clear=False):
-            self.assertIsNone(admin_dashboard._configuration())
-
-    def test_requested_credential_lengths_enable_dashboard(self):
-        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "pass123", "ADMIN_SESSION_SECRET": "abc123"}, clear=False):
-            config = admin_dashboard._configuration()
-            self.assertIsNotNone(config)
-            self.assertEqual(config[0], "pass123")
-
-    def test_maximum_credential_lengths_enable_dashboard(self):
-        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "p" * 16, "ADMIN_SESSION_SECRET": "s" * 20}, clear=False):
-            config = admin_dashboard._configuration()
-            self.assertIsNotNone(config)
-            self.assertEqual(config[0], "p" * 16)
+    def test_missing_bot_token_is_rejected(self):
+        self.assertIsNone(admin_dashboard.validate_telegram_init_data(make_init_data(), "", {1234}, now=1800000000))
 
 
-class AdminRouteAuthorizationTests(unittest.TestCase):
+class MiniAppRouteTests(unittest.TestCase):
     def setUp(self):
         self.users = Mock()
         self.videos = Mock()
@@ -95,107 +88,48 @@ class AdminRouteAuthorizationTests(unittest.TestCase):
         self.users.count_documents.return_value = 12
         self.videos.count_documents.side_effect = lambda query: 5 if query == {} else 2
 
-    def test_dashboard_fails_closed_without_credentials(self):
-        handler = FakeHandler("/admin")
-        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "", "ADMIN_SESSION_SECRET": ""}, clear=False):
-            handled = admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
-        self.assertTrue(handled)
-        self.assertEqual(handler.status, 503)
+    def test_mini_app_shell_is_served_without_browser_password(self):
+        handler = FakeHandler("/admin/")
+        self.assertTrue(admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings))
+        self.assertEqual(handler.status, 200)
+        self.assertIn(b"telegram-web-app.js", handler.response_body)
+        self.assertNotIn(b"Sign in securely", handler.response_body)
+
+    def test_api_rejects_get_requests(self):
+        handler = FakeHandler("/admin/api/overview", command="GET")
+        admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        self.assertEqual(handler.status, 405)
         self.users.count_documents.assert_not_called()
 
-    def test_anonymous_overview_request_is_denied(self):
-        handler = FakeHandler("/admin/api/overview")
-        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "pass123", "ADMIN_SESSION_SECRET": "secret123"}, clear=False):
-            handled = admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
-        self.assertTrue(handled)
-        self.assertEqual(handler.status, 401)
-        self.assertEqual(json.loads(handler.response_body), {"error": "authentication_required"})
+    def test_api_rejects_invalid_owner_init_data(self):
+        body = json.dumps({"initData": make_init_data(user_id=9999)}).encode()
+        handler = FakeHandler("/admin/api/overview", command="POST", headers={"Content-Length": str(len(body))}, body=body)
+        with patch.dict(os.environ, {"BOT_TOKEN": BOT_TOKEN, "OWNER_IDS": "1234"}, clear=False), patch("admin_dashboard.time.time", return_value=1800000000):
+            admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        self.assertEqual(handler.status, 403)
         self.users.count_documents.assert_not_called()
-        self.videos.count_documents.assert_not_called()
 
-    def test_authenticated_overview_returns_only_aggregate_allowlisted_fields(self):
-        secret = "secret123"
-        token = admin_dashboard._make_session_token(secret.encode("utf-8"))
-        handler = FakeHandler(
-            "/admin/api/overview",
-            headers={"Cookie": f"{admin_dashboard.COOKIE_NAME}={token}"},
-        )
-        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "pass123", "ADMIN_SESSION_SECRET": secret}, clear=False):
-            handled = admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
-        self.assertTrue(handled)
+    def test_owner_receives_only_aggregate_metrics(self):
+        body = json.dumps({"initData": make_init_data()}).encode()
+        handler = FakeHandler("/admin/api/overview", command="POST", headers={"Content-Length": str(len(body))}, body=body)
+        with patch.dict(os.environ, {"BOT_TOKEN": BOT_TOKEN, "OWNER_IDS": "1234"}, clear=False), patch("admin_dashboard.time.time", return_value=1800000000):
+            admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
         self.assertEqual(handler.status, 200)
         payload = json.loads(handler.response_body)
-        self.assertEqual(set(payload), {"users", "media", "videos", "photos", "requests_today", "status"})
+        self.assertEqual(set(payload), {"owner", "users", "media", "videos", "photos", "requests_today", "status"})
+        self.assertEqual(payload["owner"]["id"], 1234)
         self.assertEqual(payload["users"], 12)
         self.assertEqual(payload["media"], 5)
         self.assertEqual(payload["videos"], 3)
         self.assertEqual(payload["photos"], 2)
         self.assertIsNone(payload["requests_today"])
-        self.assertEqual(payload["status"], "connected")
 
-    def test_valid_login_issues_secure_signed_session_cookie(self):
-        secret = "secret123"
-        body = b"password=pass123"
-        handler = FakeHandler(
-            "/admin/login", command="POST",
-            headers={"Content-Length": str(len(body)), "Content-Type": "application/x-www-form-urlencoded"},
-            body=body,
-        )
-        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "pass123", "ADMIN_SESSION_SECRET": secret}, clear=False):
-            handled = admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
-        self.assertTrue(handled)
-        self.assertEqual(handler.status, 303)
-        self.assertEqual(handler.response_headers["Location"], "/admin")
-        cookie = handler.response_headers["Set-Cookie"]
-        self.assertIn("HttpOnly", cookie)
-        self.assertIn("Secure", cookie)
-        self.assertIn("SameSite=Strict", cookie)
-        token = cookie.split("=", 1)[1].split(";", 1)[0]
-        self.assertTrue(admin_dashboard._verify_session_token(token, secret.encode("utf-8")))
-
-    def test_login_throttles_after_five_failed_attempts(self):
-        ip = "192.0.2.55"
-        key = ip
-        admin_dashboard._LOGIN_FAILURES.pop(key, None)
-        body = b"password=wrong"
-        headers = {"Content-Length": str(len(body)), "Content-Type": "application/x-www-form-urlencoded"}
-        try:
-            with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "pass123", "ADMIN_SESSION_SECRET": "secret123"}, clear=False):
-                for _ in range(5):
-                    handler = FakeHandler("/admin/login", command="POST", headers=headers, body=body, client_ip=ip)
-                    admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
-                    self.assertEqual(handler.status, 401)
-                blocked = FakeHandler("/admin/login", command="POST", headers=headers, body=body, client_ip=ip)
-                admin_dashboard.handle_admin_request(blocked, self.users, self.videos, self.settings)
-                self.assertEqual(blocked.status, 429)
-        finally:
-            admin_dashboard._LOGIN_FAILURES.pop(key, None)
-
-    def test_logout_post_clears_session_cookie_and_redirects(self):
-        handler = FakeHandler("/admin/logout", command="POST")
-        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "pass123", "ADMIN_SESSION_SECRET": "secret123"}, clear=False):
-            handled = admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
-        self.assertTrue(handled)
-        self.assertEqual(handler.status, 303)
-        self.assertEqual(handler.response_headers["Location"], "/admin/login")
-        cookie = handler.response_headers["Set-Cookie"]
-        self.assertIn("Max-Age=0", cookie)
-        self.assertIn("HttpOnly", cookie)
-        self.assertIn("Secure", cookie)
-        self.assertIn("SameSite=Strict", cookie)
-
-    def test_logout_rejects_get_requests(self):
-        handler = FakeHandler("/admin/logout", command="GET")
-        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "pass123", "ADMIN_SESSION_SECRET": "secret123"}, clear=False):
-            handled = admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
-        self.assertTrue(handled)
-        self.assertEqual(handler.status, 405)
-        self.assertEqual(handler.response_headers["Allow"], "POST")
-
-    def test_login_form_enforces_requested_password_length_in_browser(self):
-        page = admin_dashboard._login_page().decode("utf-8")
-        self.assertIn('minlength="6"', page)
-        self.assertIn('maxlength="16"', page)
+    def test_assets_are_public_but_do_not_expose_api_data(self):
+        handler = FakeHandler("/admin/app.js")
+        admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        self.assertEqual(handler.status, 200)
+        self.assertIn(b"Telegram.WebApp", handler.response_body)
+        self.users.count_documents.assert_not_called()
 
 
 if __name__ == "__main__":
