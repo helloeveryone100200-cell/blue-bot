@@ -77,6 +77,13 @@
       </div>
       <p class="read-only-note">Metadata only. Telegram file IDs are never returned to the browser and no media can be deleted from this screen.</p>
     </section>
+    <section id="bot-settings-view" class="bot-settings-view" hidden>
+      <button id="back-from-settings" class="back-button">‹ <span>Back to overview</span></button>
+      <div class="section-heading user-heading"><div><p class="eyebrow">CONFIGURATION STATUS</p><h2>Bot settings</h2></div><span class="count-pill">READ ONLY</span></div>
+      <p id="settings-list-status" class="list-status" role="status" aria-live="polite">Loading current configuration…</p>
+      <div id="settings-list" class="settings-list" aria-live="polite"></div>
+      <p class="read-only-note">This view only inspects the current configuration. Changing settings is intentionally disabled until guarded write actions and audit logging are implemented.</p>
+    </section>
     <p class="notice" id="notice" role="status" aria-live="polite">Opening inside Telegram is required to verify the owner identity.</p>
     <footer>BLUE BOT <span>·</span> SECURE OWNER MINI APP</footer>
   </main>
