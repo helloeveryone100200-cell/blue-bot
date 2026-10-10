@@ -157,7 +157,7 @@ class MiniAppRouteTests(unittest.TestCase):
     def test_every_admin_api_route_rejects_non_owner(self):
         paths = (
             "/admin/api/overview", "/admin/api/users", "/admin/api/user-detail",
-            "/admin/api/media", "/admin/api/settings",
+            "/admin/api/media", "/admin/api/settings", "/admin/api/action",
         )
         body = json.dumps({"initData": make_init_data(user_id=9999)}).encode()
         with patch.dict(os.environ, {"BOT_TOKEN": BOT_TOKEN, "OWNER_IDS": "1234"}, clear=False), patch(
