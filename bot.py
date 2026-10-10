@@ -2939,7 +2939,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        if handle_admin_request(self, users, videos, settings, action_handler=handle_owner_action)
+        if handle_admin_request(self, users, videos, settings, action_handler=handle_owner_action):
             return
         body = b"Blue Bot is Alive!"
         self.send_response(200)
@@ -2949,7 +2949,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
-        if handle_admin_request(self, users, videos, settings):
+        if handle_admin_request(self, users, videos, settings, action_handler=handle_owner_action):
             return
         if self.path == "/webhook":
             length  = int(self.headers.get("Content-Length", 0))
