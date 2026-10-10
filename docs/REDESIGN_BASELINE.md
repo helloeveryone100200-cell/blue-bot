@@ -5,25 +5,16 @@
 - Baseline branch: `main`
 - Implementation branch: `redesign/premium-dark-safe-ui`
 - Design direction: Premium Dark (Deep Navy + Indigo)
-- Initial bot UI scope: Telegram welcome-message presentation only; a separate static dashboard prototype was added afterward.
+- Admin surface: Telegram Mini App only; no standalone browser dashboard login.
 
-## Baseline architecture observed
-- Main application: `bot.py` (2,657 lines in the inspected baseline).
-- Telegram framework: `pyTelegramBotAPI` / `telebot`.
-- Database: MongoDB, database `BlueBotDB`, collections `users`, `videos`, `settings`.
-- HTTP server and Telegram webhook are implemented in `bot.py`.
-- Render start command in `render.yaml`: `python3 bot.py`.
-- Dependencies are pinned in `requirements.txt`.
+## Baseline architecture
+- Main application: `bot.py`
+- Telegram framework: `pyTelegramBotAPI` / `telebot`
+- Database: MongoDB, database `BlueBotDB`, collections `users`, `videos`, `settings`
+- HTTP server and Telegram webhook are implemented in `bot.py`
+- Render start command in `render.yaml`: `python3 bot.py`
 
-## Existing command handlers observed
-`/start`, `/autobroadcast`, `/ref`, `/setchannel`, `/removechannel`, `/contact_to_owner`, `/panel`, `/ownerhelp`, `/ban`, `/unban`, `/addlimit`, `/userinfo`, `/free`, `/userlist`, `/broadcast`, `/setadmingroup`, `/setadmingroup_private`, `/accept`, `/deletevideo`, `/deleteprivatevideo`, `/deletephoto`, `/deleteprivatephoto`, `/removethumb`.
-
-## Existing callback identifiers observed
-- Explicit equality callbacks: `view_profile`, `channel_not_configured`, `gender_male`, `gender_female`, `noop`.
-- Pattern callbacks: `rate_<video_id>_like`, `rate_<video_id>_dislike`.
-- Additional dynamic handlers include channel-join refresh, album/media processing, text input, and owner workflows; preserve their predicates and data formats.
-
-## Invariants — do not change in UI-only work
+## Existing behavior that must remain unchanged
 1. Command names, handler predicates, and callback_data values.
 2. Owner authorization checks and user ban restrictions.
 3. MongoDB database, collection names, document keys, and update semantics.
@@ -32,15 +23,23 @@
 6. Webhook route `/webhook`, health endpoint behavior, Render port, and startup sequence.
 7. Existing environment variable compatibility (`OWNER_IDS` and legacy `OWNER_ID`).
 
-## First UI-only change
-The `send_welcome` message copy and presentation were refreshed for clearer hierarchy and a more polished brand voice. The function signature, dynamic total-video lookup, HTML parse mode, keyboard builder, callback identifiers, and database behavior remain unchanged. The reply-keyboard button labels were deliberately not renamed because they may be consumed by text handlers.
+## Mini App implementation
+- `/admin/` serves the static Telegram Mini App shell and assets.
+- Dashboard API access is POST-only at `/admin/api/overview`.
+- The server validates Telegram Web App `initData` using `BOT_TOKEN`, rejects malformed/duplicate fields and stale/future auth dates, and authorizes only IDs in `OWNER_IDS` (with legacy `OWNER_ID` fallback).
+- The API returns aggregate overview counts only; no user records, media identifiers, or write operations are exposed.
+- The browser shell does not render the dashboard outside Telegram. Static assets are necessarily hosted over HTTPS so Telegram can load the Mini App.
+- Telegram menu-button configuration sets the default Commands button and assigns the Web App menu button only to configured owner IDs.
+- User Management, Media Library, and Bot Settings shortcuts are explicitly placeholders; they are not represented as implemented features.
+
+## Metrics definition
+- Users: count of documents in `users`.
+- Videos: documents whose existing IDs match `vN` or `zN` (public and private video records).
+- Photos: documents with `type: "photo_only"` (public and private standalone photo records).
+- Media: videos plus photos. This avoids classifying private photo IDs (`zpN`) as videos.
 
 ## Verification status
-- Repository source and key UI handlers inspected before editing.
-- GitHub Actions run [`38056033779`](https://github.com/helloeveryone100200-cell/blue-bot/actions/runs/38056033779) passed on the dashboard-inclusive revision: full-file `python -m py_compile bot.py`, eight static regression tests, and `node --check admin/app.js`.
-- Static regression tests parse the source without importing `bot.py`, avoiding Telegram/MongoDB initialization and secrets, and verify the dashboard remains a non-connected prototype.
-- Telegram integration/runtime tests: pending; no bot token or live test environment used.
-- Render deployment/health verification: pending.
-- Added a static dashboard prototype under `admin/` with responsive Premium Dark styling and clearly labelled illustrative data. It does not expose a dashboard route, call live APIs, or read production state.
-- Dashboard authentication, server-side owner authorization, read-only API integration, and Render routing remain future work.
-- This branch is a proposal; `main` has not been changed by this branch operation.
+- GitHub Actions run `38058507498` passed on commit `e10611dc7311ff9011dfd7469603ae87e3c08d4a` before the follow-up metric correction.
+- Follow-up metric correction requires a new CI run before being considered validated.
+- Telegram owner/non-owner live integration and Render deployment health have not been verified.
+- This is a proposal branch; `main` has not been changed by this work.
