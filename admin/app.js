@@ -21,6 +21,7 @@
   let usersRequest = 0;
   let mediaRequest = 0;
   let settingsRequest = 0;
+  let ownerStatsRequest = 0;
   let userDetailRequest = 0;
 
   if (webApp && webApp.initData) document.body.classList.add('telegram-ready');
@@ -336,6 +337,9 @@
     bot_must_be_channel_admin: 'The bot must be an administrator in that channel.',
     not_a_channel: 'The supplied link does not point to a channel.',
     group_not_found: 'Could not find that group. Ensure the bot has access to it.',
+    bot_not_in_group: 'Add the bot to that group before setting it as a media group.',
+    too_many_broadcast_jobs: 'Too many broadcasts are running. Wait for an existing broadcast to finish.',
+    invalid_enabled_value: 'Choose a valid auto-broadcast setting.',
     target_is_not_group: 'That chat is not a group or supergroup.',
     invalid_group_id: 'Enter a group ID or public @username.',
     invalid_media_id: 'Enter a valid media ID for the selected action.',
@@ -384,16 +388,20 @@
   }
 
   async function loadOwnerStats() {
+    const requestId = ++ownerStatsRequest;
     byId('owner-stats').replaceChildren(makeElement('p', 'list-status', 'Loading owner statistics…'));
     try {
       const payload = await runOwnerAction({action: 'panel_stats'});
+      if (requestId !== ownerStatsRequest || activeView !== 'owner-controls') return;
       renderOwnerStats(payload);
       const settingsPayload = await postOwnerApi('/admin/api/settings');
+      if (requestId !== ownerStatsRequest || activeView !== 'owner-controls') return;
       const channel = settingsPayload.channel_gate;
       byId('channel-link').placeholder = channel && channel.enabled
         ? 'Current channel: ' + (channel.title || 'configured') + ' · enter new link to replace'
         : 'https://t.me/your_channel';
     } catch (_error) {
+      if (requestId !== ownerStatsRequest || activeView !== 'owner-controls') return;
       byId('owner-stats').replaceChildren(makeElement('p', 'list-status', 'Unable to load owner statistics.'));
     }
   }
