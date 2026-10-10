@@ -65,7 +65,11 @@
   });
   if (webApp) {
     try { webApp.ready(); webApp.expand(); } catch (_error) {}
-    if (webApp.BackButton) webApp.BackButton.hide();
+    try {
+      if (webApp.BackButton) webApp.BackButton.hide();
+    } catch (_error) {
+      // A host-specific BackButton failure must not prevent overview loading.
+    }
   }
   loadOverview();
 })();
