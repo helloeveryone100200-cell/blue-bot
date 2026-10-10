@@ -18,6 +18,13 @@ def find_function(name):
     raise AssertionError(f"Required function not found: {name}")
 
 
+def find_class(name):
+    for node in TREE.body:
+        if isinstance(node, ast.ClassDef) and node.name == name:
+            return node
+    raise AssertionError(f"Required class not found: {name}")
+
+
 def call_names(node):
     names = set()
     for child in ast.walk(node):
@@ -68,6 +75,20 @@ class WelcomeUiContractTests(unittest.TestCase):
         for name in ("is_user_channel_joined", "resume_pending_channel_action", "owner_panel_keyboard", "welcome_markup"):
             with self.subTest(function=name):
                 find_function(name)
+
+    def test_mini_app_http_routes_preserve_existing_webhook_and_health_paths(self):
+        self.assertIn("from admin_dashboard import handle_admin_request", SOURCE)
+        handler = find_class("WebhookHandler")
+        methods = {node.name: node for node in handler.body if isinstance(node, ast.FunctionDef)}
+        for method_name in ("do_GET", "do_POST", "do_HEAD"):
+            with self.subTest(method=method_name):
+                self.assertIn(method_name, methods)
+                self.assertIn("handle_admin_request", call_names(methods[method_name]))
+        post_source = ast.get_source_segment(SOURCE, methods["do_POST"])
+        get_source = ast.get_source_segment(SOURCE, methods["do_GET"])
+        self.assertIn('self.path == "/webhook"', post_source)
+        self.assertIn("bot.process_new_updates", post_source)
+        self.assertIn("Blue Bot is Alive!", get_source)
 
     def test_telegram_mini_app_menu_button_is_owner_scoped(self):
         fn = find_function("configure_telegram_menu_buttons")
