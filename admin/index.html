@@ -18,28 +18,71 @@
       <div class="brand-copy"><span>BLUE BOT</span><small>OWNER CONSOLE</small></div>
       <span class="secure-pill"><i></i> OWNER</span>
     </header>
-    <section class="welcome">
-      <p class="eyebrow">TELEGRAM MINI APP</p>
-      <h1 id="greeting">Welcome, Owner</h1>
-      <p class="subheading">Your bot workspace at a glance.</p>
+    <div id="overview-view">
+      <section class="welcome">
+        <p class="eyebrow">TELEGRAM MINI APP</p>
+        <h1 id="greeting">Welcome, Owner</h1>
+        <p class="subheading">Your bot workspace at a glance.</p>
+      </section>
+      <section class="status-card" aria-live="polite">
+        <span class="status-orb"><i></i></span>
+        <div class="status-copy"><strong id="connection-title">Checking secure connection</strong><small id="connection-description">Verifying Telegram owner identity…</small></div>
+        <button id="refresh-button" class="refresh-button" aria-label="Refresh overview">↻</button>
+      </section>
+      <section class="section-heading"><div><p class="eyebrow">LIVE OVERVIEW</p><h2>Workspace statistics</h2></div><span class="live-tag"><i></i> LIVE</span></section>
+      <section class="metric-grid" aria-label="Live workspace statistics">
+        <article class="metric-card"><span class="metric-label">Total users</span><span class="metric-icon">♙</span><strong id="metric-users">—</strong><small>Registered users</small></article>
+        <article class="metric-card"><span class="metric-label">Media library</span><span class="metric-icon">▣</span><strong id="metric-media">—</strong><small id="media-breakdown">Videos and photos</small></article>
+        <article class="metric-card"><span class="metric-label">Videos</span><span class="metric-icon">▷</span><strong id="metric-videos">—</strong><small>Indexed videos</small></article>
+        <article class="metric-card"><span class="metric-label">Photos</span><span class="metric-icon">▧</span><strong id="metric-photos">—</strong><small>Photo-only items</small></article>
+      </section>
+      <section class="section-heading lower-heading"><div><p class="eyebrow">QUICK ACCESS</p><h2>Management</h2></div></section>
+      <section class="management-list">
+        <button class="management-item" data-feature="users"><span class="management-icon">♙</span><span><strong>User management</strong><small>Search and review user records</small></span><span class="management-arrow">›</span></button>
+        <button class="management-item" data-feature="media"><span class="management-icon">▣</span><span><strong>Media library</strong><small>Videos and photo inventory</small></span><span class="management-arrow">›</span></button>
+        <button class="management-item" data-feature="settings"><span class="management-icon">⚙</span><span><strong>Bot settings</strong><small>Configuration and controls</small></span><span class="management-arrow">›</span></button>
+      </section>
+    </div>
+    <section id="user-management-view" class="user-management-view" hidden>
+      <button id="back-to-overview" class="back-button">‹ <span>Back to overview</span></button>
+      <div class="section-heading user-heading"><div><p class="eyebrow">USER DIRECTORY</p><h2>User management</h2></div><span id="user-total" class="count-pill">— users</span></div>
+      <label id="user-search-label" class="search-label" for="user-search">Search users</label>
+      <input id="user-search" class="search-input" type="search" maxlength="80" placeholder="Name, username or exact ID" autocomplete="off">
+      <p id="user-list-status" class="list-status" role="status" aria-live="polite">Load authenticated user records.</p>
+      <div id="user-list" class="user-list" aria-live="polite"></div>
+      <div id="user-pagination" class="pagination">
+        <button id="users-prev" class="page-button" disabled>Previous</button>
+        <span id="users-page-label">Page 1 of 1</span>
+        <button id="users-next" class="page-button" disabled>Next</button>
+      </div>
+      <p class="read-only-note">Read-only access. Open any user record to inspect available account details.</p>
     </section>
-    <section class="status-card" aria-live="polite">
-      <span class="status-orb"><i></i></span>
-      <div class="status-copy"><strong id="connection-title">Checking secure connection</strong><small id="connection-description">Verifying Telegram owner identity…</small></div>
-      <button id="refresh-button" class="refresh-button" aria-label="Refresh overview">↻</button>
+    <section id="media-library-view" class="media-library-view" hidden>
+      <button id="back-from-media" class="back-button">‹ <span>Back to overview</span></button>
+      <div class="section-heading user-heading"><div><p class="eyebrow">CONTENT INVENTORY</p><h2>Media library</h2></div><span id="media-total" class="count-pill">— items</span></div>
+      <label class="search-label" for="media-search">Search media</label>
+      <input id="media-search" class="search-input" type="search" maxlength="80" placeholder="Media ID or caption" autocomplete="off">
+      <label class="search-label" for="media-kind">Content type</label>
+      <select id="media-kind" class="search-input">
+        <option value="all">All media</option>
+        <option value="videos">Videos</option>
+        <option value="photos">Photos</option>
+      </select>
+      <p id="media-list-status" class="list-status" role="status" aria-live="polite">Load authenticated media inventory.</p>
+      <div id="media-list" class="media-list" aria-live="polite"></div>
+      <div class="pagination">
+        <button id="media-prev" class="page-button" disabled>Previous</button>
+        <span id="media-page-label">Page 1 of 1</span>
+        <button id="media-next" class="page-button" disabled>Next</button>
+      </div>
+      <p class="read-only-note">Metadata only. Telegram file IDs are never returned to the browser and no media can be deleted from this screen.</p>
     </section>
-    <section class="section-heading"><div><p class="eyebrow">LIVE OVERVIEW</p><h2>Workspace statistics</h2></div><span class="live-tag"><i></i> LIVE</span></section>
-    <section class="metric-grid" aria-label="Live workspace statistics">
-      <article class="metric-card"><span class="metric-label">Total users</span><span class="metric-icon">♙</span><strong id="metric-users">—</strong><small>Registered users</small></article>
-      <article class="metric-card"><span class="metric-label">Media library</span><span class="metric-icon">▣</span><strong id="metric-media">—</strong><small id="media-breakdown">Videos and photos</small></article>
-      <article class="metric-card"><span class="metric-label">Videos</span><span class="metric-icon">▷</span><strong id="metric-videos">—</strong><small>Indexed videos</small></article>
-      <article class="metric-card"><span class="metric-label">Photos</span><span class="metric-icon">▧</span><strong id="metric-photos">—</strong><small>Photo-only items</small></article>
-    </section>
-    <section class="section-heading lower-heading"><div><p class="eyebrow">QUICK ACCESS</p><h2>Management</h2></div></section>
-    <section class="management-list">
-      <button class="management-item" data-feature="users"><span class="management-icon">♙</span><span><strong>User management</strong><small>Access and user records</small></span><span class="management-arrow">›</span></button>
-      <button class="management-item" data-feature="media"><span class="management-icon">▣</span><span><strong>Media library</strong><small>Videos and photo inventory</small></span><span class="management-arrow">›</span></button>
-      <button class="management-item" data-feature="settings"><span class="management-icon">⚙</span><span><strong>Bot settings</strong><small>Configuration and controls</small></span><span class="management-arrow">›</span></button>
+    <section id="bot-settings-view" class="bot-settings-view" hidden>
+      <button id="back-from-settings" class="back-button">‹ <span>Back to overview</span></button>
+      <div class="section-heading user-heading"><div><p class="eyebrow">CONFIGURATION STATUS</p><h2>Bot settings</h2></div><span class="count-pill">READ ONLY</span></div>
+      <p id="settings-list-status" class="list-status" role="status" aria-live="polite">Loading current configuration…</p>
+      <div id="settings-list" class="settings-list" aria-live="polite"></div>
+      <p class="read-only-note">This view only inspects the current configuration. Changing settings is intentionally disabled until guarded write actions and audit logging are implemented.</p>
     </section>
     <p class="notice" id="notice" role="status" aria-live="polite">Opening inside Telegram is required to verify the owner identity.</p>
     <footer>BLUE BOT <span>·</span> SECURE OWNER MINI APP</footer>

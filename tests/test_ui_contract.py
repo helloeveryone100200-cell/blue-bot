@@ -18,6 +18,13 @@ def find_function(name):
     raise AssertionError(f"Required function not found: {name}")
 
 
+def find_class(name):
+    for node in TREE.body:
+        if isinstance(node, ast.ClassDef) and node.name == name:
+            return node
+    raise AssertionError(f"Required class not found: {name}")
+
+
 def call_names(node):
     names = set()
     for child in ast.walk(node):
@@ -68,6 +75,20 @@ class WelcomeUiContractTests(unittest.TestCase):
         for name in ("is_user_channel_joined", "resume_pending_channel_action", "owner_panel_keyboard", "welcome_markup"):
             with self.subTest(function=name):
                 find_function(name)
+
+    def test_mini_app_http_routes_preserve_existing_webhook_and_health_paths(self):
+        self.assertIn("from admin_dashboard import handle_admin_request", SOURCE)
+        handler = find_class("WebhookHandler")
+        methods = {node.name: node for node in handler.body if isinstance(node, ast.FunctionDef)}
+        for method_name in ("do_GET", "do_POST", "do_HEAD"):
+            with self.subTest(method=method_name):
+                self.assertIn(method_name, methods)
+                self.assertIn("handle_admin_request", call_names(methods[method_name]))
+        post_source = ast.get_source_segment(SOURCE, methods["do_POST"])
+        get_source = ast.get_source_segment(SOURCE, methods["do_GET"])
+        self.assertIn('self.path == "/webhook"', post_source)
+        self.assertIn("bot.process_new_updates", post_source)
+        self.assertIn("Blue Bot is Alive!", get_source)
 
     def test_telegram_mini_app_menu_button_is_owner_scoped(self):
         fn = find_function("configure_telegram_menu_buttons")
@@ -139,6 +160,45 @@ class MiniAppUiContractTests(unittest.TestCase):
         self.assertNotIn("12,846", html)
         self.assertNotIn("Illustrative analytics", html)
         self.assertNotIn("user_10482", html)
+
+    def test_user_directory_is_read_only_and_uses_authenticated_api(self):
+        html = (ROOT / "admin" / "index.html").read_text(encoding="utf-8")
+        js = (ROOT / "admin" / "app.js").read_text(encoding="utf-8")
+        self.assertIn('id="user-management-view"', html)
+        self.assertIn('id="user-search"', html)
+        self.assertIn("read-only", html)
+        self.assertIn("/admin/api/users", js)
+        self.assertIn("credentials: 'omit'", js)
+        self.assertIn("textContent", js)
+        self.assertNotIn("innerHTML", js)
+        self.assertIn("usersPages", js)
+        self.assertIn('id="media-library-view"', html)
+        self.assertIn("/admin/api/media", js)
+        self.assertIn("Telegram file IDs are never returned", html)
+        self.assertIn("mediaPages", js)
+        self.assertIn('id="bot-settings-view"', html)
+        self.assertIn("/admin/api/settings", js)
+        self.assertIn("inspection only", js)
+        self.assertIn("/admin/api/user-detail", js)
+        self.assertIn("View details", js)
+        self.assertIn("user-detail-panel", js)
+        self.assertIn("user-pagination", js)
+        self.assertIn("userDetailRequest += 1", js)
+        self.assertIn("late response cannot reopen this view", js)
+        self.assertIn("function invalidateUserDetailView()", js)
+        self.assertIn("function activateView(view)", js)
+        self.assertIn("requestId !== overviewRequest || activeView !== 'overview'", js)
+        self.assertIn("requestId !== usersRequest || activeView !== 'users'", js)
+        self.assertIn("requestId !== mediaRequest || activeView !== 'media'", js)
+        self.assertIn("requestId !== settingsRequest || activeView !== 'settings'", js)
+        for navigation in ("openUsers", "openMedia", "openSettings", "showOverview"):
+            with self.subTest(navigation=navigation):
+                start = js.index("function " + navigation + "()")
+                next_function = js.find("\n  function ", start + 1)
+                section = js[start:next_function if next_function >= 0 else len(js)]
+                self.assertIn("invalidateUserDetailView();", section)
+                self.assertIn("activateView(", section)
+        self.assertNotIn("innerHTML", js)
 
     def test_mini_app_uses_premium_dark_mobile_tokens(self):
         css = (ROOT / "admin" / "styles.css").read_text(encoding="utf-8")
