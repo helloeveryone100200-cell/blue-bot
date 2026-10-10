@@ -127,8 +127,12 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
             return True
         try:
             total_users = users.count_documents({})
-            total_media = videos.count_documents({})
+            # Video IDs use vN (public) and zN (private); photo-only IDs use pN/zpN.
+            # Count by the existing document schema instead of treating every non-public
+            # photo as a video or exposing a misleading total.
+            total_videos = videos.count_documents({"_id": {"$regex": "^[vz][0-9]+$"}})
             total_photos = videos.count_documents({"type": "photo_only"})
+            total_media = total_videos + total_photos
         except Exception:
             _json(handler, 503, {"error": "metrics_unavailable"})
             return True
@@ -136,7 +140,7 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
             "owner": {"id": user["id"], "name": user.get("first_name", "Owner")},
             "users": total_users,
             "media": total_media,
-            "videos": max(0, total_media - total_photos),
+            "videos": total_videos,
             "photos": total_photos,
             "requests_today": None,
             "status": "connected",
