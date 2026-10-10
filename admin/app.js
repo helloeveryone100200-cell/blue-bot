@@ -316,9 +316,21 @@
     }
   }
 
-  function openUsers() {
+  function invalidateUserDetailView() {
+    // Invalidate outstanding detail requests whenever navigation leaves the detail view.
+    userDetailRequest += 1;
     const detailPanel = byId('user-detail-panel');
     if (detailPanel) detailPanel.remove();
+    userList.hidden = false;
+    byId('user-list-status').hidden = false;
+    byId('user-total').hidden = false;
+    byId('user-search-label').hidden = false;
+    byId('user-search').hidden = false;
+    byId('user-pagination').hidden = false;
+  }
+
+  function openUsers() {
+    invalidateUserDetailView();
     userList.hidden = false;
     byId('user-list-status').hidden = false;
     byId('user-total').hidden = false;
@@ -334,6 +346,7 @@
   }
 
   function openMedia() {
+    invalidateUserDetailView();
     overviewView.hidden = true;
     usersView.hidden = true;
     settingsView.hidden = true;
@@ -343,6 +356,7 @@
   }
 
   function openSettings() {
+    invalidateUserDetailView();
     overviewView.hidden = true;
     usersView.hidden = true;
     mediaView.hidden = true;
@@ -351,6 +365,7 @@
   }
 
   function showOverview() {
+    invalidateUserDetailView();
     usersView.hidden = true;
     mediaView.hidden = true;
     settingsView.hidden = true;
