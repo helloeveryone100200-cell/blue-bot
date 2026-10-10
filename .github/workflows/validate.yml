@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - redesign/premium-dark-safe-ui
+      - feature/miniapp-user-management-readonly
 
 permissions:
   contents: read
