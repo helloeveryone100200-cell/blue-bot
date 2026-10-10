@@ -247,6 +247,12 @@ class MiniAppRouteTests(unittest.TestCase):
              "is_banned": 1, "referrals": 1, "state": 1, "joined_at": 1},
         )
 
+    def test_user_detail_does_not_treat_string_false_as_banned(self):
+        self.users.find_one.return_value = {"_id": 1234, "is_banned": "false"}
+        handler = self.authed_request("/admin/api/user-detail", {"userId": "1234"})
+        self.assertEqual(handler.status, 200)
+        self.assertFalse(json.loads(handler.response_body)["is_banned"])
+
     def test_user_detail_rejects_invalid_ids(self):
         handler = self.authed_request("/admin/api/user-detail", {"userId": "12x"})
         self.assertEqual(handler.status, 400)
