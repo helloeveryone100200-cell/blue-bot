@@ -199,7 +199,7 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
 
         if path == "/admin/api/user-detail":
             raw_user_id = payload.get("userId", "")
-            if not isinstance(raw_user_id, str) or not raw_user_id.isdigit() or len(raw_user_id) > 20:
+            if not isinstance(raw_user_id, str) or not re.fullmatch(r"[0-9]{1,20}", raw_user_id):
                 _json(handler, 400, {"error": "invalid_user_id"})
                 return True
             try:
