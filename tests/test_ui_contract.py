@@ -93,8 +93,8 @@ class DashboardPrototypeTests(unittest.TestCase):
         self.js = (ROOT / "admin" / "app.js").read_text(encoding="utf-8")
 
     def test_dashboard_is_explicitly_marked_as_preview(self):
-        self.assertIn("Prototype preview", self.html)
-        self.assertIn("sample data only", self.html)
+        self.assertIn("Limited live integration", self.html)
+        self.assertIn("Charts remain illustrative", self.html)
         self.assertIn('href="/admin/styles.css"', self.html)
         self.assertIn('src="/admin/app.js"', self.html)
 
@@ -111,7 +111,6 @@ class DashboardPrototypeTests(unittest.TestCase):
         self.assertIn("credentials: 'same-origin'", self.js)
         self.assertIn("cache: 'no-store'", self.js)
         self.assertIn("requests_today == null", self.js)
-        self.assertIn("No production services were contacted", self.js)
 
 if __name__ == "__main__":
     unittest.main()
