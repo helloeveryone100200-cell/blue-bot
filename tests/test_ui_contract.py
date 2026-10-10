@@ -85,5 +85,30 @@ class WelcomeUiContractTests(unittest.TestCase):
                 self.assertIn(callback, SOURCE)
 
 
+
+class DashboardPrototypeTests(unittest.TestCase):
+    def setUp(self):
+        self.html = (ROOT / "admin" / "index.html").read_text(encoding="utf-8")
+        self.css = (ROOT / "admin" / "styles.css").read_text(encoding="utf-8")
+        self.js = (ROOT / "admin" / "app.js").read_text(encoding="utf-8")
+
+    def test_dashboard_is_explicitly_marked_as_preview(self):
+        self.assertIn("Prototype preview", self.html)
+        self.assertIn("sample data only", self.html)
+        self.assertIn('href="./styles.css"', self.html)
+        self.assertIn('src="./app.js"', self.html)
+
+    def test_dashboard_uses_premium_dark_design_tokens(self):
+        self.assertIn("--bg:#080d1a", self.css)
+        self.assertIn("--indigo:#7775ff", self.css)
+        self.assertIn("@media(max-width:600px)", self.css)
+        self.assertIn("prefers-reduced-motion", self.css)
+
+    def test_dashboard_does_not_call_live_services(self):
+        self.assertNotIn("fetch(", self.js)
+        self.assertNotIn("XMLHttpRequest", self.js)
+        self.assertNotIn("WebSocket", self.js)
+        self.assertIn("No production services were contacted", self.js)
+
 if __name__ == "__main__":
     unittest.main()
