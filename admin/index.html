@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Blue Bot premium dark administration dashboard prototype.">
+  <title>Blue Bot — Admin Console</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#overview" aria-label="Blue Bot overview">
+        <span class="brand-mark" aria-hidden="true">B</span>
+        <span class="brand-copy"><strong>BLUE BOT</strong><small>ADMIN CONSOLE</small></span>
+      </a>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="nav-list" aria-label="Main navigation">
+        <a class="nav-item active" href="#overview" data-view="overview"><span class="nav-icon">◫</span>Overview</a>
+        <a class="nav-item" href="#users" data-view="users"><span class="nav-icon">♙</span>Users <span class="nav-count">—</span></a>
+        <a class="nav-item" href="#library" data-view="library"><span class="nav-icon">▣</span>Media Library</a>
+        <a class="nav-item" href="#activity" data-view="activity"><span class="nav-icon">⌁</span>Activity</a>
+      </nav>
+      <div class="workspace-label settings-label">MANAGEMENT</div>
+      <nav class="nav-list" aria-label="Management navigation">
+        <a class="nav-item" href="#settings" data-view="settings"><span class="nav-icon">⚙</span>Bot Settings</a>
+        <a class="nav-item" href="#access" data-view="access"><span class="nav-icon">♧</span>Access &amp; Roles</a>
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-status">
+        <span class="status-dot"></span>
+        <div><strong>Preview environment</strong><small>Live connection disabled</small></div>
+      </div>
+      <div class="sidebar-footer"><span>BLUE BOT</span><span>CONSOLE v0.1</span></div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="icon-button mobile-menu" id="menu-toggle" aria-label="Toggle navigation">☰</button>
+        <div class="breadcrumbs"><span>Workspace</span><span class="crumb-divider">/</span><strong id="breadcrumb-title">Overview</strong></div>
+        <div class="topbar-actions">
+          <span class="environment-pill"><span class="status-dot"></span>PREVIEW</span>
+          <button class="icon-button" id="help-button" aria-label="About this preview" title="About this preview">?</button>
+          <div class="avatar" aria-label="Administrator placeholder">A</div>
+        </div>
+      </header>
+
+      <div class="content-wrap">
+        <div class="preview-notice"><span class="notice-icon">i</span><span><strong>Prototype preview</strong> — sample data only. No live bot, database, or admin API is connected.</span><button id="notice-dismiss" aria-label="Dismiss preview notice">×</button></div>
+
+        <section class="page-heading">
+          <div><div class="eyebrow">SATURDAY, OCTOBER 10, 2026 <span class="eyebrow-line"></span> SYSTEM OVERVIEW</div><h1 id="page-title">Good afternoon, Admin<span class="heading-spark">✦</span></h1><p id="page-subtitle">A clear view of your Blue Bot workspace and content activity.</p></div>
+          <button class="primary-button" id="refresh-button"><span class="refresh-glyph">↻</span> Refresh preview</button>
+        </section>
+
+        <section class="metric-grid" aria-label="Overview metrics">
+          <article class="metric-card"><div class="metric-top"><span>Total users</span><span class="metric-icon indigo">♙</span></div><div class="metric-value">12,846</div><div class="metric-bottom"><span class="trend positive">↗ 8.2%</span><span>vs. previous period</span></div><div class="metric-decoration decoration-one"></div></article>
+          <article class="metric-card"><div class="metric-top"><span>Media library</span><span class="metric-icon violet">▣</span></div><div class="metric-value">3,284</div><div class="metric-bottom"><span class="trend positive">↗ 4.6%</span><span>vs. previous period</span></div><div class="metric-decoration decoration-two"></div></article>
+          <article class="metric-card"><div class="metric-top"><span>Requests today</span><span class="metric-icon cyan">⌁</span></div><div class="metric-value">8,921</div><div class="metric-bottom"><span class="trend positive">↗ 12.4%</span><span>vs. previous period</span></div><div class="metric-decoration decoration-three"></div></article>
+          <article class="metric-card"><div class="metric-top"><span>Bot availability</span><span class="metric-icon green">◉</span></div><div class="metric-value">—<span class="value-unit"> not connected</span></div><div class="metric-bottom"><span class="neutral-tag">Awaiting integration</span></div><div class="metric-decoration decoration-four"></div></article>
+        </section>
+
+        <section class="dashboard-grid">
+          <article class="panel activity-panel" id="activity-panel">
+            <div class="panel-header"><div><h2>Usage overview</h2><p>Sample request volume across the selected period</p></div><label class="select-wrap"><span class="sr-only">Select chart period</span><select id="period-select"><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option></select><span>⌄</span></label></div>
+            <div class="chart-legend"><span><i class="legend-dot indigo-dot"></i>Video requests</span><span><i class="legend-dot cyan-dot"></i>New users</span></div>
+            <div class="chart-area">
+              <div class="y-axis"><span>10k</span><span>7.5k</span><span>5k</span><span>2.5k</span><span>0</span></div>
+              <div class="chart-canvas">
+                <div class="chart-gridlines"><i></i><i></i><i></i><i></i><i></i></div>
+                <svg class="chart-svg" viewBox="0 0 720 220" preserveAspectRatio="none" role="img" aria-label="Illustrative usage trend line chart">
+                  <defs><linearGradient id="area-indigo" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#7775ff" stop-opacity=".24"/><stop offset="100%" stop-color="#7775ff" stop-opacity="0"/></linearGradient></defs>
+                  <path class="chart-fill" d="M0,165 C35,150 48,160 72,130 S120,140 144,112 S188,126 216,91 S264,105 288,75 S336,98 360,83 S408,100 432,57 S480,80 504,62 S552,78 576,38 S624,60 648,29 S696,44 720,17 L720,220 L0,220 Z"/>
+                  <path class="chart-line secondary-line" d="M0,190 C35,185 48,176 72,183 S120,167 144,175 S188,155 216,166 S264,146 288,157 S336,142 360,150 S408,131 432,141 S480,123 504,133 S552,111 576,119 S624,98 648,107 S696,88 720,95"/>
+                  <path class="chart-line primary-line" d="M0,165 C35,150 48,160 72,130 S120,140 144,112 S188,126 216,91 S264,105 288,75 S336,98 360,83 S408,100 432,57 S480,80 504,62 S552,78 576,38 S624,60 648,29 S696,44 720,17"/>
+                </svg>
+                <div class="x-axis"><span>Oct 04</span><span>Oct 05</span><span>Oct 06</span><span>Oct 07</span><span>Oct 08</span><span>Oct 09</span><span>Oct 10</span></div>
+              </div>
+            </div>
+            <div class="chart-footnote"><span class="mini-pulse"></span>Illustrative analytics <span class="footnote-divider">·</span> Not sourced from production</div>
+          </article>
+
+          <article class="panel health-panel">
+            <div class="panel-header"><div><h2>System status</h2><p>Connection readiness</p></div><span class="health-icon">⌁</span></div>
+            <div class="connection-card"><div class="connection-orb"><span>BB</span><i></i></div><div class="connection-copy"><strong>Blue Bot</strong><span><i class="status-dot"></i>Not connected</span></div><span class="status-chip">PREVIEW</span></div>
+            <div class="status-list">
+              <div class="status-row"><span class="status-symbol">⌘</span><span class="status-label">Telegram API</span><span class="status-value waiting">Not checked</span></div>
+              <div class="status-row"><span class="status-symbol">▤</span><span class="status-label">MongoDB</span><span class="status-value waiting">Not connected</span></div>
+              <div class="status-row"><span class="status-symbol">⌂</span><span class="status-label">Webhook</span><span class="status-value waiting">Not checked</span></div>
+              <div class="status-row"><span class="status-symbol">◷</span><span class="status-label">Last sync</span><span class="status-value">—</span></div>
+            </div>
+            <button class="secondary-button full-width" id="connection-details">View connection requirements <span>↗</span></button>
+          </article>
+        </section>
+
+        <section class="panel recent-panel" id="recent-panel">
+          <div class="panel-header recent-header"><div><h2>Recent workspace activity</h2><p>Example events to illustrate the activity feed</p></div><button class="text-button" id="view-activity">View activity <span>→</span></button></div>
+          <div class="table-wrap"><table><thead><tr><th>EVENT</th><th>REFERENCE</th><th>STATUS</th><th>TIME</th></tr></thead><tbody id="activity-rows">
+            <tr><td><span class="event-icon event-user">♙</span><span class="event-name">New user joined</span></td><td class="mono">user_10482</td><td><span class="table-status sample">Sample</span></td><td class="time-cell">2 min ago</td></tr>
+            <tr><td><span class="event-icon event-media">▣</span><span class="event-name">Media item indexed</span></td><td class="mono">video_03284</td><td><span class="table-status sample">Sample</span></td><td class="time-cell">14 min ago</td></tr>
+            <tr><td><span class="event-icon event-request">⌁</span><span class="event-name">Video request completed</span></td><td class="mono">request_08119</td><td><span class="table-status sample">Sample</span></td><td class="time-cell">27 min ago</td></tr>
+            <tr><td><span class="event-icon event-settings">⚙</span><span class="event-name">Settings review</span></td><td class="mono">system_preview</td><td><span class="table-status pending">Not connected</span></td><td class="time-cell">1 hr ago</td></tr>
+          </tbody></table></div>
+          <div class="table-footer"><span>Showing <strong>4</strong> illustrative events</span><span class="table-footer-right"><span class="status-dot"></span> Live event stream disabled</span></div>
+        </section>
+
+        <footer class="page-footer"><span>© 2026 Blue Bot · Admin Console</span><span><span class="footer-lock">◇</span> Secure-by-design integration pending</span></footer>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <dialog class="info-dialog" id="info-dialog"><div class="dialog-top"><span class="dialog-mark">i</span><button class="icon-button" id="dialog-close" aria-label="Close dialog">×</button></div><h2>Preview environment</h2><p>This is a front-end prototype using illustrative values only. It does not read Telegram, MongoDB, or production service state.</p><div class="dialog-note"><strong>Before live integration</strong><ul><li>Add server-side admin authentication and owner authorization.</li><li>Expose read-only, validated API endpoints.</li><li>Keep bot tokens and database credentials on the server.</li><li>Verify logs, permissions, and deployment health before enabling actions.</li></ul></div><button class="primary-button full-width" id="dialog-ok">Understood</button></dialog>
+</body>
+</html>
