@@ -37,15 +37,25 @@ class SessionTokenTests(unittest.TestCase):
         token = admin_dashboard._make_session_token(self.secret, timestamp=2000)
         self.assertFalse(admin_dashboard._verify_session_token(token, self.secret, now=1000))
 
-    def test_missing_or_weak_environment_configuration_disables_dashboard(self):
-        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "short", "ADMIN_SESSION_SECRET": "short"}, clear=False):
+    def test_credentials_below_minimum_disable_dashboard(self):
+        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "abcde", "ADMIN_SESSION_SECRET": "12345"}, clear=False):
             self.assertIsNone(admin_dashboard._configuration())
 
-    def test_strong_environment_configuration_enables_dashboard(self):
-        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "a-secure-password-123", "ADMIN_SESSION_SECRET": "s" * 40}, clear=False):
+    def test_credentials_above_maximum_disable_dashboard(self):
+        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "p" * 17, "ADMIN_SESSION_SECRET": "s" * 21}, clear=False):
+            self.assertIsNone(admin_dashboard._configuration())
+
+    def test_requested_credential_lengths_enable_dashboard(self):
+        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "pass123", "ADMIN_SESSION_SECRET": "abc123"}, clear=False):
             config = admin_dashboard._configuration()
             self.assertIsNotNone(config)
-            self.assertEqual(config[0], "a-secure-password-123")
+            self.assertEqual(config[0], "pass123")
+
+    def test_maximum_credential_lengths_enable_dashboard(self):
+        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "p" * 16, "ADMIN_SESSION_SECRET": "s" * 20}, clear=False):
+            config = admin_dashboard._configuration()
+            self.assertIsNotNone(config)
+            self.assertEqual(config[0], "p" * 16)
 
 
 if __name__ == "__main__":
