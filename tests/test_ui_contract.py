@@ -140,6 +140,18 @@ class MiniAppUiContractTests(unittest.TestCase):
         self.assertNotIn("Illustrative analytics", html)
         self.assertNotIn("user_10482", html)
 
+    def test_user_directory_is_read_only_and_uses_authenticated_api(self):
+        html = (ROOT / "admin" / "index.html").read_text(encoding="utf-8")
+        js = (ROOT / "admin" / "app.js").read_text(encoding="utf-8")
+        self.assertIn('id="user-management-view"', html)
+        self.assertIn('id="user-search"', html)
+        self.assertIn("read-only", html)
+        self.assertIn("/admin/api/users", js)
+        self.assertIn("credentials: 'omit'", js)
+        self.assertIn("textContent", js)
+        self.assertNotIn("innerHTML", js)
+        self.assertIn("usersPages", js)
+
     def test_mini_app_uses_premium_dark_mobile_tokens(self):
         css = (ROOT / "admin" / "styles.css").read_text(encoding="utf-8")
         self.assertIn("--bg:#080d1a", css)
