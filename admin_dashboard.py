@@ -158,8 +158,10 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
                 filters = {"$or": [
                     {"username": {"$regex": escaped_query, "$options": "i"}},
                     {"first_name": {"$regex": escaped_query, "$options": "i"}},
-                    {"_id": {"$regex": "^" + escaped_query + "$"}},
                 ]}
+                # User IDs are stored as integers by get_or_create_user().
+                if query.isdigit():
+                    filters["$or"].append({"_id": int(query)})
             try:
                 total = users.count_documents(filters)
                 cursor = users.find(
