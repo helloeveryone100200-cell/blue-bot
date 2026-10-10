@@ -135,6 +135,8 @@
       const close = makeElement('button', 'back-button', '‹ Back to user list');
       close.type = 'button';
       close.addEventListener('click', () => {
+        // Invalidate any in-flight detail request so a late response cannot reopen this view.
+        userDetailRequest += 1;
         card.remove();
         userList.hidden = false;
         byId('user-list-status').hidden = false;
