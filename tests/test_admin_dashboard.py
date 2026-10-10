@@ -200,6 +200,7 @@ class MiniAppRouteTests(unittest.TestCase):
         self.users.find.return_value.sort.return_value.skip.assert_called_once_with(10)
 
     def test_media_directory_clamps_page_before_database_skip(self):
+        self.videos.count_documents.side_effect = None
         self.videos.count_documents.return_value = 51
         self.videos.find.return_value.sort.return_value.skip.return_value.limit.return_value = []
         handler = self.authed_request("/admin/api/media", {"page": 999999, "pageSize": 20})
