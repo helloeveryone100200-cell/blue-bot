@@ -1,7 +1,8 @@
 """Authenticated, read-only admin dashboard routes for Blue Bot.
 
-The dashboard is disabled unless both ADMIN_DASHBOARD_PASSWORD and a strong
-ADMIN_SESSION_SECRET are configured. No Telegram handlers or database writes live here.
+The dashboard is disabled unless both ADMIN_DASHBOARD_PASSWORD and ADMIN_SESSION_SECRET
+meet the configured length policy. Short session secrets reduce cryptographic security.
+No Telegram handlers or database writes live here.
 """
 import hashlib
 import hmac
@@ -23,7 +24,7 @@ _LOGIN_FAILURES = {}
 def _configuration():
     password = os.environ.get("ADMIN_DASHBOARD_PASSWORD", "")
     secret = os.environ.get("ADMIN_SESSION_SECRET", "")
-    if len(password) < 16 or len(secret) < 32:
+    if not 6 <= len(password) <= 16 or not 6 <= len(secret) <= 20:
         return None
     return password, secret.encode("utf-8")
 
@@ -103,7 +104,7 @@ button{width:100%;margin-top:16px;padding:13px;border:0;border-radius:9px;backgr
 <p>This dashboard is restricted to authorized administrators.</p>""" +
         (f'<p class="error">{safe_message}</p>' if safe_message else "") +
         """<form method="post" action="/admin/login" autocomplete="on"><label for="password">Dashboard password</label>
-<input id="password" name="password" type="password" required minlength="16" autocomplete="current-password" autofocus>
+<input id="password" name="password" type="password" required minlength="6" maxlength="16" autocomplete="current-password" autofocus>
 <button type="submit">Continue to dashboard</button></form>
 <small>Use HTTPS. Access is disabled until the server administrator configures dashboard credentials.</small></main></body></html>""").encode("utf-8")
 
