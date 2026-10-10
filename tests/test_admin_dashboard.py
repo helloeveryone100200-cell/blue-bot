@@ -135,6 +135,34 @@ class MiniAppRouteTests(unittest.TestCase):
         )
         self.assertIsNone(payload["requests_today"])
 
+    def test_metrics_database_failure_returns_service_unavailable(self):
+        self.users.count_documents.side_effect = RuntimeError("database unavailable")
+        body = json.dumps({"initData": make_init_data()}).encode()
+        handler = FakeHandler(
+            "/admin/api/overview",
+            command="POST",
+            headers={"Content-Length": str(len(body))},
+            body=body,
+        )
+        with patch.dict(os.environ, {"BOT_TOKEN": BOT_TOKEN, "OWNER_IDS": "1234"}, clear=False), patch(
+            "admin_dashboard.time.time", return_value=1800000000
+        ):
+            admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        self.assertEqual(handler.status, 503)
+        self.assertEqual(json.loads(handler.response_body), {"error": "metrics_unavailable"})
+        self.videos.count_documents.assert_not_called()
+
+    def test_oversized_api_body_is_rejected_before_reading_or_database_access(self):
+        handler = FakeHandler(
+            "/admin/api/overview",
+            command="POST",
+            headers={"Content-Length": str(admin_dashboard.MAX_API_BODY + 1)},
+        )
+        admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        self.assertEqual(handler.status, 413)
+        self.users.count_documents.assert_not_called()
+        self.videos.count_documents.assert_not_called()
+
     def test_assets_are_public_but_do_not_expose_api_data(self):
         handler = FakeHandler("/admin/app.js")
         admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
