@@ -71,6 +71,11 @@ def _json(handler, status, payload):
     _send(handler, status, json.dumps(payload, separators=(",", ":")).encode("utf-8"), "application/json; charset=utf-8")
 
 
+def _safe_nonnegative_int(value):
+    """Return only a non-negative, non-boolean integer from stored metadata."""
+    return value if type(value) is int and value >= 0 else 0
+
+
 def _read_owner_payload(handler):
     """Read a bounded JSON request and authenticate its Telegram owner initData."""
     try:
@@ -161,7 +166,12 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
                 ]}
                 # User IDs are stored as integers by get_or_create_user().
                 if query.isdigit():
-                    filters["$or"].append({"_id": int(query)})
+                    # MongoDB integer _id values use signed 64-bit BSON integers.
+                    # Keep oversized digit strings as text searches instead of letting
+                    # int64 serialization fail the entire user-directory request.
+                    numeric_id = int(query)
+                    if numeric_id <= 9_223_372_036_854_775_807:
+                        filters["$or"].append({"_id": numeric_id})
             try:
                 total = users.count_documents(filters)
                 # Clamp out-of-range pages before applying MongoDB skip().
@@ -281,11 +291,11 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
                     items.append({
                         "id": media_id,
                         "kind": "photo" if is_photo else "video",
-                        "visibility": "private" if doc.get("private") or media_id.startswith(("z", "zp")) else "public",
+                        "visibility": "private" if doc.get("private") is True or media_id.startswith(("z", "zp")) else "public",
                         "caption": str(doc.get("caption") or "")[:180],
-                        "likes": doc.get("likes", 0) if isinstance(doc.get("likes", 0), int) and not isinstance(doc.get("likes", 0), bool) else 0,
-                        "dislikes": doc.get("dislikes", 0) if isinstance(doc.get("dislikes", 0), int) and not isinstance(doc.get("dislikes", 0), bool) else 0,
-                        "views": doc.get("views", 0) if isinstance(doc.get("views", 0), int) and not isinstance(doc.get("views", 0), bool) else 0,
+                        "likes": _safe_nonnegative_int(doc.get("likes", 0)),
+                        "dislikes": _safe_nonnegative_int(doc.get("dislikes", 0)),
+                        "views": _safe_nonnegative_int(doc.get("views", 0)),
                         "video_parts": len(doc.get("video_ids", [])) if isinstance(doc.get("video_ids", []), list) else 0,
                         "photo_parts": len(doc.get("photo_ids", [])) if isinstance(doc.get("photo_ids", []), list) else 0,
                     })
@@ -315,6 +325,9 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
                 _json(handler, 503, {"error": "settings_unavailable"})
                 return True
             channel_enabled = bool(channel and channel.get("chat_id") and channel.get("link"))
+            # The stored setting is Boolean. Treat malformed values as the default
+            # enabled state instead of truthiness-coercing strings such as "false".
+            broadcast_enabled = True if broadcast is None else broadcast.get("enabled", True) is True
             _json(handler, 200, {
                 "channel_gate": {
                     "enabled": channel_enabled,
@@ -322,7 +335,7 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
                 },
                 "public_media_group_configured": bool(public_group and public_group.get("chat_id") is not None),
                 "private_media_group_configured": bool(private_group and private_group.get("chat_id") is not None),
-                "auto_broadcast_new_video": bool(broadcast.get("enabled", True)) if broadcast else True,
+                "auto_broadcast_new_video": broadcast_enabled,
                 "private_access_users": len(accepted_ids),
             })
             return True
