@@ -133,6 +133,44 @@ class AdminRouteAuthorizationTests(unittest.TestCase):
         self.assertIsNone(payload["requests_today"])
         self.assertEqual(payload["status"], "connected")
 
+    def test_valid_login_issues_secure_signed_session_cookie(self):
+        secret = "secret123"
+        body = b"password=pass123"
+        handler = FakeHandler(
+            "/admin/login", command="POST",
+            headers={"Content-Length": str(len(body)), "Content-Type": "application/x-www-form-urlencoded"},
+            body=body,
+        )
+        with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "pass123", "ADMIN_SESSION_SECRET": secret}, clear=False):
+            handled = admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        self.assertTrue(handled)
+        self.assertEqual(handler.status, 303)
+        self.assertEqual(handler.response_headers["Location"], "/admin")
+        cookie = handler.response_headers["Set-Cookie"]
+        self.assertIn("HttpOnly", cookie)
+        self.assertIn("Secure", cookie)
+        self.assertIn("SameSite=Strict", cookie)
+        token = cookie.split("=", 1)[1].split(";", 1)[0]
+        self.assertTrue(admin_dashboard._verify_session_token(token, secret.encode("utf-8")))
+
+    def test_login_throttles_after_five_failed_attempts(self):
+        ip = "192.0.2.55"
+        key = ip
+        admin_dashboard._LOGIN_FAILURES.pop(key, None)
+        body = b"password=wrong"
+        headers = {"Content-Length": str(len(body)), "Content-Type": "application/x-www-form-urlencoded"}
+        try:
+            with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "pass123", "ADMIN_SESSION_SECRET": "secret123"}, clear=False):
+                for _ in range(5):
+                    handler = FakeHandler("/admin/login", command="POST", headers=headers, body=body, client_ip=ip)
+                    admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+                    self.assertEqual(handler.status, 401)
+                blocked = FakeHandler("/admin/login", command="POST", headers=headers, body=body, client_ip=ip)
+                admin_dashboard.handle_admin_request(blocked, self.users, self.videos, self.settings)
+                self.assertEqual(blocked.status, 429)
+        finally:
+            admin_dashboard._LOGIN_FAILURES.pop(key, None)
+
     def test_logout_post_clears_session_cookie_and_redirects(self):
         handler = FakeHandler("/admin/logout", command="POST")
         with patch.dict(os.environ, {"ADMIN_DASHBOARD_PASSWORD": "pass123", "ADMIN_SESSION_SECRET": "secret123"}, clear=False):
