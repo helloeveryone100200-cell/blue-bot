@@ -293,7 +293,11 @@ def is_user_channel_joined(user_id: int) -> bool:
         return True
 
     channel = get_required_channel()
-    if not channel or not channel.get("chat_id") or not channel.get("link"):
+    # No required channel means the join gate is disabled.
+    if not channel:
+        return True
+    # A partially configured record is invalid; fail closed instead of bypassing the gate.
+    if not channel.get("chat_id") or not channel.get("link"):
         return False
 
     try:
@@ -759,14 +763,11 @@ def send_pending_ref_video(call):
 
 def resume_pending_channel_action(call):
     user_id = call.from_user.id
-    if not get_required_channel():
-        bot.answer_callback_query(
-            call.id,
-            "Owner က Channel link ကို အရင်သတ်မှတ်ပေးရပါမည်။",
-            show_alert=True
-        )
-        return
-    if not is_user_channel_joined(user_id):
+    channel = get_required_channel()
+
+    # If the required channel was removed while the user was waiting,
+    # the join gate is disabled and the pending action can continue.
+    if channel and not is_user_channel_joined(user_id):
         bot.answer_callback_query(
             call.id,
             "Channel ကို အရင် Join ပေးပါ။",
@@ -787,7 +788,14 @@ def resume_pending_channel_action(call):
             "pending_channel_new_user": ""
         }}
     )
-    bot.answer_callback_query(call.id, "✅ Channel Join အတည်ပြုပြီးပါပြီ။")
+
+    if channel:
+        bot.answer_callback_query(call.id, "✅ Channel Join အတည်ပြုပြီးပါပြီ။")
+    else:
+        bot.answer_callback_query(
+            call.id,
+            "ℹ️ Channel Join မဖြစ်မနေစနစ်ကို ပိတ်ထားပါသည်။"
+        )
     try:
         bot.edit_message_reply_markup(
             call.message.chat.id,
@@ -810,8 +818,6 @@ def resume_pending_channel_action(call):
         cmd_start(pending_message)
     else:
         handle_text(pending_message)
-
-@bot.callback_query_handler(func=lambda c: c.data in ("check_channel_join", "refresh_channel"))
 def cb_refresh_channel(call):
     resume_pending_channel_action(call)
 
