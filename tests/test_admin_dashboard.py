@@ -30,6 +30,9 @@ class SessionTokenTests(unittest.TestCase):
         token = admin_dashboard._make_session_token(self.secret, timestamp=1000)
         self.assertFalse(admin_dashboard._verify_session_token(token, self.secret, now=1000 + admin_dashboard.SESSION_TTL_SECONDS + 1))
 
+    def test_malformed_non_ascii_token_is_rejected(self):
+        self.assertFalse(admin_dashboard._verify_session_token("١.bad." + "f" * 64, self.secret, now=1000))
+
     def test_future_session_token_is_rejected(self):
         token = admin_dashboard._make_session_token(self.secret, timestamp=2000)
         self.assertFalse(admin_dashboard._verify_session_token(token, self.secret, now=1000))
