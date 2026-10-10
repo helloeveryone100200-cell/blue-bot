@@ -1,6 +1,6 @@
 # Blue Bot
 
-A Telegram bot with video database, referral system, and owner control panel.
+A Telegram bot with a Telegram-only owner Mini App, video database, referral system, and owner control panel.
 
 ## Features
 
@@ -8,7 +8,7 @@ A Telegram bot with video database, referral system, and owner control panel.
 - Album (media group) and single video support
 - User limit system with referral tracking (+5 limit per referral)
 - Customer support system (/contact_to_owner)
-- Owner control panel (/panel, /free, /broadcast)
+- Owner control panel (/panel, /free, /broadcast)\n- Telegram Mini App for owner-only aggregate dashboard access (no browser password dashboard)
 - Anti-spam animation before video delivery
 - HTTP keep-alive server for UptimeRobot on port 8080
 
@@ -24,11 +24,15 @@ A Telegram bot with video database, referral system, and owner control panel.
 |-----|-------|
 | `BOT_TOKEN` | Your Telegram bot token from @BotFather |
 | `MONGO_URI` | Your MongoDB Atlas connection string |
-| `OWNER_ID` | `1827336632` |
+| `OWNER_IDS` | Comma-separated Telegram user IDs allowed to access owner controls and the Mini App (for example, `1827336632`) |
 | `ADMIN_GROUP_ID` | Your admin group ID (e.g. `-1001234567890`) |
 | `BOT_USERNAME` | Your bot's username without @ (e.g. `MyBlueBot`) |
 | `PORT` | `8080` |
-| `ADMIN_WEBAPP_URL` | Optional HTTPS URL for the owner-only Telegram Mini App menu button; defaults to `https://<your-render-service>/admin/` when `RENDER_EXTERNAL_URL` is available. |
+| `ADMIN_WEBAPP_URL` | Optional HTTPS Mini App URL; defaults to `https://<your-render-service>/admin/` when `RENDER_EXTERNAL_URL` is available. |
+
+
+
+The owner Mini App opens from the Telegram menu button and validates Telegram Web App `initData` server-side against `BOT_TOKEN` and `OWNER_IDS`. The API returns aggregate read-only counts only. Opening `/admin/` in an ordinary browser does not grant access to the overview API. No `ADMIN_DASHBOARD_PASSWORD` or `ADMIN_SESSION_SECRET` is required.
 
 ## Push to GitHub (secure method)
 
