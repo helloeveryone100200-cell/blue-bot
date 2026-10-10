@@ -127,6 +127,24 @@ class WelcomeUiContractTests(unittest.TestCase):
         )
         self.assertEqual(load_url_resolver("http://blue-bot.example/admin")(), "")
 
+    def test_owner_control_action_dispatch_is_separate_from_existing_handlers(self):
+        for name in (
+            "handle_owner_action", "_execute_owner_action", "_record_owner_action", "cmd_autobroadcast", "cmd_setchannel", "cmd_removechannel",
+            "cmd_ban", "cmd_unban", "cmd_userinfo", "cmd_userlist", "cmd_broadcast",
+            "cmd_accept", "cmd_deletevideo", "cmd_deleteprivatevideo", "cmd_deletephoto",
+            "cmd_deleteprivatephoto", "cmd_setthumb", "cmd_removethumb",
+        ):
+            with self.subTest(function=name):
+                find_function(name)
+        action_fn = find_function("_execute_owner_action")
+        self.assertIn("OWNER_IDS", ast.get_source_segment(SOURCE, action_fn))
+        self.assertIn("set_broadcast_new_video", call_names(action_fn))
+        self.assertIn("accept_user", call_names(action_fn))
+        self.assertIn("remove_accepted_user", call_names(action_fn))
+        audit_source = ast.get_source_segment(SOURCE, find_function("_record_owner_action"))
+        self.assertIn("owner_action_audit", audit_source)
+        self.assertIn('"$slice": -500', audit_source)
+
     def test_existing_callback_identifiers_remain_in_source(self):
         for callback in ("view_profile", "channel_not_configured", "gender_male", "gender_female", "noop"):
             with self.subTest(callback=callback):
@@ -198,6 +216,29 @@ class MiniAppUiContractTests(unittest.TestCase):
                 section = js[start:next_function if next_function >= 0 else len(js)]
                 self.assertIn("invalidateUserDetailView();", section)
                 self.assertIn("activateView(", section)
+        self.assertNotIn("innerHTML", js)
+
+    def test_owner_control_panel_exposes_guarded_actions_without_changing_bot_commands(self):
+        html = (ROOT / "admin" / "index.html").read_text(encoding="utf-8")
+        js = (ROOT / "admin" / "app.js").read_text(encoding="utf-8")
+        for element_id in (
+            "owner-controls-view", "save-auto-broadcast", "save-channel", "remove-channel",
+            "save-admin-group", "run-user-action", "start-broadcast", "broadcast-confirm",
+            "delete-media", "set-thumbnail", "remove-thumbnail", "create-referral-link",
+        ):
+            with self.subTest(element_id=element_id):
+                self.assertIn('id="' + element_id + '"', html)
+        for action in (
+            "set_auto_broadcast", "set_required_channel", "remove_required_channel",
+            "set_public_admin_group", "set_private_admin_group", "ban_user", "unban_user",
+            "grant_private_access", "revoke_private_access", "broadcast_start",
+            "delete_media", "set_thumbnail", "remove_thumbnail", "create_referral_link",
+        ):
+            with self.subTest(action=action):
+                self.assertIn(action, html + js)
+        self.assertIn("/admin/api/action", js)
+        self.assertIn("window.confirm", js)
+        self.assertIn("function openOwnerControls()", js)
         self.assertNotIn("innerHTML", js)
 
     def test_mini_app_uses_premium_dark_mobile_tokens(self):

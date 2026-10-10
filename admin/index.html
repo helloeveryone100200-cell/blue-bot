@@ -41,6 +41,7 @@
         <button class="management-item" data-feature="users"><span class="management-icon">♙</span><span><strong>User management</strong><small>Search and review user records</small></span><span class="management-arrow">›</span></button>
         <button class="management-item" data-feature="media"><span class="management-icon">▣</span><span><strong>Media library</strong><small>Videos and photo inventory</small></span><span class="management-arrow">›</span></button>
         <button class="management-item" data-feature="settings"><span class="management-icon">⚙</span><span><strong>Bot settings</strong><small>Configuration and controls</small></span><span class="management-arrow">›</span></button>
+        <button class="management-item" data-feature="owner-controls"><span class="management-icon">🛡</span><span><strong>Owner controls</strong><small>Manage users, media and bot actions</small></span><span class="management-arrow">›</span></button>
       </section>
     </div>
     <section id="user-management-view" class="user-management-view" hidden>
@@ -82,7 +83,78 @@
       <div class="section-heading user-heading"><div><p class="eyebrow">CONFIGURATION STATUS</p><h2>Bot settings</h2></div><span class="count-pill">READ ONLY</span></div>
       <p id="settings-list-status" class="list-status" role="status" aria-live="polite">Loading current configuration…</p>
       <div id="settings-list" class="settings-list" aria-live="polite"></div>
-      <p class="read-only-note">This view only inspects the current configuration. Changing settings is intentionally disabled until guarded write actions and audit logging are implemented.</p>
+      <p class="read-only-note">This view is read-only. Owner Controls validates changes server-side, confirms destructive actions, and records a bounded audit trail.</p>
+    </section>
+    <section id="owner-controls-view" class="owner-controls-view" hidden>
+      <button id="back-from-owner-controls" class="back-button">‹ <span>Back to overview</span></button>
+      <div class="section-heading user-heading"><div><p class="eyebrow">OWNER CONTROL PANEL</p><h2>Owner controls</h2></div><span class="count-pill">OWNER ONLY</span></div>
+      <p class="controls-intro">Actions here use Blue Bot's existing database records and Telegram bot. Confirm destructive or bulk actions before submitting.</p>
+      <section class="control-card">
+        <div class="control-card-heading"><div><p class="eyebrow">BOT STATISTICS</p><h3>Owner overview</h3></div><button id="load-owner-stats" class="secondary-button" type="button">Refresh</button></div>
+        <div id="owner-stats" class="owner-stats"><p class="list-status">Tap Refresh to load the full /panel statistics.</p></div>
+      </section>
+      <section class="control-card">
+        <p class="eyebrow">AUTOMATION</p><h3>Auto broadcast new videos</h3>
+        <p id="auto-broadcast-state" class="list-status">Load the current state from Bot Settings.</p>
+        <label class="control-check"><input id="auto-broadcast-toggle" type="checkbox"><span>Notify users when a new public video is added</span></label>
+        <button id="save-auto-broadcast" class="primary-button" type="button">Save auto broadcast</button>
+      </section>
+      <section class="control-card">
+        <p class="eyebrow">REQUIRED CHANNEL</p><h3>Channel join requirement</h3>
+        <label class="search-label" for="channel-link">Public channel link or @username</label>
+        <input id="channel-link" class="search-input" type="text" maxlength="300" placeholder="https://t.me/your_channel" autocomplete="off">
+        <div class="control-actions"><button id="save-channel" class="primary-button" type="button">Set channel</button><button id="remove-channel" class="secondary-button danger-button" type="button">Remove channel</button></div>
+        <p class="field-hint">The bot must be an administrator in the public channel.</p>
+      </section>
+      <section class="control-card">
+        <p class="eyebrow">MEDIA GROUPS</p><h3>Admin group configuration</h3>
+        <label class="search-label" for="admin-group-type">Group purpose</label>
+        <select id="admin-group-type" class="search-input"><option value="public">Public video group</option><option value="private">Private video group</option></select>
+        <label class="search-label" for="admin-group-id">Group ID or public @username</label>
+        <input id="admin-group-id" class="search-input" type="text" maxlength="100" placeholder="-1001234567890 or @groupname" autocomplete="off">
+        <button id="save-admin-group" class="primary-button" type="button">Set admin group</button>
+        <p class="field-hint">The bot must already be in the group. Private groups normally require the numeric chat ID.</p>
+      </section>
+      <section class="control-card">
+        <p class="eyebrow">USER MANAGEMENT</p><h3>Account actions</h3>
+        <label class="search-label" for="owner-user-id">Telegram user ID</label>
+        <input id="owner-user-id" class="search-input" type="text" inputmode="numeric" maxlength="20" placeholder="Enter exact user ID" autocomplete="off">
+        <label class="search-label" for="owner-user-action">Action</label>
+        <select id="owner-user-action" class="search-input">
+          <option value="ban_user">Ban user</option><option value="unban_user">Unban user</option>
+          <option value="grant_private_access">Grant private group access</option><option value="revoke_private_access">Revoke private group access</option>
+        </select>
+        <button id="run-user-action" class="primary-button" type="button">Run user action</button>
+      </section>
+      <section class="control-card">
+        <p class="eyebrow">BROADCAST</p><h3>Send a message</h3>
+        <label class="search-label" for="broadcast-target">Recipient</label>
+        <input id="broadcast-target" class="search-input" type="text" maxlength="20" value="all" placeholder="all or exact user ID" autocomplete="off">
+        <label class="search-label" for="broadcast-message">Message text</label>
+        <textarea id="broadcast-message" class="search-input control-textarea" maxlength="4000" rows="5" placeholder="Write the message to send"></textarea>
+        <label class="control-check"><input id="broadcast-confirm" type="checkbox"><span>I confirm that this message should be sent to the selected recipient(s).</span></label>
+        <button id="start-broadcast" class="primary-button" type="button">Start broadcast</button>
+        <p id="broadcast-status" class="list-status" role="status" aria-live="polite">No broadcast started.</p>
+      </section>
+      <section class="control-card">
+        <p class="eyebrow">MEDIA MANAGEMENT</p><h3>Delete media or manage thumbnails</h3>
+        <label class="search-label" for="owner-media-kind">Media action</label>
+        <select id="owner-media-kind" class="search-input">
+          <option value="public_video">Delete public video (vN)</option><option value="private_video">Delete private video (zN)</option>
+          <option value="public_photo">Delete public photo (pN)</option><option value="private_photo">Delete private photo (zpN)</option>
+        </select>
+        <label class="search-label" for="owner-media-id">Media ID</label>
+        <input id="owner-media-id" class="search-input" type="text" maxlength="30" placeholder="v5, z5, p3 or zp3" autocomplete="off">
+        <button id="delete-media" class="primary-button danger-button" type="button">Delete media</button>
+        <div class="control-divider"></div>
+        <label class="search-label" for="owner-thumbnail-file-id">Thumbnail Telegram file_id</label>
+        <input id="owner-thumbnail-file-id" class="search-input" type="text" maxlength="1024" placeholder="Paste the photo file_id" autocomplete="off">
+        <div class="control-actions"><button id="set-thumbnail" class="primary-button" type="button">Set thumbnail</button><button id="remove-thumbnail" class="secondary-button danger-button" type="button">Remove thumbnail</button></div>
+        <p class="field-hint">Thumbnail changes apply to video IDs vN or zN. You can continue using the existing /setthumb command with a photo caption, too.</p>
+        <div class="control-divider"></div>
+        <button id="create-referral-link" class="secondary-button" type="button">Create video referral link</button>
+        <p id="referral-result" class="list-status" role="status" aria-live="polite">Enter a public video ID (vN) above to create its link.</p>
+      </section>
     </section>
     <p class="notice" id="notice" role="status" aria-live="polite">Opening inside Telegram is required to verify the owner identity.</p>
     <footer>BLUE BOT <span>·</span> SECURE OWNER MINI APP</footer>

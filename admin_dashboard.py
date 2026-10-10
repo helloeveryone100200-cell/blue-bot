@@ -113,7 +113,7 @@ def _read_owner_payload(handler):
     return (user, payload), True
 
 
-def handle_admin_request(handler, users, videos, settings, head_only=False):
+def handle_admin_request(handler, users, videos, settings, head_only=False, action_handler=None):
     """Serve the Telegram Mini App shell and a Telegram-owner-authenticated API."""
     path = urlsplit(handler.path).path
     if path != "/admin" and not path.startswith("/admin/"):
@@ -146,7 +146,7 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
         _send(handler, 200, body, content_type)
         return True
 
-    if path in ("/admin/api/overview", "/admin/api/users", "/admin/api/user-detail", "/admin/api/media", "/admin/api/settings"):
+    if path in ("/admin/api/overview", "/admin/api/users", "/admin/api/user-detail", "/admin/api/media", "/admin/api/settings", "/admin/api/action"):
         if method != "POST":
             _json(handler, 405, {"error": "method_not_allowed"})
             return True
@@ -154,6 +154,25 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
         if not valid:
             return True
         owner, payload = authenticated
+
+        if path == "/admin/api/action":
+            if action_handler is None:
+                _json(handler, 503, {"error": "owner_actions_unavailable"})
+                return True
+            try:
+                result = action_handler(owner, payload)
+            except ValueError as exc:
+                error_code = str(exc)[:80] or "invalid_action"
+                _json(handler, 400, {"error": error_code})
+                return True
+            except Exception:
+                _json(handler, 503, {"error": "owner_action_failed"})
+                return True
+            if not isinstance(result, dict):
+                _json(handler, 503, {"error": "invalid_action_result"})
+                return True
+            _json(handler, 200, result)
+            return True
 
         if path == "/admin/api/users":
             raw_query = payload.get("query", "")

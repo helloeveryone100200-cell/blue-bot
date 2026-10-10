@@ -157,7 +157,7 @@ class MiniAppRouteTests(unittest.TestCase):
     def test_every_admin_api_route_rejects_non_owner(self):
         paths = (
             "/admin/api/overview", "/admin/api/users", "/admin/api/user-detail",
-            "/admin/api/media", "/admin/api/settings",
+            "/admin/api/media", "/admin/api/settings", "/admin/api/action",
         )
         body = json.dumps({"initData": make_init_data(user_id=9999)}).encode()
         with patch.dict(os.environ, {"BOT_TOKEN": BOT_TOKEN, "OWNER_IDS": "1234"}, clear=False), patch(
@@ -483,6 +483,76 @@ class MiniAppRouteTests(unittest.TestCase):
         self.assertEqual(handler.status, 200)
         self.assertIn(b"Telegram.WebApp", handler.response_body)
         self.users.count_documents.assert_not_called()
+
+
+class OwnerActionRouteTests(unittest.TestCase):
+    def setUp(self):
+        self.users = Mock()
+        self.videos = Mock()
+        self.settings = Mock()
+        self.action_handler = Mock(return_value={"ok": True, "action": "done"})
+
+    def request(self, path, user_id=1234, method="POST", extra=None, action_handler=None):
+        body = json.dumps({"initData": make_init_data(user_id=user_id), **(extra or {})}).encode()
+        handler = FakeHandler(path, command=method, headers={"Content-Length": str(len(body))}, body=body)
+        with patch.dict(os.environ, {"BOT_TOKEN": BOT_TOKEN, "OWNER_IDS": "1234"}, clear=False), patch(
+            "admin_dashboard.time.time", return_value=1800000000
+        ):
+            admin_dashboard.handle_admin_request(
+                handler, self.users, self.videos, self.settings, action_handler=action_handler
+            )
+        return handler
+
+    def test_owner_action_dispatches_only_after_owner_authentication(self):
+        handler = self.request(
+            "/admin/api/action",
+            extra={"action": "ban_user", "userId": "5678"},
+            action_handler=self.action_handler,
+        )
+        self.assertEqual(handler.status, 200)
+        self.assertEqual(json.loads(handler.response_body), {"ok": True, "action": "done"})
+        self.action_handler.assert_called_once_with({"id": 1234, "first_name": "Owner"}, {
+            "initData": make_init_data(),
+            "action": "ban_user",
+            "userId": "5678",
+        })
+
+    def test_non_owner_cannot_dispatch_mutating_action(self):
+        handler = self.request(
+            "/admin/api/action",
+            user_id=9999,
+            extra={"action": "ban_user", "userId": "5678"},
+            action_handler=self.action_handler,
+        )
+        self.assertEqual(handler.status, 403)
+        self.action_handler.assert_not_called()
+        self.users.find_one_and_update.assert_not_called()
+
+    def test_owner_action_route_requires_post(self):
+        handler = self.request(
+            "/admin/api/action",
+            method="GET",
+            extra={"action": "ban_user", "userId": "5678"},
+            action_handler=self.action_handler,
+        )
+        self.assertEqual(handler.status, 405)
+        self.action_handler.assert_not_called()
+
+    def test_owner_action_route_fails_closed_without_dispatcher(self):
+        handler = self.request("/admin/api/action", extra={"action": "ban_user", "userId": "5678"})
+        self.assertEqual(handler.status, 503)
+        self.assertEqual(json.loads(handler.response_body), {"error": "owner_actions_unavailable"})
+
+    def test_action_validation_error_is_returned_as_client_error(self):
+        def reject(_owner, _payload):
+            raise ValueError("invalid_media_id")
+        handler = self.request(
+            "/admin/api/action",
+            extra={"action": "delete_media", "mediaId": "not-valid"},
+            action_handler=reject,
+        )
+        self.assertEqual(handler.status, 400)
+        self.assertEqual(json.loads(handler.response_body), {"error": "invalid_media_id"})
 
 
 if __name__ == "__main__":

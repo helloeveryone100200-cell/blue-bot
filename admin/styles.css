@@ -27,3 +27,30 @@ body.telegram-ready .app-shell{display:block}body.telegram-ready #browser-blocke
 .user-detail-field small { display: block; color: #94a3b8; margin-bottom: 6px; }
 .user-detail-field strong { display: block; color: #e2e8f0; overflow-wrap: anywhere; }
 @media (max-width: 420px) { .user-detail-fields { grid-template-columns: minmax(0, 1fr); } }
+
+/* Owner controls: action forms inherit the Premium Dark design system. */
+.owner-controls-view { display: grid; gap: 14px; }
+.controls-intro, .field-hint { color: var(--muted); font-size: 12px; line-height: 1.55; }
+.control-card { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 18px; background: linear-gradient(145deg, rgba(18,29,50,.96), rgba(12,19,34,.96)); box-shadow: 0 10px 28px rgba(0,0,0,.12); }
+.control-card h3 { margin: 4px 0 12px; color: var(--text); font-size: 16px; letter-spacing: -.2px; }
+.control-card .eyebrow { margin-bottom: 4px; }
+.control-card .search-label { display: block; margin: 12px 0 7px; }
+.control-card .search-input { width: 100%; box-sizing: border-box; }
+.control-card .primary-button, .control-card .secondary-button { min-height: 42px; padding: 10px 13px; border-radius: 11px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+.primary-button { border: 1px solid rgba(119,117,255,.6); color: #fff; background: linear-gradient(135deg, #6865f5, #5148d9); }
+.secondary-button { border: 1px solid var(--border); color: var(--text); background: rgba(148,163,184,.08); }
+.danger-button { border-color: rgba(255,141,154,.35); }
+.control-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.control-actions > button { flex: 1 1 130px; }
+.control-check { display: flex; align-items: flex-start; gap: 9px; margin: 12px 0; color: var(--text); font-size: 13px; line-height: 1.45; }
+.control-check input { accent-color: var(--indigo); margin-top: 2px; }
+.control-textarea { resize: vertical; min-height: 110px; font: inherit; }
+.control-divider { height: 1px; margin: 16px 0; background: var(--border); }
+.control-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.owner-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.owner-stat { min-width: 0; padding: 11px; border: 1px solid rgba(148,163,184,.13); border-radius: 12px; background: rgba(8,13,26,.55); }
+.owner-stat small { display: block; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.owner-stat strong { display: block; margin-top: 5px; color: var(--text); font-size: 19px; overflow-wrap: anywhere; }
+.control-card button:disabled { opacity: .55; cursor: not-allowed; }
+#referral-result { overflow-wrap: anywhere; }
+@media (max-width: 360px) { .control-card { padding: 12px; } .owner-stats { grid-template-columns: minmax(0, 1fr); } }
