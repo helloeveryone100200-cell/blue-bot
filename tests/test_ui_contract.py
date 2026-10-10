@@ -165,12 +165,15 @@ class MiniAppUiContractTests(unittest.TestCase):
         self.assertIn("userDetailRequest += 1", js)
         self.assertIn("late response cannot reopen this view", js)
         self.assertIn("function invalidateUserDetailView()", js)
+        self.assertIn("function activateView(view)", js)
+        self.assertIn("requestId !== overviewRequest || activeView !== 'overview'", js)
         for navigation in ("openUsers", "openMedia", "openSettings", "showOverview"):
             with self.subTest(navigation=navigation):
                 start = js.index("function " + navigation + "()")
                 next_function = js.find("\n  function ", start + 1)
                 section = js[start:next_function if next_function >= 0 else len(js)]
                 self.assertIn("invalidateUserDetailView();", section)
+                self.assertIn("activateView(", section)
         self.assertNotIn("innerHTML", js)
 
     def test_mini_app_uses_premium_dark_mobile_tokens(self):
