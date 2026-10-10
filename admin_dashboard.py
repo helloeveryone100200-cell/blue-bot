@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import time
 from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
@@ -10,6 +11,7 @@ from urllib.parse import parse_qsl, urlsplit
 ADMIN_DIR = Path(__file__).resolve().parent / "admin"
 MAX_API_BODY = 16 * 1024
 INIT_DATA_MAX_AGE_SECONDS = 24 * 60 * 60
+MAX_USER_PAGE_SIZE = 50
 
 
 def _owner_ids():
@@ -69,6 +71,30 @@ def _json(handler, status, payload):
     _send(handler, status, json.dumps(payload, separators=(",", ":")).encode("utf-8"), "application/json; charset=utf-8")
 
 
+def _read_owner_payload(handler):
+    """Read a bounded JSON request and authenticate its Telegram owner initData."""
+    try:
+        length = int(handler.headers.get("Content-Length", "0"))
+    except (TypeError, ValueError):
+        length = MAX_API_BODY + 1
+    if length <= 0 or length > MAX_API_BODY:
+        _json(handler, 413, {"error": "invalid_request_size"})
+        return None, False
+    try:
+        payload = json.loads(handler.rfile.read(length).decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        _json(handler, 400, {"error": "invalid_json"})
+        return None, False
+    if not isinstance(payload, dict):
+        _json(handler, 400, {"error": "invalid_request"})
+        return None, False
+    user = validate_telegram_init_data(payload.get("initData"), os.environ.get("BOT_TOKEN", ""))
+    if user is None:
+        _json(handler, 403, {"error": "telegram_owner_authentication_failed"})
+        return None, False
+    return (user, payload), True
+
+
 def handle_admin_request(handler, users, videos, settings, head_only=False):
     """Serve the Telegram Mini App shell and a Telegram-owner-authenticated API."""
     path = urlsplit(handler.path).path
@@ -102,29 +128,71 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
         _send(handler, 200, body, content_type)
         return True
 
-    if path == "/admin/api/overview":
+    if path in ("/admin/api/overview", "/admin/api/users"):
         if method != "POST":
             _json(handler, 405, {"error": "method_not_allowed"})
             return True
-        try:
-            length = int(handler.headers.get("Content-Length", "0"))
-        except (TypeError, ValueError):
-            length = MAX_API_BODY + 1
-        if length <= 0 or length > MAX_API_BODY:
-            _json(handler, 413, {"error": "invalid_request_size"})
+        authenticated, valid = _read_owner_payload(handler)
+        if not valid:
             return True
-        try:
-            payload = json.loads(handler.rfile.read(length).decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            _json(handler, 400, {"error": "invalid_json"})
+        owner, payload = authenticated
+
+        if path == "/admin/api/users":
+            raw_query = payload.get("query", "")
+            if not isinstance(raw_query, str) or len(raw_query) > 80:
+                _json(handler, 400, {"error": "invalid_query"})
+                return True
+            try:
+                page = int(payload.get("page", 1))
+                page_size = min(max(int(payload.get("pageSize", 20)), 1), MAX_USER_PAGE_SIZE)
+            except (ValueError, TypeError, OverflowError):
+                _json(handler, 400, {"error": "invalid_pagination"})
+                return True
+            if page < 1 or page > 1_000_000:
+                _json(handler, 400, {"error": "invalid_pagination"})
+                return True
+            query = raw_query.strip()
+            filters = {}
+            if query:
+                escaped_query = re.escape(query)
+                filters = {"$or": [
+                    {"username": {"$regex": escaped_query, "$options": "i"}},
+                    {"first_name": {"$regex": escaped_query, "$options": "i"}},
+                    {"_id": {"$regex": "^" + escaped_query + "$"}},
+                ]}
+            try:
+                total = users.count_documents(filters)
+                cursor = users.find(
+                    filters,
+                    {"_id": 1, "username": 1, "first_name": 1, "shares": 1, "is_banned": 1},
+                ).sort("_id", -1).skip((page - 1) * page_size).limit(page_size)
+                items = []
+                for doc in cursor:
+                    user_id = doc.get("_id")
+                    if not isinstance(user_id, (str, int)) or isinstance(user_id, bool):
+                        continue
+                    shares = doc.get("shares", 0)
+                    if not isinstance(shares, int) or isinstance(shares, bool) or shares < 0:
+                        shares = 0
+                    items.append({
+                        "id": str(user_id),
+                        "username": str(doc.get("username") or "")[:64],
+                        "first_name": str(doc.get("first_name") or "")[:128],
+                        "shares": shares,
+                        "is_banned": bool(doc.get("is_banned", False)),
+                    })
+            except Exception:
+                _json(handler, 503, {"error": "users_unavailable"})
+                return True
+            _json(handler, 200, {
+                "items": items,
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "pages": max(1, (total + page_size - 1) // page_size),
+            })
             return True
-        if not isinstance(payload, dict):
-            _json(handler, 400, {"error": "invalid_request"})
-            return True
-        user = validate_telegram_init_data(payload.get("initData"), os.environ.get("BOT_TOKEN", ""))
-        if user is None:
-            _json(handler, 403, {"error": "telegram_owner_authentication_failed"})
-            return True
+
         try:
             total_users = users.count_documents({})
             # Video IDs use vN (public) and zN (private); photo-only IDs use pN/zpN.
@@ -137,7 +205,7 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
             _json(handler, 503, {"error": "metrics_unavailable"})
             return True
         _json(handler, 200, {
-            "owner": {"id": user["id"], "name": user.get("first_name", "Owner")},
+            "owner": {"id": owner["id"], "name": owner.get("first_name", "Owner")},
             "users": total_users,
             "media": total_media,
             "videos": total_videos,
