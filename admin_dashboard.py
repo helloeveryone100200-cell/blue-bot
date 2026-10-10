@@ -164,6 +164,8 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
                     filters["$or"].append({"_id": int(query)})
             try:
                 total = users.count_documents(filters)
+                # Clamp out-of-range pages before applying MongoDB skip().
+                page = min(page, max(1, (total + page_size - 1) // page_size))
                 cursor = users.find(
                     filters,
                     {"_id": 1, "username": 1, "first_name": 1, "shares": 1, "is_banned": 1},
@@ -228,6 +230,8 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
                 filters = {"$and": [filters, search_filter]} if filters else search_filter
             try:
                 total = videos.count_documents(filters)
+                # Clamp out-of-range pages before applying MongoDB skip().
+                page = min(page, max(1, (total + page_size - 1) // page_size))
                 cursor = videos.find(
                     filters,
                     {"_id": 1, "type": 1, "caption": 1, "private": 1, "likes": 1,
