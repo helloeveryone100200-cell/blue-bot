@@ -9,7 +9,7 @@ A Telegram bot with a Telegram-only owner Mini App, video database, referral sys
 - User limit system with referral tracking (+5 limit per referral)
 - Customer support system (/contact_to_owner)
 - Owner control panel (/panel, /free, /broadcast)
-- Telegram Mini App with owner-only aggregate dashboard and paginated, read-only user directory (no browser password dashboard)
+- Telegram Mini App with owner-only aggregate dashboard, paginated read-only user directory, and media inventory (no browser password dashboard)
 - Anti-spam animation before video delivery
 - HTTP keep-alive server for UptimeRobot on port 8080
 
@@ -33,7 +33,7 @@ A Telegram bot with a Telegram-only owner Mini App, video database, referral sys
 
 
 
-The owner Mini App opens from the Telegram menu button and, for owner accounts, an **Admin Panel** button in the `/start` welcome message. Regular users do not receive that Web App button. The Mini App validates Telegram Web App `initData` server-side against `BOT_TOKEN` and `OWNER_IDS`. It provides aggregate overview metrics and a paginated, searchable, read-only user directory with an explicit field allowlist. User records cannot be changed from the Mini App. Opening `/admin/` in an ordinary browser does not grant access to either API. No `ADMIN_DASHBOARD_PASSWORD` or `ADMIN_SESSION_SECRET` is required.
+The owner Mini App opens from the Telegram menu button and, for owner accounts, an **Admin Panel** button in the `/start` welcome message. Regular users do not receive that Web App button. The Mini App validates Telegram Web App `initData` server-side against `BOT_TOKEN` and `OWNER_IDS`. It provides aggregate overview metrics, a paginated searchable read-only user directory, and a searchable/paginated media inventory with public/private visibility and metadata only. User records and media cannot be changed from the Mini App, and Telegram file IDs are never sent to the browser. Opening `/admin/` in an ordinary browser does not grant access to either API. No `ADMIN_DASHBOARD_PASSWORD` or `ADMIN_SESSION_SECRET` is required.
 
 ## Push to GitHub (secure method)
 
