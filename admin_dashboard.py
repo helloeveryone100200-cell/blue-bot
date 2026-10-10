@@ -183,7 +183,7 @@ def handle_admin_request(handler, users, videos, settings, head_only=False):
                         "username": str(doc.get("username") or "")[:64],
                         "first_name": str(doc.get("first_name") or "")[:128],
                         "shares": shares,
-                        "is_banned": bool(doc.get("is_banned", False)),
+                        "is_banned": doc.get("is_banned") is True,
                     })
             except Exception:
                 _json(handler, 503, {"error": "users_unavailable"})
