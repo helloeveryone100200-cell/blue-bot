@@ -227,12 +227,13 @@ def _start_owner_broadcast(owner_id, target, message_text):
     if not isinstance(message_text, str) or not message_text.strip() or len(message_text) > 4000:
         raise ValueError("invalid_broadcast_message")
     if target == "all":
-        target_ids = [doc["_id"] for doc in users.find({}, {"_id": 1}) if isinstance(doc.get("_id"), int) and not isinstance(doc.get("_id"), bool)]
+        target_ids = None
+        total = users.count_documents({})
     else:
-        target_id = _valid_owner_target_id(target)
-        target_ids = [target_id]
+        target_ids = [_valid_owner_target_id(target)]
+        total = 1
     job_id = str(time.time_ns())
-    job = {"id": job_id, "total": len(target_ids), "sent": 0, "failed": 0, "status": "running"}
+    job = {"id": job_id, "total": total, "sent": 0, "failed": 0, "status": "running"}
     with owner_broadcast_jobs_lock:
         if len(owner_broadcast_jobs) >= 100:
             for old_id, old_job in list(owner_broadcast_jobs.items()):
@@ -245,17 +246,30 @@ def _start_owner_broadcast(owner_id, target, message_text):
         owner_broadcast_jobs[job_id] = job
 
     def send_messages():
-        for target_id in target_ids:
-            try:
-                bot.send_message(target_id, message_text)
-                with owner_broadcast_jobs_lock:
-                    job["sent"] += 1
-            except Exception:
-                with owner_broadcast_jobs_lock:
-                    job["failed"] += 1
-            time.sleep(0.04)
-        with owner_broadcast_jobs_lock:
-            job["status"] = "completed"
+        try:
+            if target_ids is None:
+                recipients = (
+                    doc["_id"] for doc in users.find({}, {"_id": 1})
+                    if isinstance(doc.get("_id"), int) and not isinstance(doc.get("_id"), bool)
+                )
+            else:
+                recipients = iter(target_ids)
+            for target_id in recipients:
+                try:
+                    bot.send_message(target_id, message_text)
+                    with owner_broadcast_jobs_lock:
+                        job["sent"] += 1
+                except Exception:
+                    with owner_broadcast_jobs_lock:
+                        job["failed"] += 1
+                time.sleep(0.04)
+        except Exception:
+            # A database cursor failure must not leave the progress indicator stuck forever.
+            with owner_broadcast_jobs_lock:
+                job["failed"] += max(0, job["total"] - job["sent"] - job["failed"])
+        finally:
+            with owner_broadcast_jobs_lock:
+                job["status"] = "completed"
 
     threading.Thread(target=send_messages, daemon=True).start()
     return {"jobId": job_id, "total": job["total"], "status": "running"}
@@ -457,7 +471,11 @@ def handle_owner_action(owner, payload):
     if action == "panel_stats":
         total_users = users.count_documents({})
         banned_users = users.count_documents({"is_banned": True})
-        total_shares = sum(doc.get("shares", 0) for doc in users.find({}, {"shares": 1}))
+        total_shares = sum(
+            value for doc in users.find({}, {"shares": 1})
+            for value in [doc.get("shares", 0)]
+            if isinstance(value, int) and not isinstance(value, bool) and value >= 0
+        )
         return {
             "ok": True, "users": total_users, "bannedUsers": banned_users,
             "shares": total_shares, "publicVideos": get_total_videos(),
