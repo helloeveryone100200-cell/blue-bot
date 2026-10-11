@@ -829,9 +829,9 @@ def broadcast_new_content(vid_id: str):
             try:
                 markup = InlineKeyboardMarkup()
                 markup.add(InlineKeyboardButton(
-                    f"▶️ Watch ({vid_id})",
+                    "▶️ Watch Video",
                     callback_data=f"watchvid:{vid_id}",
-                    style="success"
+                    style="primary"
                 ))
                 bot.send_message(
                     uid,
