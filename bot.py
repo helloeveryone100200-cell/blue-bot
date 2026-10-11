@@ -662,10 +662,8 @@ def cancel_keyboard():
 def welcome_markup(user_id):
     markup = InlineKeyboardMarkup(row_width=2)
     share_url = f"https://t.me/share/url?url=https://t.me/{BOT_USERNAME}?start={user_id}"
-    markup.add(
-        InlineKeyboardButton("👤 Profile", callback_data="view_profile"),
-        InlineKeyboardButton("🔗 Share",   url=share_url),
-    )
+    # Profile is available from the persistent reply keyboard; keep Share here.
+    markup.add(InlineKeyboardButton("🔗 Share", url=share_url))
     # User Mini App is available to regular users; owner controls remain separately gated.
     user_app_url = resolve_user_webapp_url()
     if user_app_url:
@@ -2685,18 +2683,24 @@ def handle_text(message):
                 pass
         return
 
-    # ── Menu button: 👤 Profile ───────────────────────────────────────────────
+    # ── Me    # ── Menu button: 👤 Profile ───────────────────────────────────────────────
     if text == "👤 Profile":
         display_name = doc.get("username") or doc.get("first_name") or str(user_id)
-        bot.send_message(
-            message.chat.id,
-            "<b>👤 𝗠𝘆 𝗣𝗿𝗼𝗳𝗶𝗹𝗲</b>\n\n"
-            f"<blockquote>• 𝗡𝗮𝗺𝗲  ——  {h(display_name)}\n"
-            f"• 𝗜𝗗  ——  {user_id}\n"
-            "• 𝗩𝗶𝗱𝗲𝗼 𝗔𝗰𝗰𝗲𝘀𝘀  ——  ∞ Unlimited\n"
-            f"• 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {doc.get('shares', 0)} ဦး</blockquote>",
-            parse_mode='HTML'
+        profile_text = (
+            "<b>👤 MY PROFILE</b>\\n"
+            "<i>Your Blue Bot account at a glance</i>\\n\\n"
+            "<blockquote>"
+            "<b>ACCOUNT DETAILS</b>\\n"
+            f"👤 <b>Name</b>\\n<code>{h(display_name)}</code>\\n\\n"
+            f"🆔 <b>Telegram ID</b>\\n<code>{user_id}</code>\\n\\n"
+            "<b>VIDEO ACCESS</b>\\n"
+            "🎬 <b>Unlimited</b>\\n\\n"
+            "<b>SHARING ACTIVITY</b>\\n"
+            f"🔗 <b>Total shares:</b> {doc.get('shares', 0)}"
+            "</blockquote>\\n\\n"
+            "<i>Your account information is shown above.</i>"
         )
+        bot.send_message(message.chat.id, profile_text, parse_mode='HTML')
         return
 
     # ── Menu button: 🔗 Share & Refer ─────────────────────────────────────────
