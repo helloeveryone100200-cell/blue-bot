@@ -72,7 +72,7 @@ def validate_telegram_user_init_data(init_data, bot_token, now=None):
         received_hash = values.pop("hash", "")
         if len(received_hash) != 64 or any(c not in "0123456789abcdef" for c in received_hash):
             return None
-        data_check_string = "\\n".join(f"{key}={value}" for key, value in sorted(values.items()))
+        data_check_string = "\n".join(f"{key}={value}" for key, value in sorted(values.items()))
         secret_key = hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
         expected_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(received_hash, expected_hash):
