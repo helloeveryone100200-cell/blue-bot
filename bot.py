@@ -6,7 +6,7 @@ import threading
 from http.server import HTTPServer, ThreadingHTTPServer, BaseHTTPRequestHandler
 from collections import defaultdict
 from types import SimpleNamespace
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
@@ -595,13 +595,13 @@ def main_menu_keyboard(user_id=None):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         KeyboardButton("👤 Profile", style="success"),
-        KeyboardButton("🔗 Share & Refer", style="primary"),
+        KeyboardButton("🔗 𝗦𝗵𝗮𝗿𝗲 & 𝗥𝗲𝗳𝗲𝗿", style="primary"),
     )
     markup.add(
-        KeyboardButton("📞 Contact Owner", style="success"),
+        KeyboardButton("📞 𝗖𝗼𝗻𝘁𝗮𝗰𝘁 𝗢𝘄𝗻𝗲𝗿", style="success"),
     )
     markup.add(
-        KeyboardButton("🏆 Top Videos", style="primary"),
+        KeyboardButton("🏆 𝗧𝗼𝗽 𝗩𝗶𝗱𝗲𝗼𝘀 (Most Liked)", style="primary"),
     )
     if user_id in OWNER_IDS:
         markup.add(
@@ -848,26 +848,35 @@ def broadcast_new_content(vid_id: str):
 # ─── TOP VIDEOS TEXT ──────────────────────────────────────────────────────────
 
 def get_top_videos_text(n: int = 10) -> str:
+    """Build a readable leaderboard using the existing public-video rating data."""
     top = list(videos.find(
         {"_id": {"$regex": r"^v\d+$"}, "likes": {"$gt": 0}},
         {"_id": 1, "likes": 1, "dislikes": 1, "views": 1}
-    ).sort("likes", -1).limit(n))
+    ).sort([("likes", -1), ("views", -1), ("_id", 1)]).limit(max(1, min(n, 10))))
     if not top:
         return (
-            "<b>🏆 𝗧𝗼𝗽 𝗩𝗶𝗱𝗲𝗼𝘀</b>\n\n"
-            "<blockquote>• မဲပေးမှု မရှိသေးပါ။\n"
-            "• Video ကြည့်ပြီးနောက် 👍 / 👎 နှိပ်ပြီး မဲပေးနိုင်ပါသည်။</blockquote>"
+            "<b>🏆 𝗧𝗼𝗽 𝗩𝗶𝗱𝗲𝗼𝘀 (Most Liked)</b>\n"
+            "<i>Community leaderboard</i>\n\n"
+            "<blockquote>📊 <b>Leaderboard is waiting for its first vote.</b>\n\n"
+            "• Public videos with at least one 👍 vote will appear here.\n"
+            "• Video တစ်ခုကို ကြည့်ပြီးနောက် 👍 / 👎 ဖြင့် မဲပေးနိုင်ပါသည်။</blockquote>"
         )
-    medals = ["🥇","🥈","🥉"] + ["🏅"] * 7
-    lines  = []
-    for i, v in enumerate(top):
+    medals = ["🥇", "🥈", "🥉"] + ["🏅"] * 7
+    lines = []
+    for i, video in enumerate(top):
+        video_id = h(video.get("_id", ""))
+        likes = max(0, int(video.get("likes", 0) or 0))
+        dislikes = max(0, int(video.get("dislikes", 0) or 0))
+        views = max(0, int(video.get("views", 0) or 0))
         lines.append(
-            f"{medals[i]} <b>{v['_id']}</b>  👍 {v.get('likes',0)}  "
-            f"👎 {v.get('dislikes',0)}  👁 {v.get('views',0)}"
+            f"{medals[i]} <b>{video_id}</b>\n"
+            f"   👍 <b>{likes}</b> likes  ·  👎 {dislikes}  ·  👁 {views} views"
         )
     return (
-        "<b>🏆 𝗧𝗼𝗽 𝗩𝗶𝗱𝗲𝗼𝘀 (Most Liked)</b>\n\n"
-        f"<blockquote>{'%0A'.join(lines).replace('%0A', chr(10))}</blockquote>"
+        "<b>🏆 𝗧𝗼𝗽 𝗩𝗶𝗱𝗲𝗼𝘀 (Most Liked)</b>\n"
+        "<i>Community leaderboard · ranked by likes</i>\n\n"
+        f"<blockquote>{chr(10).join(lines)}</blockquote>\n\n"
+        "<i>Tip: Send a video ID such as <code>v1</code> to watch it.</i>"
     )
 
 # ─── Owner /autobroadcast ────────────────────────────────────────────────────
@@ -2704,17 +2713,21 @@ def handle_text(message):
         return
 
     # ── Menu button: 🔗 Share & Refer ─────────────────────────────────────────
-    if text == "🔗 Share & Refer":
-        share_url = f"https://t.me/share/url?url=https://t.me/{BOT_USERNAME}?start={user_id}"
+    if text == "🔗 𝗦𝗵𝗮𝗿𝗲 & 𝗥𝗲𝗳𝗲𝗿":
+        referral_link = f"https://t.me/{BOT_USERNAME}?start={user_id}"
+        share_url = f"https://t.me/share/url?url={quote(referral_link, safe='')}"
         markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("🔗 𝗦𝗵𝗮𝗿𝗲 𝗟𝗶𝗻𝗸 ကူးယူပါ", url=share_url))
+        markup.add(InlineKeyboardButton("📤 Share referral link", url=share_url, style="primary"))
         bot.send_message(
             message.chat.id,
-            "<b>🔗 𝗦𝗵𝗮𝗿𝗲 &amp; 𝗥𝗲𝗳𝗲𝗿</b>\n\n"
-            "<blockquote>• သူငယ်ချင်းများကို ဖိတ်ခေါ်ပြီး\n"
-            "  Bot ကို မျှဝေပေးနိုင်ပါသည်။\n\n"
-            f"🔗 𝗬𝗼𝘂𝗿 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹 𝗟𝗶𝗻𝗸:\n"
-            f"https://t.me/{BOT_USERNAME}?start={user_id}</blockquote>",
+            "<b>🔗 𝗦𝗵𝗮𝗿𝗲 &amp; 𝗥𝗲𝗳𝗲𝗿</b>\n"
+            "<i>Invite friends to discover Blue Bot</i>\n\n"
+            "<blockquote><b>YOUR PERSONAL REFERRAL LINK</b>\n"
+            f"<code>{h(referral_link)}</code>\n\n"
+            "• Share this link with friends.\n"
+            "• When they open it, Telegram will take them to Blue Bot.\n"
+            "• Your personal link helps identify referrals.</blockquote>\n\n"
+            "👇 <i>Tap the button below to share your link.</i>",
             parse_mode='HTML',
             reply_markup=markup
         )
@@ -2733,13 +2746,18 @@ def handle_text(message):
         return
 
     # ── Menu button: 📞 Contact Owner ─────────────────────────────────────────
-    if text == "📞 Contact Owner":
+    if text == "📞 𝗖𝗼𝗻𝘁𝗮𝗰𝘁 𝗢𝘄𝗻𝗲𝗿":
+        if message.chat.type != "private":
+            return
         users.update_one({"_id": user_id}, {"$set": {"state": "waiting_contact"}})
         bot.send_message(
             message.chat.id,
-            "<b>📞 𝗖𝗼𝗻𝘁𝗮𝗰𝘁 𝗢𝘄𝗻𝗲𝗿</b>\n\n"
-            "<blockquote>• 𝗕𝗼𝘁 𝗢𝘄𝗻𝗲𝗿 ထံ ပေးပို့လိုသည့် စာသားကို\n"
-            "  ရိုက်ထည့်ပြီး ပေးပို့နိုင်ပါပြီ ခင်ဗျာ။\n\n"
+            "<b>📞 𝗖𝗼𝗻𝘁𝗮𝗰𝘁 𝗢𝘄𝗻𝗲𝗿</b>\n"
+            "<i>Blue Bot Support</i>\n\n"
+            "<blockquote>သင့်မေးခွန်း သို့မဟုတ် အကူအညီလိုအပ်ချက်ကို "
+            "စာတစ်စောင်အဖြစ် ပေးပို့နိုင်ပါသည်။\n\n"
+            "• စာသားတစ်စောင် ပို့လိုက်ပါ။\n"
+            "• သင့်စာကို Owner ထံ ပေးပို့ပေးပါမည်။\n"
             "• မပို့လိုပါက ❌ Cancel ကိုနှိပ်ပါ။</blockquote>",
             parse_mode='HTML',
             reply_markup=cancel_keyboard()
@@ -2747,7 +2765,7 @@ def handle_text(message):
         return
 
     # ── Menu button: 🏆 Top Videos ────────────────────────────────────────────
-    if text == "🏆 Top Videos":
+    if text == "🏆 𝗧𝗼𝗽 𝗩𝗶𝗱𝗲𝗼𝘀 (Most Liked)":
         bot.send_message(
             message.chat.id,
             get_top_videos_text(10),
