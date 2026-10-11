@@ -389,8 +389,8 @@ def _execute_owner_action(owner, payload):
         try:
             bot.send_message(
                 target_id,
-                "🚫 သင်သည် ဤ Bot ကို အသုံးပြုခွင့် ပိတ်ဆို့ပြီးပါပြီ။" if action == "ban_user"
-                else "✅ သင်၏ Ban ကို ဖြုတ်ပေးလိုက်ပါပြီ။ Bot ကို ဆက်လက် အသုံးပြုနိုင်ပါပြီ။",
+                "🚫 You have been blocked from using this bot." if action == "ban_user"
+                else "✅ Your ban has been lifted. You can use the bot again.",
             )
         except Exception:
             pass
@@ -407,8 +407,8 @@ def _execute_owner_action(owner, payload):
                 bot.send_message(
                     target_id,
                     "<b>🔓 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗔𝗰𝗰𝗲𝘀𝘀 𝗚𝗿𝗮𝗻𝘁𝗲𝗱!</b>\n\n"
-                    "<blockquote>• Owner မှ Private Group ကို ခွင့်ပြုလိုက်ပါပြီ ✅\n"
-                    "• Private Group တွင် video တင်နိုင်ပြီး z1, z2, z3 … ဖြင့် ရှာဖွေနိုင်မည်ဖြစ်သည်။</blockquote>",
+                    "<blockquote>• The owner has granted you access to the private group ✅\n"
+                    "• You can post videos in the private group and z1, z2, z3 … ဖြင့် ရှာဖွေနိုင်မည်ဖြစ်သည်။</blockquote>",
                     parse_mode="HTML",
                 )
             except Exception:
@@ -419,7 +419,7 @@ def _execute_owner_action(owner, payload):
             bot.send_message(
                 target_id,
                 "<b>🔒 𝗔𝗰𝗰𝗲𝘀𝘀 𝗥𝗲𝘃𝗼𝗸𝗲𝗱</b>\n\n"
-                "<blockquote>• Owner မှ Private Group ခွင့်ပြုချက် ရုပ်သိမ်းလိုက်ပါပြီ။</blockquote>",
+                "<blockquote>• The owner has revoked your private-group access.</blockquote>",
                 parse_mode="HTML",
             )
         except Exception:
@@ -750,13 +750,13 @@ def channel_join_markup():
     markup = InlineKeyboardMarkup(row_width=1)
     if channel:
         markup.add(InlineKeyboardButton(
-            "✅ Channel Join လုပ်ရန်",
+            "✅ Join Channel",
             url=channel["link"],
             style="success"
         ))
     else:
         markup.add(InlineKeyboardButton(
-            "⚠️ Channel မသတ်မှတ်ရသေးပါ",
+            "⚠️ No channel configured yet",
             callback_data="channel_not_configured",
             style="danger"
         ))
@@ -770,11 +770,11 @@ def channel_join_markup():
 def send_channel_join_prompt(chat_id, reply_to_message_id=None):
     channel = get_required_channel()
     text = (
-        "ဇာတ်ကားကြည့်ရန် Channel အရင် Join ပေးပါ။\n\n"
-        "Join ပြီးပါက အောက်တွင် Refresh ကိုနှိပ်၍ Video ကိုကြည့်ရှုနိုင်သည်။"
+        "Please join the channel before watching videos.\n\n"
+        "After joining, tap Refresh below to watch videos."
     )
     if not channel:
-        text += "\n\n⚠️ Owner က Channel link ကို အရင်သတ်မှတ်ပေးရပါမည်။"
+        text += "\n\n⚠️ The owner must configure the channel link first."
     bot.send_message(
         chat_id,
         text,
@@ -835,8 +835,8 @@ def broadcast_new_content(vid_id: str):
                 ))
                 bot.send_message(
                     uid,
-                    f"<b>🆕 အသစ် ထည့်သွင်းလိုက်ပြီ!</b>\n\n"
-                    f"<blockquote>📹 <b>{vid_id}</b> ကို ယခုမှ ကြည့်ရှုနိုင်ပါပြီ။\n"
+                    f"<b>🆕 New video added!</b>\n\n"
+                    f"<blockquote>📹 <b>{vid_id}</b> is now available to watch.\n"
                     f"• Group/Private တွင် <code>{vid_id}</code> ရိုက်ပြီး ရှာနိုင်သည်။</blockquote>",
                     parse_mode='HTML',
                     reply_markup=markup
@@ -859,7 +859,7 @@ def get_top_videos_text(n: int = 10) -> str:
             "<i>Community leaderboard</i>\n\n"
             "<blockquote>📊 <b>Leaderboard is waiting for its first vote.</b>\n\n"
             "• Public videos with at least one 👍 vote will appear here.\n"
-            "• Video တစ်ခုကို ကြည့်ပြီးနောက် 👍 / 👎 ဖြင့် မဲပေးနိုင်ပါသည်။</blockquote>"
+            "• After watching a video, you can rate it with 👍 / 👎.</blockquote>"
         )
     medals = ["🥇", "🥈", "🥉"] + ["🏅"] * 7
     lines = []
@@ -891,13 +891,13 @@ def cmd_autobroadcast(message):
     parts = message.text.split()
     if len(parts) < 2 or parts[1].lower() not in ("on", "off"):
         current = get_broadcast_new_video()
-        status  = "✅ ON (ဖွင့်ထား)" if current else "❌ OFF (ပိတ်ထား)"
+        status  = "✅ ON (Enabled)" if current else "❌ OFF (Disabled)"
         bot.send_message(
             message.chat.id,
             "<b>📡 Auto Broadcast New Video</b>\n\n"
-            f"<blockquote>• လက်ရှိ အခြေအနေ ——— {status}\n\n"
-            "• /autobroadcast on  — ဖွင့်မည်\n"
-            "• /autobroadcast off — ပိတ်မည်</blockquote>",
+            f"<blockquote>• Current status ——— {status}\n\n"
+            "• /autobroadcast on  — Enable\n"
+            "• /autobroadcast off — Disable</blockquote>",
             parse_mode='HTML'
         )
         return
@@ -907,17 +907,17 @@ def cmd_autobroadcast(message):
     if enabled:
         bot.send_message(
             message.chat.id,
-            "✅ <b>Auto Broadcast ဖွင့်လိုက်ပါပြီ။</b>\n\n"
-            "<blockquote>• Video အသစ်တင်တိုင်း Users အားလုံးကို\n"
-            "  အလိုအလျောက် Notify ပေးပို့မည်။</blockquote>",
+            "✅ <b>Auto Broadcast has been enabled.</b>\n\n"
+            "<blockquote>• All users will be notified automatically whenever a new video is added.\n"
+            "  </blockquote>",
             parse_mode='HTML'
         )
     else:
         bot.send_message(
             message.chat.id,
-            "❌ <b>Auto Broadcast ပိတ်လိုက်ပါပြီ။</b>\n\n"
-            "<blockquote>• Video အသစ်တင်သော်လည်း\n"
-            "  Users များကို Notify မပေးပို့တော့ပါ။</blockquote>",
+            "❌ <b>Auto Broadcast has been disabled.</b>\n\n"
+            "<blockquote>• New videos will no longer trigger\n"
+            "  notifications to users.</blockquote>",
             parse_mode='HTML'
         )
 
@@ -934,7 +934,7 @@ def cmd_ref(message):
     if len(parts) != 2 or not re.fullmatch(r"v\d+", parts[1].strip(), re.IGNORECASE):
         bot.send_message(
             message.chat.id,
-            "<b>အသုံးပြုပုံ</b>\n\n"
+            "<b>How to use</b>\n\n"
             "<code>/ref v1</code>\n"
             "<code>/ref v2</code>",
             parse_mode='HTML'
@@ -945,7 +945,7 @@ def cmd_ref(message):
     if not videos.find_one({"_id": vid_id}, {"_id": 1}):
         bot.send_message(
             message.chat.id,
-            f"❌ <b>{h(vid_id)}</b> ကို Video database ထဲမှာ မတွေ့ပါ။",
+            f"❌ <b>{h(vid_id)}</b> was not found in the video database.",
             parse_mode='HTML'
         )
         return
@@ -953,14 +953,14 @@ def cmd_ref(message):
     deep_link = f"https://t.me/{BOT_USERNAME}?start=ref_{vid_id}"
     share_url  = f"https://t.me/share/url?url={deep_link}"
     markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("🔗 Link Share လုပ်မည်", url=share_url))
+    markup.add(InlineKeyboardButton("🔗 Share Link", url=share_url))
     bot.send_message(
         message.chat.id,
         "<b>🔗 Video Referral Link</b>\n\n"
         f"• Video — <code>{h(vid_id)}</code>\n"
         f"• Link —\n<code>{h(deep_link)}</code>\n\n"
-        "ဤ link ကိုနှိပ်သူများသည် Bot PM ထဲတွင်\n"
-        f"<code>{h(vid_id)}</code> ကို တိုက်ရိုက်ရရှိပါမည်။",
+        "Anyone who opens this link will receive the video directly in the bot’s private chat:\n"
+        f"<code>{h(vid_id)}</code> ",
         parse_mode='HTML',
         reply_markup=markup
     )
@@ -979,8 +979,8 @@ def cmd_setchannel(message):
     if len(parts) != 2:
         bot.send_message(
             message.chat.id,
-            "အသုံးပြုပုံ:\n<code>/setchannel https://t.me/your_channel</code>\n\n"
-            "Channel သည် public ဖြစ်ရမည်ဖြစ်ပြီး Bot ကို Channel ထဲတွင် Admin ပေးထားပါ။",
+            "How to use:\n<code>/setchannel https://t.me/your_channel</code>\n\n"
+            "The channel must be public, and the bot must be an administrator in that channel.",
             parse_mode='HTML'
         )
         return
@@ -989,8 +989,8 @@ def cmd_setchannel(message):
     if not channel:
         bot.send_message(
             message.chat.id,
-            "❌ Public Channel link မမှန်ကန်ပါ။\n"
-            "ဥပမာ: <code>https://t.me/your_channel</code>",
+            "❌ Invalid public channel link.\n"
+            "Example: <code>https://t.me/your_channel</code>",
             parse_mode='HTML'
         )
         return
@@ -998,15 +998,15 @@ def cmd_setchannel(message):
     try:
         chat = bot.get_chat(channel["chat_id"])
         if chat.type != "channel":
-            raise ValueError("ပေးထားသော link သည် Channel link မဟုတ်ပါ။")
+            raise ValueError("The provided link is not a channel link.")
         bot_member = bot.get_chat_member(channel["chat_id"], bot.get_me().id)
         if bot_member.status not in ("administrator", "creator"):
-            raise ValueError("Bot ကို Channel ထဲတွင် Administrator ပေးထားရပါမည်။")
+            raise ValueError("The bot must be an administrator in the channel.")
     except Exception as e:
         bot.send_message(
             message.chat.id,
-            "❌ Channel ကို မတွေ့ပါ။ Link မှန်ကန်ကြောင်းနှင့်\n"
-            "Bot ကို Channel ထဲတွင် ထည့်ထားကြောင်း စစ်ဆေးပေးပါ။\n\n"
+            "❌ Channel not found. Verify that the link is correct and\n"
+            "that the bot has been added to the channel.\n\n"
             f"<code>{h(str(e))}</code>",
             parse_mode='HTML'
         )
@@ -1023,10 +1023,10 @@ def cmd_setchannel(message):
     )
     bot.send_message(
         message.chat.id,
-        "✅ <b>Join လုပ်ရန် Channel သတ်မှတ်ပြီးပါပြီ။</b>\n\n"
+        "✅ <b>The required-membership channel has been configured.</b>\n\n"
         f"• Channel — <b>{h(chat.title or channel['chat_id'])}</b>\n"
         f"• Link — <code>{h(channel['link'])}</code>\n\n"
-        "Bot သည် User များ၏ Channel Join အခြေအနေကို စစ်ဆေးပါမည်။",
+        "The bot will check whether users have joined the channel.",
         parse_mode='HTML'
     )
 
@@ -1041,12 +1041,12 @@ def cmd_removechannel(message):
     if result.deleted_count:
         bot.send_message(
             message.chat.id,
-            "✅ Join လုပ်ရန် Channel သတ်မှတ်ချက်ကို ပယ်ဖျက်ပြီးပါပြီ။"
+            "✅ The required-channel setting has been removed."
         )
     else:
         bot.send_message(
             message.chat.id,
-            "ℹ️ သတ်မှတ်ထားသော Channel မရှိသေးပါ။"
+            "ℹ️ No channel has been configured yet."
         )
 
 
@@ -1086,7 +1086,7 @@ def cmd_start(message):
                         bot.send_message(
                             referrer_id,
                             "<b>🎉 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹 𝗦𝘂𝗰𝗰𝗲𝘀𝘀!</b>\n\n"
-                            "<blockquote>• သူငယ်ချင်းတစ်ဦး Bot ကို Join ဝင်ပါပြီ ✅</blockquote>",
+                            "<blockquote>• A friend has joined the bot ✅</blockquote>",
                             parse_mode='HTML'
                         )
                     except Exception:
@@ -1101,7 +1101,7 @@ def cmd_start(message):
         if is_user_banned(new_user.id):
             bot.send_message(
                 message.chat.id,
-                "🚫 သင်သည် ဤ Bot ကို အသုံးပြုခွင့် ပိတ်ဆို့ထားပါသည်။"
+                "🚫 You are blocked from using this bot."
             )
             return
 
@@ -1122,7 +1122,7 @@ def cmd_start(message):
         if show_welcome:
             bot.send_message(
                 message.chat.id,
-                "<b>𝗕𝗹𝘂𝗲 𝗕𝗼𝘁 တွင် ကြိုဆိုပါသည်! 🎉</b>",
+                "<b>𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝘁𝗼 𝗕𝗹𝘂𝗲 𝗕𝗼𝘁! 🎉</b>",
                 parse_mode='HTML',
                 reply_markup=main_menu_keyboard(new_user.id)
             )
@@ -1139,7 +1139,7 @@ def cmd_start(message):
             bot.send_message(
                 message.chat.id,
                 "<b>🔞 𝗔𝗴𝗲 𝗩𝗲𝗿𝗶𝗳𝗶𝗰𝗮𝘁𝗶𝗼𝗻</b>\n\n"
-                "<blockquote>• Bot ကို အသုံးပြုရန် လိင်ကို ရွေးချယ်ပေးပါ ခင်ဗျာ။</blockquote>",
+                "<blockquote>• Please select your gender to continue.</blockquote>",
                 parse_mode='HTML',
                 reply_markup=gender_selection_markup()
             )
@@ -1154,15 +1154,15 @@ def cmd_start(message):
         fname  = new_user.first_name or new_user.username or str(new_user.id)
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton(
-            "🤖 Private တွင် Bot ဖွင့်မည်",
+            "🤖 Open Bot in Private Chat",
             url=f"https://t.me/{BOT_USERNAME}?start={new_user.id}"
         ))
         bot.send_message(
             message.chat.id,
-            f"<b>𝗕𝗹𝘂𝗲 𝗕𝗼𝘁 — မှတ်ပုံတင်ပြီးပါပြီ ✅</b>\n\n"
+            f"<b>𝗕𝗹𝘂𝗲 𝗕𝗼𝘁 — Registration Complete ✅</b>\n\n"
             f"<blockquote><b>👋 𝗛𝗲𝗹𝗹𝗼, {h(fname)}!</b>\n\n"
             f"<b>⚡️ 𝗟𝗮𝘁𝗲𝘀𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀</b>\n"
-            f"• လက်ရှိ ဗီဒီယိုအရေအတွက် ——— {total} ခု\n\n"
+            f"• Total videos ——— {total} ခု\n\n"
             f"<b>🔍 𝗛𝗼𝘄 𝘁𝗼 𝗦𝗲𝗮𝗿𝗰𝗵</b>\n"
             f"• v1, v2, v3 … ရိုက်ပြီး ဤ Group တွင် ရှာနိုင်ပါသည်။\n\n"
             f"<i>💡 Profile / Share / Contact ကို 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗖𝗵𝗮𝘁 တွင်သာ သုံးနိုင်ပါသည်။</i>"
@@ -1247,11 +1247,11 @@ def resume_pending_channel_action(call):
     )
 
     if channel:
-        bot.answer_callback_query(call.id, "✅ Channel Join အတည်ပြုပြီးပါပြီ။")
+        bot.answer_callback_query(call.id, "✅ Channel membership confirmed.")
     else:
         bot.answer_callback_query(
             call.id,
-            "ℹ️ Channel Join မဖြစ်မနေစနစ်ကို ပိတ်ထားပါသည်။"
+            "ℹ️ Required channel membership is disabled."
         )
     try:
         bot.edit_message_reply_markup(
@@ -1282,7 +1282,7 @@ def cb_refresh_channel(call):
 def cb_channel_not_configured(call):
     bot.answer_callback_query(
         call.id,
-        "Owner က /setchannel ဖြင့် Channel link သတ်မှတ်ပေးရပါမည်။",
+        "The owner must configure a channel link with /setchannel.",
         show_alert=True
     )
 
@@ -1291,7 +1291,7 @@ def cb_channel_not_configured(call):
 def cb_gender_male(call):
     user_id = call.from_user.id
     users.update_one({"_id": user_id}, {"$set": {"gender": "male"}})
-    bot.answer_callback_query(call.id, "👨 Male ရွေးချယ်ပြီးပါပြီ")
+    bot.answer_callback_query(call.id, "👨 Male selected.")
     try:
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
     except Exception:
@@ -1299,9 +1299,9 @@ def cb_gender_male(call):
     bot.send_message(
         call.message.chat.id,
         "<b>🔞 𝗔𝗱𝘂𝗹𝘁 𝗖𝗼𝗻𝘁𝗲𝗻𝘁 𝗡𝗼𝘁𝗶𝗰𝗲</b>\n\n"
-        "<blockquote>⚠️ ဤ Bot သည် 𝗔𝗱𝘂𝗹𝘁 𝗠𝗼𝘃𝗶𝗲𝘀 (လူကြီးကားများ)\n"
-        "ကြည့်ရှုနိုင်သည့် Bot ဖြစ်ပါသည်။\n\n"
-        "• အသက် 𝟭𝟴+ သာ အသုံးပြုခွင့်ရှိပါသည်။\n"
+        "<blockquote>⚠️ This bot provides access to 𝗔𝗱𝘂𝗹𝘁 𝗠𝗼𝘃𝗶𝗲𝘀.\n"
+        "\n\n"
+        "• • You must be 18 or older to use this bot.\n"
         "• Bot ကို ဆက်လက် အသုံးပြုနိုင်ပါပြီ ✅</blockquote>",
         parse_mode='HTML'
     )
@@ -1311,7 +1311,7 @@ def cb_gender_male(call):
 def cb_gender_female(call):
     user_id = call.from_user.id
     users.update_one({"_id": user_id}, {"$set": {"gender": "female"}})
-    bot.answer_callback_query(call.id, "👩 Female ရွေးချယ်ပြီးပါပြီ")
+    bot.answer_callback_query(call.id, "👩 Female selected.")
     try:
         bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
     except Exception:
@@ -1319,12 +1319,12 @@ def cb_gender_female(call):
     bot.send_message(
         call.message.chat.id,
         "<b>🔞 𝗔𝗱𝘂𝗹𝘁 𝗖𝗼𝗻𝘁𝗲𝗻𝘁 𝗡𝗼𝘁𝗶𝗰𝗲</b>\n\n"
-        "<blockquote>⚠️ ဤ Bot သည် 𝗔𝗱𝘂𝗹𝘁 𝗠𝗼𝘃𝗶𝗲𝘀 (လူကြီးကားများ)\n"
-        "ကြည့်ရှုနိုင်သည့် Bot ဖြစ်ပါသည်။\n\n"
-        "• ဤ Bot ကို အသုံးပြုရန် အတင်းအကြပ် မတိုက်တွန်းပါ။\n"
-        "• အတင်းအကြပ် မတောင်းဆိုပါ အသုံးပြုသည်မပြုသည်ကို ကိုယ်တိုင်ဆုံးဖြတ်ပါ။\n\n"
-        "<i>💬 ကိုယ်ပိုင်ဆန္ဒဖြင့် ဆက်လက်ကြည့်ရှုလိုပါက Bot ကို\n"
-        "   အသုံးပြုနိုင်ပါသည် — မည်သို့မျှ မတားမြစ်ပါ ✅</i></blockquote>",
+        "<blockquote>⚠️ This bot provides access to 𝗔𝗱𝘂𝗹𝘁 𝗠𝗼𝘃𝗶𝗲𝘀.\n"
+        "\n\n"
+        "• • You are not required to use this bot.\n"
+        "• • The choice to use this bot is entirely yours.\n\n"
+        "<i>💬 If you choose to continue, you may use the bot\n"
+        "   at your own discretion. You are free to decide. ✅</i></blockquote>",
         parse_mode='HTML'
     )
     send_pending_ref_video(call)
@@ -1340,7 +1340,7 @@ def cmd_contact(message):
     bot.send_message(
         message.chat.id,
         "📞 လူကြီးမင်းအနေဖြင့် Bot Owner ထံ ပြောကြားလိုသည့် "
-        "စာသားများကို ရိုက်နှိပ်ပေးပို့နိုင်ပါပြီ ခင်ဗျာ။",
+        "Type and send your message to the bot owner.",
         reply_markup=cancel_keyboard()
     )
 
@@ -1358,7 +1358,7 @@ def cmd_panel(message):
     total_zvids   = get_total_z_videos()
     total_zphotos = get_total_z_photos()
     broadcast_on  = get_broadcast_new_video()
-    bc_status     = "✅ ON (ဖွင့်ထား)" if broadcast_on else "❌ OFF (ပိတ်ထား)"
+    bc_status     = "✅ ON (Enabled)" if broadcast_on else "❌ OFF (Disabled)"
     bot.send_message(
         message.chat.id,
         "<b>📊 𝗕𝗼𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀</b>\n\n"
@@ -1428,10 +1428,10 @@ def cmd_ban(message):
     try:
         target_id = int(parts[1])
     except ValueError:
-        bot.send_message(message.chat.id, "❌ User ID မမှန်ကန်ပါ။")
+        bot.send_message(message.chat.id, "❌ Invalid user ID.")
         return
     if target_id in OWNER_IDS:
-        bot.send_message(message.chat.id, "❌ Owner ကို Ban မချနိုင်ပါ။")
+        bot.send_message(message.chat.id, "❌ The owner cannot be banned.")
         return
     result = users.find_one_and_update(
         {"_id": target_id},
@@ -1439,18 +1439,18 @@ def cmd_ban(message):
         return_document=True
     )
     if not result:
-        bot.send_message(message.chat.id, f"❌ User {target_id} database တွင် မတွေ့ပါ။")
+        bot.send_message(message.chat.id, f"❌ User {target_id} was not found in the database.")
         return
     uname = result.get("username") or result.get("first_name") or str(target_id)
     bot.send_message(
         message.chat.id,
-        f"🚫 User {target_id} ({uname}) ကို Ban ချပြီးပါပြီ။\n"
-        f"• Bot ကို ဆက်လက် အသုံးပြုနိုင်တော့မည် မဟုတ်ပါ။"
+        f"🚫 User {target_id} ({uname}) has been banned.\n"
+        f"• This user can no longer use the bot."
     )
     try:
         bot.send_message(
             target_id,
-            "🚫 သင်သည် ဤ Bot ကို အသုံးပြုခွင့် ပိတ်ဆို့ပြီးပါပြီ။"
+            "🚫 You have been blocked from using this bot."
         )
     except Exception:
         pass
@@ -1467,7 +1467,7 @@ def cmd_unban(message):
     try:
         target_id = int(parts[1])
     except ValueError:
-        bot.send_message(message.chat.id, "❌ User ID မမှန်ကန်ပါ။")
+        bot.send_message(message.chat.id, "❌ Invalid user ID.")
         return
     result = users.find_one_and_update(
         {"_id": target_id},
@@ -1475,18 +1475,18 @@ def cmd_unban(message):
         return_document=True
     )
     if not result:
-        bot.send_message(message.chat.id, f"❌ User {target_id} database တွင် မတွေ့ပါ။")
+        bot.send_message(message.chat.id, f"❌ User {target_id} was not found in the database.")
         return
     uname = result.get("username") or result.get("first_name") or str(target_id)
     bot.send_message(
         message.chat.id,
-        f"✅ User {target_id} ({uname}) ၏ Ban ကို ဖြုတ်ပြီးပါပြီ။\n"
-        f"• Bot ကို ဆက်လက် အသုံးပြုနိုင်ပါပြီ။"
+        f"✅ User {target_id} ({uname}) has been unbanned.\n"
+        f"• This user can use the bot again."
     )
     try:
         bot.send_message(
             target_id,
-            "✅ သင်၏ Ban ကို ဖြုတ်ပေးလိုက်ပါပြီ။ Bot ကို ဆက်လက် အသုံးပြုနိုင်ပါပြီ။"
+            "✅ Your ban has been lifted. You can use the bot again."
         )
     except Exception:
         pass
@@ -1498,7 +1498,7 @@ def cmd_unban(message):
 def cmd_addlimit(message):
     if message.from_user.id not in OWNER_IDS:
         return
-    bot.send_message(message.chat.id, "ℹ️ Limit system မရှိတော့ပါ။ User အားလုံးသည် Unlimited ဖြစ်ပါသည်။")
+    bot.send_message(message.chat.id, "ℹ️ The limit system has been removed. All users have unlimited access.")
 
 # ─── Owner /userinfo ──────────────────────────────────────────────────────────
 
@@ -1548,7 +1548,7 @@ def cmd_userinfo(message):
 def cmd_free(message):
     if message.from_user.id not in OWNER_IDS:
         return
-    bot.send_message(message.chat.id, "ℹ️ Limit system မရှိတော့ပါ။ User အားလုံးသည် Unlimited ဖြစ်ပါသည်။")
+    bot.send_message(message.chat.id, "ℹ️ The limit system has been removed. All users have unlimited access.")
 
 # ─── Owner /userlist ──────────────────────────────────────────────────────────
 
@@ -1559,7 +1559,7 @@ def cmd_userlist(message):
 
     all_users = list(users.find({}, {"_id": 1, "username": 1, "first_name": 1}))
     if not all_users:
-        bot.send_message(message.chat.id, "📋 User မရှိသေးပါ။")
+        bot.send_message(message.chat.id, "📋 No users found.")
         return
 
     # Build lines: "@username 1234567890" or "FirstName 1234567890"
@@ -1587,7 +1587,7 @@ def cmd_userlist(message):
         chunks.append(chunk)
 
     for i, ch in enumerate(chunks):
-        prefix = header if i == 0 else f"(ဆက်လက်... {i+1}/{len(chunks)})\n\n"
+        prefix = header if i == 0 else f"(Continued... {i+1}/{len(chunks)})\n\n"
         bot.send_message(message.chat.id, prefix + "\n".join(ch))
 
 
@@ -1620,20 +1620,20 @@ def cmd_broadcast(message):
         bot.send_message(
             message.chat.id,
             f"📨 Users {total} ဦး အားလုံးထံ ပေးပို့မည့် စာသားကို ရိုက်ထည့်ပေးပါ:\n\n"
-            "မပို့လိုပါက ❌ Cancel ကိုနှိပ်ပါ။",
+            "Tap ❌ Cancel to stop.",
             reply_markup=cancel_keyboard()
         )
     else:
         try:
             target_id = int(arg)
         except ValueError:
-            bot.send_message(message.chat.id, "❌ User ID မမှန်ကန်ပါ။\nUsage: /broadcast {user_id} or /broadcast all")
+            bot.send_message(message.chat.id, "❌ Invalid user ID.\nUsage: /broadcast {user_id} or /broadcast all")
             return
         broadcast_targets[owner_id] = target_id
         bot.send_message(
             message.chat.id,
             f"📨 User {target_id} ထံ ပေးပို့မည့် စာသားကို ရိုက်ထည့်ပေးပါ:\n\n"
-            "မပို့လိုပါက ❌ Cancel ကိုနှိပ်ပါ။",
+            "Tap ❌ Cancel to stop.",
             reply_markup=cancel_keyboard()
         )
 
@@ -1648,8 +1648,8 @@ def cmd_setadmingroup(message):
     if message.chat.type not in ("group", "supergroup"):
         bot.send_message(
             message.chat.id,
-            "⚠️ ဤ command ကို group ထဲတွင်သာ သုံးနိုင်ပါသည်။\n"
-            "Bot ကို group ထဲ add ပြုလုပ်ပြီး group ထဲတွင် /setadmingroup ရိုက်ပါ။"
+            "⚠️ This command can only be used in a group.\n"
+            "Add the bot to the group, then run /setadmingroup there."
         )
         return
 
@@ -1658,10 +1658,10 @@ def cmd_setadmingroup(message):
     set_admin_group_id(chat_id)
     bot.send_message(
         message.chat.id,
-        f"✅ ဤ group ကို Video သိမ်းဆည်းမည့် Admin Group အဖြစ် သတ်မှတ်ပြီးပါပြီ။\n\n"
+        f"✅ This group is now configured as the public video storage group.\n\n"
         f"Group: {chat_name}\n"
         f"ID: {chat_id}\n\n"
-        f"ယခုမှ စတင်ပြီး Owner ဤ group ထဲ video ပို့ပါက အလိုအလျောက် database သိမ်းဆည်းမည်။"
+        f"Videos sent by the owner to this group will now be saved to the database automatically."
     )
 
 
@@ -1676,8 +1676,8 @@ def cmd_setadmingroup_private(message):
     if message.chat.type not in ("group", "supergroup"):
         bot.send_message(
             message.chat.id,
-            "⚠️ ဤ command ကို group ထဲတွင်သာ သုံးနိုင်ပါသည်။\n"
-            "Bot ကို group ထဲ add ပြုလုပ်ပြီး group ထဲတွင် /setadmingroup_private ရိုက်ပါ။"
+            "⚠️ This command can only be used in a group.\n"
+            "Add the bot to the group, then run /setadmingroup_private there."
         )
         return
 
@@ -1686,10 +1686,10 @@ def cmd_setadmingroup_private(message):
     set_private_admin_group_id(chat_id)
     bot.send_message(
         message.chat.id,
-        f"🔒 ဤ group ကို Private Video Group အဖြစ် သတ်မှတ်ပြီးပါပြီ။\n\n"
+        f"🔒 This group is now configured as the private video group.\n\n"
         f"Group: {chat_name}\n"
         f"ID: {chat_id}\n\n"
-        f"• Owner တစ်ယောက်တည်း (သို့) /accept ဖြင့် ခွင့်ပြုထားသော User များသာ\n"
+        f"• Only the owner and users approved with /accept\n"
         f"  ဤ group တွင် video ပေးပို့နိုင်ပြီး z1, z2, z3 … ဖြင့် ရှာဖွေနိုင်မည်။"
     )
 
@@ -1709,7 +1709,7 @@ def cmd_accept(message):
         try:
             target_id = int(parts[2])
         except ValueError:
-            bot.send_message(message.chat.id, "❌ User ID မမှန်ကန်ပါ။")
+            bot.send_message(message.chat.id, "❌ Invalid user ID.")
             return
         remove_accepted_user(target_id)
         bot.send_message(
@@ -1720,7 +1720,7 @@ def cmd_accept(message):
             bot.send_message(
                 target_id,
                 "<b>🔒 𝗔𝗰𝗰𝗲𝘀𝘀 𝗥𝗲𝘃𝗼𝗸𝗲𝗱</b>\n\n"
-                "<blockquote>• Owner မှ Private Group ခွင့်ပြုချက် ရုပ်သိမ်းလိုက်ပါပြီ။</blockquote>",
+                "<blockquote>• The owner has revoked your private-group access.</blockquote>",
                 parse_mode='HTML'
             )
         except Exception:
@@ -1740,12 +1740,12 @@ def cmd_accept(message):
     try:
         target_id = int(parts[1])
     except ValueError:
-        bot.send_message(message.chat.id, "❌ User ID မမှန်ကန်ပါ။")
+        bot.send_message(message.chat.id, "❌ Invalid user ID.")
         return
 
     doc = users.find_one({"_id": target_id})
     if not doc:
-        bot.send_message(message.chat.id, f"❌ User {target_id} database တွင် မတွေ့ပါ။")
+        bot.send_message(message.chat.id, f"❌ User {target_id} was not found in the database.")
         return
 
     accept_user(target_id)
@@ -1753,15 +1753,15 @@ def cmd_accept(message):
     bot.send_message(
         message.chat.id,
         f"✅ User {target_id} ({uname}) ကို Private Group ခွင့်ပြုပြီးပါပြီ။\n"
-        f"• ထို User သည် ယခု Private Group တွင် video တင်နိုင်ပြီး\n"
+        f"• ထို User သည် ယခု You can post videos in the private group and\n"
         f"  z1, z2, z3 … ဖြင့် ရှာဖွေနိုင်မည်။"
     )
     try:
         bot.send_message(
             target_id,
             "<b>🔓 𝗣𝗿𝗶𝘃𝗮𝘁𝗲 𝗔𝗰𝗰𝗲𝘀𝘀 𝗚𝗿𝗮𝗻𝘁𝗲𝗱!</b>\n\n"
-            "<blockquote>• Owner မှ Private Group ကို ခွင့်ပြုလိုက်ပါပြီ ✅\n"
-            "• Private Group တွင် video တင်နိုင်ပြီး\n"
+            "<blockquote>• The owner has granted you access to the private group ✅\n"
+            "• You can post videos in the private group and\n"
             "  z1, z2, z3 … ဖြင့် ရှာဖွေနိုင်မည်ဖြစ်သည်။</blockquote>",
             parse_mode='HTML'
         )
@@ -1783,7 +1783,7 @@ def cmd_deletevideo(message):
 
     vid_id = parts[1].lower()
     if not re.fullmatch(r"v\d+", vid_id):
-        bot.send_message(message.chat.id, "❌ Video ID မမှန်ကန်ပါ။ ဥပမာ: /deletevideo v5")
+        bot.send_message(message.chat.id, "❌ Invalid video ID. Example: /deletevideo v5")
         return
 
     result = videos.delete_one({"_id": vid_id})
@@ -1813,7 +1813,7 @@ def cmd_deleteprivatevideo(message):
 
     vid_id = parts[1].lower()
     if not re.fullmatch(r"z\d+", vid_id):
-        bot.send_message(message.chat.id, "❌ Video ID မမှန်ကန်ပါ။ ဥပမာ: /deleteprivatevideo z5")
+        bot.send_message(message.chat.id, "❌ Invalid video ID. Example: /deleteprivatevideo z5")
         return
 
     result = videos.delete_one({"_id": vid_id})
@@ -1841,7 +1841,7 @@ def cmd_deletephoto(message):
         return
     pid = parts[1].lower()
     if not re.fullmatch(r"p\d+", pid):
-        bot.send_message(message.chat.id, "❌ Photo ID မမှန်ကန်ပါ။ ဥပမာ: /deletephoto p3")
+        bot.send_message(message.chat.id, "❌ Invalid photo ID. Example: /deletephoto p3")
         return
     result = videos.delete_one({"_id": pid})
     if result.deleted_count == 0:
@@ -1864,7 +1864,7 @@ def cmd_deleteprivatephoto(message):
         return
     pid = parts[1].lower()
     if not re.fullmatch(r"zp\d+", pid):
-        bot.send_message(message.chat.id, "❌ Photo ID မမှန်ကန်ပါ။ ဥပမာ: /deleteprivatephoto zp3")
+        bot.send_message(message.chat.id, "❌ Invalid photo ID. Example: /deleteprivatephoto zp3")
         return
     result = videos.delete_one({"_id": pid})
     if result.deleted_count == 0:
@@ -1973,7 +1973,7 @@ def handle_admin_video(message):
                 photo_count = len(b.get("photo_ids", []))
                 bot.send_message(
                     chat_id,
-                    f"✅ စနစ်ထဲသို့ {vid_id} ဖြင့် အလိုအလျောက်သိမ်းဆည်းပြီးပါပြီ။"
+                    f"✅ စနစ်ထဲသို့ {vid_id} was saved automatically."
                     + (f" (ပုံ {photo_count} ပုံ ပါဝင်)" if photo_count else "")
                 )
                 broadcast_new_content(vid_id)
@@ -2000,7 +2000,7 @@ def handle_admin_video(message):
         })
         bot.send_message(
             message.chat.id,
-            f"✅ စနစ်ထဲသို့ {vid_id} ဖြင့် အလိုအလျောက်သိမ်းဆည်းပြီးပါပြီ။"
+            f"✅ စနစ်ထဲသို့ {vid_id} was saved automatically."
         )
         broadcast_new_content(vid_id)
 
@@ -2216,8 +2216,8 @@ def handle_group_photo_search(message):
     if user_id not in OWNER_IDS and not doc.get("gender"):
         bot.send_message(
             message.chat.id,
-            "⚠️ Bot ကို အသုံးပြုရန် ကျေးဇူးပြု၍ Private Chat တွင် /start နှိပ်ပြီး\n"
-            "လိင်ရွေးချယ်မှုကို ဦးစွာ ပြုလုပ်ပေးပါ။",
+            "⚠️ To use the bot, open a private chat and send /start, then\n"
+            "select your gender to continue.",
             reply_to_message_id=message.message_id
         )
         return
@@ -2244,7 +2244,7 @@ def handle_group_photo_search(message):
                    for i, fid in enumerate(photo_ids)]
             bot.send_media_group(message.chat.id, grp)
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+        bot.send_message(message.chat.id, f"❌ Error sending photo: {e}")
 
 
 # ─── Group photo search handler (zpN) ────────────────────────────────────────
@@ -2261,7 +2261,7 @@ def handle_group_zphooto_search(message):
     if not is_user_accepted(user_id):
         bot.send_message(
             message.chat.id,
-            "🔒 ဤ ပုံများကို ကြည့်ရှုခွင့် မရှိပါ။",
+            "🔒 You do not have permission to view these photos.",
             reply_to_message_id=message.message_id
         )
         return
@@ -2288,7 +2288,7 @@ def handle_group_zphooto_search(message):
                    for i, fid in enumerate(photo_ids)]
             bot.send_media_group(message.chat.id, grp)
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+        bot.send_message(message.chat.id, f"❌ Error sending photo: {e}")
 
 
 # ─── Group video search handler ───────────────────────────────────────────────
@@ -2324,8 +2324,8 @@ def handle_group_video_search(message):
     if user_id not in OWNER_IDS and not doc.get("gender"):
         bot.send_message(
             message.chat.id,
-            "⚠️ Bot ကို အသုံးပြုရန် ကျေးဇူးပြု၍ Private Chat တွင် /start နှိပ်ပြီး\n"
-            "လိင်ရွေးချယ်မှုကို ဦးစွာ ပြုလုပ်ပေးပါ။",
+            "⚠️ To use the bot, open a private chat and send /start, then\n"
+            "select your gender to continue.",
             reply_to_message_id=message.message_id
         )
         return
@@ -2336,7 +2336,7 @@ def handle_group_video_search(message):
             message.chat.id,
             "<b>❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱</b>\n\n"
             f"<blockquote>• 𝗩𝗶𝗱𝗲𝗼 {h(text)} ကို ရှာမတွေ့ပါ။\n"
-            "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။</blockquote>",
+            "• Check the ID and try again.</blockquote>",
             parse_mode='HTML',
             reply_to_message_id=message.message_id
         )
@@ -2383,7 +2383,7 @@ def handle_group_video_search(message):
             ]
             bot.send_media_group(message.chat.id, media_group)
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Video ပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+        bot.send_message(message.chat.id, f"❌ Error sending video: {e}")
 
     if photo_ids:
         try:
@@ -2396,7 +2396,7 @@ def handle_group_video_search(message):
                 ]
                 bot.send_media_group(message.chat.id, photo_group)
         except Exception as e:
-            bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+            bot.send_message(message.chat.id, f"❌ Error sending photo: {e}")
 
     try:
         bot.delete_message(message.chat.id, loading_msg.message_id)
@@ -2407,7 +2407,7 @@ def handle_group_video_search(message):
     try:
         bot.send_message(
             message.chat.id,
-            f"<b>⭐ {h(text)}</b> — မဲပေးနိုင်ပါသည်",
+            f"<b>⭐ {h(text)}</b> — You can rate this item",
             parse_mode='HTML',
             reply_markup=rating_markup(text)
         )
@@ -2435,7 +2435,7 @@ def handle_group_z_video_search(message):
     if not is_user_accepted(user_id):
         bot.send_message(
             message.chat.id,
-            "🔒 ဤ video များကို ကြည့်ရှုခွင့် မရှိပါ။",
+            "🔒 You do not have permission to view these videos.",
             reply_to_message_id=message.message_id
         )
         return
@@ -2451,7 +2451,7 @@ def handle_group_z_video_search(message):
             message.chat.id,
             "<b>❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱</b>\n\n"
             f"<blockquote>• 𝗩𝗶𝗱𝗲𝗼 {h(text)} ကို ရှာမတွေ့ပါ။\n"
-            "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။</blockquote>",
+            "• Check the ID and try again.</blockquote>",
             parse_mode='HTML',
             reply_to_message_id=message.message_id
         )
@@ -2497,7 +2497,7 @@ def handle_group_z_video_search(message):
             ]
             bot.send_media_group(message.chat.id, media_group)
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Video ပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+        bot.send_message(message.chat.id, f"❌ Error sending video: {e}")
 
     if photo_ids:
         try:
@@ -2510,7 +2510,7 @@ def handle_group_z_video_search(message):
                 ]
                 bot.send_media_group(message.chat.id, photo_group)
         except Exception as e:
-            bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+            bot.send_message(message.chat.id, f"❌ Error sending photo: {e}")
 
     try:
         bot.delete_message(message.chat.id, loading_msg.message_id)
@@ -2521,7 +2521,7 @@ def handle_group_z_video_search(message):
     try:
         bot.send_message(
             message.chat.id,
-            f"<b>⭐ {h(text)}</b> — မဲပေးနိုင်ပါသည်",
+            f"<b>⭐ {h(text)}</b> — You can rate this item",
             parse_mode='HTML',
             reply_markup=rating_markup(text)
         )
@@ -2546,7 +2546,7 @@ def handle_text(message):
     if user_id not in OWNER_IDS and doc.get("is_banned"):
         bot.send_message(
             message.chat.id,
-            "🚫 သင်သည် ဤ Bot ကို အသုံးပြုခွင့် ပိတ်ဆို့ထားပါသည်။"
+            "🚫 You are blocked from using this bot."
         )
         return
 
@@ -2579,7 +2579,7 @@ def handle_text(message):
             broadcast_targets.pop(user_id)
         bot.send_message(
             message.chat.id,
-            "🏠 Main menu သို့ ပြန်ရောက်ပါပြီ။",
+            "🏠 Returned to the main menu.",
             reply_markup=main_menu_keyboard(user_id)
         )
         send_welcome(message.chat.id, user_id)
@@ -2592,8 +2592,8 @@ def handle_text(message):
         bot.send_message(
             message.chat.id,
             "<b>⚙️ 𝗢𝘄𝗻𝗲𝗿 𝗖𝗼𝗻𝘁𝗿𝗼𝗹 𝗣𝗮𝗻𝗲𝗹</b>\n\n"
-            "<blockquote>အောက်ပါ Keyboard button များမှ Owner command ကို ရွေးချယ်နိုင်ပါသည်။\n"
-            "လိုအပ်သော user ID၊ video ID သို့မဟုတ် link ကို command ပြီးနောက် ရိုက်ထည့်ပါ။</blockquote>",
+            "<blockquote>Choose an owner command using the keyboard buttons below.\n"
+            "Enter the required user ID, video ID, or link after the command.</blockquote>",
             parse_mode='HTML',
             reply_markup=owner_panel_keyboard()
         )
@@ -2610,7 +2610,7 @@ def handle_text(message):
             sent_fail  = 0
             status_msg = bot.send_message(
                 message.chat.id,
-                f"⏳ ပေးပို့နေပါသည်... 0 / {len(all_ids)}"
+                f"⏳ Sending... 0 / {len(all_ids)}"
             )
             for i, uid in enumerate(all_ids, 1):
                 try:
@@ -2627,17 +2627,17 @@ def handle_text(message):
                 if i % 20 == 0:
                     try:
                         bot.edit_message_text(
-                            f"⏳ ပေးပို့နေပါသည်... {i} / {len(all_ids)}",
+                            f"⏳ Sending... {i} / {len(all_ids)}",
                             message.chat.id, status_msg.message_id
                         )
                     except Exception:
                         pass
             try:
                 bot.edit_message_text(
-                    f"✅ Broadcast ပြီးပါပြီ\n"
+                    f"✅ Broadcast completed\n"
                     f"━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"✔ အောင်မြင်: {sent_ok} ဦး\n"
-                    f"✘ မအောင်မြင်: {sent_fail} ဦး",
+                    f"✔ Sent successfully: {sent_ok} ဦး\n"
+                    f"✘ Failed: {sent_fail} ဦး",
                     message.chat.id, status_msg.message_id
                 )
             except Exception:
@@ -2659,7 +2659,7 @@ def handle_text(message):
             except Exception as e:
                 bot.send_message(
                     message.chat.id,
-                    f"❌ ပေးပို့မှု မအောင်မြင်ပါ: {e}",
+                    f"❌ Failed to send: {e}",
                     reply_markup=main_menu_keyboard(user_id)
                 )
         return
@@ -2670,8 +2670,8 @@ def handle_text(message):
         bot.send_message(
             message.chat.id,
             "<b>✅ 𝗦𝗲𝗻𝘁 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹𝗹𝘆</b>\n\n"
-            "<blockquote>• လူကြီးမင်းပေးပို့သော စာသားသည်\n"
-            "  𝗕𝗼𝘁 𝗢𝘄𝗻𝗲𝗿 ထံ ရောက်ရှိသွားပါပြီ ✅</blockquote>",
+            "<blockquote>• Your message has been\n"
+            "  forwarded to the 𝗕𝗼𝘁 𝗢𝘄𝗻𝗲𝗿 ✅</blockquote>",
             parse_mode='HTML',
             reply_markup=main_menu_keyboard(user_id)
         )
@@ -2739,8 +2739,8 @@ def handle_text(message):
         bot.send_message(
             message.chat.id,
             "<b>🔄 𝗩𝗶𝗱𝗲𝗼𝘀 𝗨𝗽𝗱𝗮𝘁𝗲</b>\n\n"
-            f"<blockquote>• လက်ရှိ ဗီဒီယိုအရေအတွက် ——— 𝟬{total} ခု\n\n"
-            f"• v1 မှ v{total} အထိ ရှာဖွေနိုင်ပါသည်။</blockquote>",
+            f"<blockquote>• Total videos ——— 𝟬{total} ခု\n\n"
+            f"• v1 မှ v{total} are available to search.</blockquote>",
             parse_mode='HTML'
         )
         return
@@ -2781,8 +2781,8 @@ def handle_text(message):
             bot.send_message(
                 message.chat.id,
                 "<b>❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱</b>\n\n"
-                f"<blockquote>• 𝗩𝗶𝗱𝗲𝗼 {h(vid_key)} ကို ရှာမတွေ့ပါ ခင်ဗျာ။\n"
-                "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။</blockquote>",
+                f"<blockquote>• 𝗩𝗶𝗱𝗲𝗼 {h(vid_key)} was not found.\n"
+                "• Check the ID and try again.</blockquote>",
                 parse_mode='HTML'
             )
             return
@@ -2844,7 +2844,7 @@ def handle_text(message):
                     ]
                     bot.send_media_group(message.chat.id, photo_group)
             except Exception as e:
-                bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+                bot.send_message(message.chat.id, f"❌ Error sending photo: {e}")
 
         # Delete loading message
         try:
@@ -2856,7 +2856,7 @@ def handle_text(message):
         try:
             bot.send_message(
                 message.chat.id,
-                f"<b>⭐ {h(vid_key)}</b> — မဲပေးနိုင်ပါသည်",
+                f"<b>⭐ {h(vid_key)}</b> — You can rate this item",
                 parse_mode='HTML',
                 reply_markup=rating_markup(vid_key)
             )
@@ -2870,7 +2870,7 @@ def handle_text(message):
         if not is_user_accepted(user_id):
             bot.send_message(
                 message.chat.id,
-                "🔒 ဤ video များကို ကြည့်ရှုခွင့် မရှိပါ။"
+                "🔒 You do not have permission to view these videos."
             )
             return
 
@@ -2880,8 +2880,8 @@ def handle_text(message):
             bot.send_message(
                 message.chat.id,
                 "<b>❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱</b>\n\n"
-                f"<blockquote>• 𝗩𝗶𝗱𝗲𝗼 {h(vid_key)} ကို ရှာမတွေ့ပါ ခင်ဗျာ။\n"
-                "• ဂဏန်းနံပါတ် မှန်မှန်ထည့်ပြီး ထပ်ကြိုးစားပါ။</blockquote>",
+                f"<blockquote>• 𝗩𝗶𝗱𝗲𝗼 {h(vid_key)} was not found.\n"
+                "• Check the ID and try again.</blockquote>",
                 parse_mode='HTML'
             )
             return
@@ -2938,7 +2938,7 @@ def handle_text(message):
                     ]
                     bot.send_media_group(message.chat.id, photo_group)
             except Exception as e:
-                bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+                bot.send_message(message.chat.id, f"❌ Error sending photo: {e}")
 
         try:
             bot.delete_message(message.chat.id, loading_msg.message_id)
@@ -2949,7 +2949,7 @@ def handle_text(message):
         try:
             bot.send_message(
                 message.chat.id,
-                f"<b>⭐ {h(vid_key)}</b> — မဲပေးနိုင်ပါသည်",
+                f"<b>⭐ {h(vid_key)}</b> — You can rate this item",
                 parse_mode='HTML',
                 reply_markup=rating_markup(vid_key)
             )
@@ -2966,7 +2966,7 @@ def handle_text(message):
             bot.send_message(
                 message.chat.id,
                 "<b>❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱</b>\n\n"
-                f"<blockquote>• Photo {h(pid_key)} ကို ရှာမတွေ့ပါ ခင်ဗျာ။</blockquote>",
+                f"<blockquote>• Photo {h(pid_key)} was not found.</blockquote>",
                 parse_mode='HTML'
             )
             return
@@ -2980,7 +2980,7 @@ def handle_text(message):
                        for i, fid in enumerate(photo_ids)]
                 bot.send_media_group(message.chat.id, grp)
         except Exception as e:
-            bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+            bot.send_message(message.chat.id, f"❌ Error sending photo: {e}")
         return
 
     # ── Private photo search (zpN pattern) — owner + accepted users only ─────
@@ -2988,7 +2988,7 @@ def handle_text(message):
         if not is_user_accepted(user_id):
             bot.send_message(
                 message.chat.id,
-                "🔒 ဤ ပုံများကို ကြည့်ရှုခွင့် မရှိပါ။"
+                "🔒 You do not have permission to view these photos."
             )
             return
         pid_key = text.lower()
@@ -2997,7 +2997,7 @@ def handle_text(message):
             bot.send_message(
                 message.chat.id,
                 "<b>❌ 𝗡𝗼𝘁 𝗙𝗼𝘂𝗻𝗱</b>\n\n"
-                f"<blockquote>• Photo {h(pid_key)} ကို ရှာမတွေ့ပါ ခင်ဗျာ။</blockquote>",
+                f"<blockquote>• Photo {h(pid_key)} was not found.</blockquote>",
                 parse_mode='HTML'
             )
             return
@@ -3011,7 +3011,7 @@ def handle_text(message):
                        for i, fid in enumerate(photo_ids)]
                 bot.send_media_group(message.chat.id, grp)
         except Exception as e:
-            bot.send_message(message.chat.id, f"❌ ပုံပေးပို့ရာတွင် အမှားဖြစ်သည်: {e}")
+            bot.send_message(message.chat.id, f"❌ Error sending photo: {e}")
         return
 
     # ── Fallback: show welcome ─────────────────────────────────────────────────
@@ -3042,7 +3042,7 @@ def cb_rate(call):
         return_document=True
     )
     if not result:
-        bot.answer_callback_query(call.id, "❌ Video ရှာမတွေ့ပါ")
+        bot.answer_callback_query(call.id, "❌ Video not found")
         return
 
     likes    = result.get("likes", 0)
@@ -3061,7 +3061,7 @@ def cb_rate(call):
         pass
 
     emoji = "👍" if action == "like" else "👎"
-    bot.answer_callback_query(call.id, f"{emoji} မဲပေးပြီးပါပြီ!")
+    bot.answer_callback_query(call.id, f"{emoji} Your vote has been recorded!")
 
 # ─── WEBHOOK + KEEP-ALIVE SERVER ──────────────────────────────────────────────
 # Webhook mode: Telegram POSTs updates to /webhook.
