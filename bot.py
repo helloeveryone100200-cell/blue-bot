@@ -2683,21 +2683,21 @@ def handle_text(message):
                 pass
         return
 
-    # ── Me    # ── Menu button: 👤 Profile ───────────────────────────────────────────────
+    # ── Menu button: 👤 Profile ───────────────────────────────────────────────
     if text == "👤 Profile":
         display_name = doc.get("username") or doc.get("first_name") or str(user_id)
         profile_text = (
-            "<b>👤 MY PROFILE</b>\\n"
-            "<i>Your Blue Bot account at a glance</i>\\n\\n"
+            "<b>👤 MY PROFILE</b>\n"
+            "<i>Your Blue Bot account at a glance</i>\n\n"
             "<blockquote>"
-            "<b>ACCOUNT DETAILS</b>\\n"
-            f"👤 <b>Name</b>\\n<code>{h(display_name)}</code>\\n\\n"
-            f"🆔 <b>Telegram ID</b>\\n<code>{user_id}</code>\\n\\n"
-            "<b>VIDEO ACCESS</b>\\n"
-            "🎬 <b>Unlimited</b>\\n\\n"
-            "<b>SHARING ACTIVITY</b>\\n"
+            "<b>ACCOUNT DETAILS</b>\n"
+            f"👤 <b>Name</b>\n<code>{h(display_name)}</code>\n\n"
+            f"🆔 <b>Telegram ID</b>\n<code>{user_id}</code>\n\n"
+            "<b>VIDEO ACCESS</b>\n"
+            "🎬 <b>Unlimited</b>\n\n"
+            "<b>SHARING ACTIVITY</b>\n"
             f"🔗 <b>Total shares:</b> {doc.get('shares', 0)}"
-            "</blockquote>\\n\\n"
+            "</blockquote>\n\n"
             "<i>Your account information is shown above.</i>"
         )
         bot.send_message(message.chat.id, profile_text, parse_mode='HTML')
