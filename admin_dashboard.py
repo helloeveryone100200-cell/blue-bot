@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
 
 ADMIN_DIR = Path(__file__).resolve().parent / "admin"
+USER_APP_DIR = Path(__file__).resolve().parent / "user_app"
 MAX_API_BODY = 16 * 1024
 INIT_DATA_MAX_AGE_SECONDS = 24 * 60 * 60
 MAX_USER_PAGE_SIZE = 50
@@ -53,6 +54,63 @@ def validate_telegram_init_data(init_data, bot_token, owner_ids=None, now=None):
         return user if user["id"] in authorized_ids else None
     except (ValueError, TypeError, UnicodeError):
         return None
+
+
+def validate_telegram_user_init_data(init_data, bot_token, now=None):
+    """Return a Telegram user only when the signed initData is valid and fresh."""
+    if not isinstance(init_data, str) or not init_data or len(init_data) > MAX_API_BODY:
+        return None
+    if not bot_token or bot_token == "YOUR_BOT_TOKEN":
+        return None
+    try:
+        pairs = parse_qsl(init_data, keep_blank_values=True, strict_parsing=True, max_num_fields=64)
+        values = {}
+        for key, value in pairs:
+            if key in values:
+                return None
+            values[key] = value
+        received_hash = values.pop("hash", "")
+        if len(received_hash) != 64 or any(c not in "0123456789abcdef" for c in received_hash):
+            return None
+        data_check_string = "\n".join(f"{key}={value}" for key, value in sorted(values.items()))
+        secret_key = hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
+        expected_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(received_hash, expected_hash):
+            return None
+        auth_date = int(values.get("auth_date", "0"))
+        current_time = int(time.time() if now is None else now)
+        if auth_date <= 0 or auth_date > current_time + 60 or current_time - auth_date > INIT_DATA_MAX_AGE_SECONDS:
+            return None
+        user = json.loads(values.get("user", ""))
+        if not isinstance(user, dict) or type(user.get("id")) is not int:
+            return None
+        return user
+    except (ValueError, TypeError, UnicodeError):
+        return None
+
+
+def _read_user_payload(handler):
+    """Read a bounded JSON request and authenticate any Telegram user via initData."""
+    try:
+        length = int(handler.headers.get("Content-Length", "0"))
+    except (TypeError, ValueError):
+        length = MAX_API_BODY + 1
+    if length <= 0 or length > MAX_API_BODY:
+        _json(handler, 413, {"error": "invalid_request_size"})
+        return None, False
+    try:
+        payload = json.loads(handler.rfile.read(length).decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        _json(handler, 400, {"error": "invalid_json"})
+        return None, False
+    if not isinstance(payload, dict):
+        _json(handler, 400, {"error": "invalid_request"})
+        return None, False
+    user = validate_telegram_user_init_data(payload.get("initData"), os.environ.get("BOT_TOKEN", ""))
+    if user is None:
+        _json(handler, 403, {"error": "telegram_authentication_failed"})
+        return None, False
+    return (user, payload), True
 
 
 def _send(handler, status, body=b"", content_type="text/plain; charset=utf-8"):
@@ -113,37 +171,91 @@ def _read_owner_payload(handler):
     return (user, payload), True
 
 
-def handle_admin_request(handler, users, videos, settings, head_only=False, action_handler=None):
-    """Serve the Telegram Mini App shell and a Telegram-owner-authenticated API."""
+def handle_admin_request(handler, users, videos, settings, head_only=False, action_handler=None, user_bot_username=""):
+    """Serve the separate owner and user Telegram Mini Apps with role-specific APIs."""
     path = urlsplit(handler.path).path
-    if path != "/admin" and not path.startswith("/admin/"):
+    is_user_app = path == "/app" or path.startswith("/app/")
+    is_admin_app = path == "/admin" or path.startswith("/admin/")
+    if not is_admin_app and not is_user_app:
         return False
     method = "HEAD" if head_only else handler.command
+    app_dir = USER_APP_DIR if is_user_app else ADMIN_DIR
 
-    if path in ("/admin", "/admin/"):
+    if path in ("/app", "/app/", "/admin", "/admin/"):
         if method not in ("GET", "HEAD"):
             _send(handler, 405, b"Method not allowed.")
             return True
         try:
-            body = (ADMIN_DIR / "index.html").read_bytes()
+            body = (app_dir / "index.html").read_bytes()
         except OSError:
             _send(handler, 503, b"Mini App assets are unavailable.")
             return True
         _send(handler, 200, body, "text/html; charset=utf-8")
         return True
 
-    if path in ("/admin/styles.css", "/admin/app.js"):
+    if path in ("/admin/styles.css", "/admin/app.js", "/app/styles.css", "/app/app.js"):
         if method not in ("GET", "HEAD"):
             _send(handler, 405, b"Method not allowed.")
             return True
         asset_name = "styles.css" if path.endswith(".css") else "app.js"
         try:
-            body = (ADMIN_DIR / asset_name).read_bytes()
+            body = (app_dir / asset_name).read_bytes()
         except OSError:
             _send(handler, 404, b"Not found.")
             return True
         content_type = "text/css; charset=utf-8" if asset_name.endswith(".css") else "text/javascript; charset=utf-8"
         _send(handler, 200, body, content_type)
+        return True
+
+    if path == "/app/api/profile":
+        if method != "POST":
+            _json(handler, 405, {"error": "method_not_allowed"})
+            return True
+        authenticated, valid = _read_user_payload(handler)
+        if not valid:
+            return True
+        telegram_user, _payload = authenticated
+        user_id = telegram_user["id"]
+        try:
+            doc = users.find_one(
+                {"_id": user_id},
+                {"_id": 1, "username": 1, "first_name": 1, "shares": 1, "is_banned": 1},
+            )
+            if not doc:
+                _json(handler, 404, {"error": "user_not_found"})
+                return True
+            accepted = settings.find_one({"_id": "accepted_users"}, {"ids": 1})
+            accepted_ids = accepted.get("ids", []) if accepted else []
+            if not isinstance(accepted_ids, list):
+                accepted_ids = []
+            private_access = user_id in _owner_ids() or user_id in accepted_ids
+            public_videos = videos.count_documents({"_id": {"$regex": "^v[0-9]+$"}})
+            public_photos = videos.count_documents({
+                "_id": {"$regex": "^p[0-9]+$"}, "type": "photo_only"
+            })
+        except Exception:
+            _json(handler, 503, {"error": "profile_unavailable"})
+            return True
+        username = str(telegram_user.get("username") or doc.get("username") or "")[:64]
+        first_name = str(telegram_user.get("first_name") or doc.get("first_name") or "")[:128]
+        shares = doc.get("shares", 0)
+        if type(shares) is not int or shares < 0:
+            shares = 0
+        bot_url = ""
+        if isinstance(user_bot_username, str) and re.fullmatch(r"[A-Za-z0-9_]{5,32}", user_bot_username):
+            bot_url = f"https://t.me/{user_bot_username}?start={user_id}"
+        _json(handler, 200, {
+            "profile": {
+                "id": str(user_id),
+                "username": username,
+                "first_name": first_name,
+                "shares": shares,
+                "is_banned": doc.get("is_banned") is True,
+                "private_access": private_access,
+            },
+            "library": {"public_videos": public_videos, "public_photos": public_photos},
+            "bot_url": bot_url,
+        })
         return True
 
     if path in ("/admin/api/overview", "/admin/api/users", "/admin/api/user-detail", "/admin/api/media", "/admin/api/settings", "/admin/api/action"):

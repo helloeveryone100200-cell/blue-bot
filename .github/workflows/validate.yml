@@ -27,4 +27,6 @@ jobs:
       - name: Run static regression tests
         run: python -m unittest discover -s tests -v
       - name: Check dashboard JavaScript syntax
-        run: node --check admin/app.js
+        run: |
+          node --check admin/app.js
+          node --check user_app/app.js

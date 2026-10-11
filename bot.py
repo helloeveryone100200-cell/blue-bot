@@ -135,6 +135,38 @@ bot = telebot.TeleBot(BOT_TOKEN, parse_mode=None)
 # Only configured OWNER_IDS receive the Web App menu button in their private chat.
 ADMIN_WEBAPP_URL = os.environ.get("ADMIN_WEBAPP_URL", "").strip()
 
+USER_WEBAPP_URL = os.environ.get("USER_WEBAPP_URL", "").strip()
+
+
+def resolve_user_webapp_url(base_url: str = "") -> str:
+    """Return the HTTPS User Mini App URL without changing the Owner app URL."""
+    configured = USER_WEBAPP_URL
+    if configured:
+        if not configured.startswith("https://"):
+            return ""
+        parsed = urlparse(configured)
+        path = parsed.path.rstrip("/")
+        if path == "/app":
+            return configured.rstrip("/") + "/"
+        if path in ("", "/"):
+            return configured.rstrip("/") + "/app/"
+        return configured
+
+    candidate = (
+        base_url
+        or os.environ.get("WEBHOOK_URL", "")
+        or os.environ.get("RENDER_EXTERNAL_URL", "")
+    ).strip()
+    if not candidate.startswith("https://"):
+        return ""
+    parsed = urlparse(candidate)
+    path = parsed.path.rstrip("/")
+    if path.endswith("/webhook"):
+        path = path[:-len("/webhook")]
+    return f"{parsed.scheme}://{parsed.netloc}{path}/app/"
+
+
+
 
 def resolve_admin_webapp_url(base_url: str = "") -> str:
     """Return the HTTPS Mini App URL, normalizing a base or webhook URL."""
@@ -635,7 +667,14 @@ def welcome_markup(user_id):
         InlineKeyboardButton("👤 Profile", callback_data="view_profile"),
         InlineKeyboardButton("🔗 Share",   url=share_url),
     )
-    # Direct Mini App entry for owners; regular users retain the existing keyboard.
+    # User Mini App is available to regular users; owner controls remain separately gated.
+    user_app_url = resolve_user_webapp_url()
+    if user_app_url:
+        markup.add(InlineKeyboardButton(
+            "📱 User Dashboard",
+            web_app=telebot.types.WebAppInfo(url=user_app_url),
+        ))
+    # Direct Mini App entry for owners; regular users retain the existing owner-only gate.
     if user_id in OWNER_IDS:
         webapp_url = resolve_admin_webapp_url()
         if webapp_url:
@@ -3003,14 +3042,14 @@ def cb_rate(call):
 class WebhookHandler(BaseHTTPRequestHandler):
 
     def do_HEAD(self):
-        if handle_admin_request(self, users, videos, settings, head_only=True, action_handler=handle_owner_action):
+        if handle_admin_request(self, users, videos, settings, head_only=True, action_handler=handle_owner_action, user_bot_username=BOT_USERNAME):
             return
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
 
     def do_GET(self):
-        if handle_admin_request(self, users, videos, settings, action_handler=handle_owner_action):
+        if handle_admin_request(self, users, videos, settings, action_handler=handle_owner_action, user_bot_username=BOT_USERNAME):
             return
         body = b"Blue Bot is Alive!"
         self.send_response(200)
@@ -3020,7 +3059,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
-        if handle_admin_request(self, users, videos, settings, action_handler=handle_owner_action):
+        if handle_admin_request(self, users, videos, settings, action_handler=handle_owner_action, user_bot_username=BOT_USERNAME):
             return
         if self.path == "/webhook":
             length  = int(self.headers.get("Content-Length", 0))
