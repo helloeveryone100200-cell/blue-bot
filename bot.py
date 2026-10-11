@@ -909,7 +909,7 @@ def cmd_autobroadcast(message):
             message.chat.id,
             "✅ <b>Auto Broadcast has been enabled.</b>\n\n"
             "<blockquote>• All users will be notified automatically whenever a new video is added.\n"
-            "  </blockquote>",
+            "</blockquote>",
             parse_mode='HTML'
         )
     else:
@@ -959,8 +959,8 @@ def cmd_ref(message):
         "<b>🔗 Video Referral Link</b>\n\n"
         f"• Video — <code>{h(vid_id)}</code>\n"
         f"• Link —\n<code>{h(deep_link)}</code>\n\n"
-        "Anyone who opens this link will receive the video directly in the bot’s private chat:\n"
-        f"<code>{h(vid_id)}</code> ",
+        "Anyone who opens this link can access the video directly in the bot’s private chat.\n"
+        f"Video ID: <code>{h(vid_id)}</code>",
         parse_mode='HTML',
         reply_markup=markup
     )
@@ -1301,7 +1301,7 @@ def cb_gender_male(call):
         "<b>🔞 𝗔𝗱𝘂𝗹𝘁 𝗖𝗼𝗻𝘁𝗲𝗻𝘁 𝗡𝗼𝘁𝗶𝗰𝗲</b>\n\n"
         "<blockquote>⚠️ This bot provides access to 𝗔𝗱𝘂𝗹𝘁 𝗠𝗼𝘃𝗶𝗲𝘀.\n"
         "\n"
-        "• • You must be 18 or older to use this bot.\n"
+        "• You must be 18 or older to use this bot.\n"
         "• You may continue using the bot. ✅</blockquote>",
         parse_mode='HTML'
     )
@@ -1321,8 +1321,8 @@ def cb_gender_female(call):
         "<b>🔞 𝗔𝗱𝘂𝗹𝘁 𝗖𝗼𝗻𝘁𝗲𝗻𝘁 𝗡𝗼𝘁𝗶𝗰𝗲</b>\n\n"
         "<blockquote>⚠️ This bot provides access to 𝗔𝗱𝘂𝗹𝘁 𝗠𝗼𝘃𝗶𝗲𝘀.\n"
         "\n"
-        "• • You are not required to use this bot.\n"
-        "• • The choice to use this bot is entirely yours.\n\n"
+        "• You are not required to use this bot.\n"
+        "• The choice to use this bot is entirely yours.\n\n"
         "<i>💬 If you choose to continue, you may use the bot\n"
         "   at your own discretion. You are free to decide. ✅</i></blockquote>",
         parse_mode='HTML'
@@ -1340,7 +1340,7 @@ def cmd_contact(message):
     bot.send_message(
         message.chat.id,
         "📞 Send a message to the bot owner by typing it below. "
-        "Type and send your message to the bot owner.",
+        "Your message will be forwarded directly to the owner.",
         reply_markup=cancel_keyboard()
     )
 
@@ -2637,7 +2637,7 @@ def handle_text(message):
                     f"✅ Broadcast completed\n"
                     f"━━━━━━━━━━━━━━━━━━━━\n\n"
                     f"✔ Sent successfully: {sent_ok}\n"
-                    f"✘ Failed: {sent_fail}"
+                    f"✘ Failed: {sent_fail}\n"
                     message.chat.id, status_msg.message_id
                 )
             except Exception:
