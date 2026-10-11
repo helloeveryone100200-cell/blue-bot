@@ -787,16 +787,20 @@ def send_channel_join_prompt(chat_id, reply_to_message_id=None):
 def send_welcome(chat_id, user_id):
     total = get_total_videos()
     text = (
-        "<b>✦ BLUE BOT | Welcome</b>\n\n"
-        "<blockquote>"
-        "Blue Bot မှ ကြိုဆိုပါတယ်။ ✨\n"
-        "သင်လိုအပ်သော ဗီဒီယိုများကို ID ဖြင့် လွယ်ကူစွာ ရှာဖွေနိုင်ပါသည်။\n\n"
-        "<b>📊 Library Overview</b>\n"
-        f"• Available videos: <b>{total}</b> ခု\n\n"
-        "<b>🔎 How to Find Videos</b>\n"
-        "• v1, v2, v3 စသဖြင့် video ID ကို ရိုက်ထည့်ပြီး ရှာဖွေပါ။\n\n"
-        "<i>အောက်ပါ menu မှ Profile နှင့် Share လုပ်ဆောင်ချက်များကို အသုံးပြုနိုင်ပါသည်။</i>"
-        "</blockquote>"
+        "<b>🔹 BLUE BOT</b>\n"
+        "<i>Your Personal Video Hub</i>\n\n"
+        "👋 Welcome to <b>Blue Bot</b>!\n"
+        "Explore videos, manage your profile, and share content with friends — all in one place.\n\n"
+        "<b>✨ WHAT YOU CAN DO</b>\n"
+        "👤 <b>My Profile</b> — View your account information.\n"
+        "🏆 <b>Top Videos</b> — Explore the most popular videos.\n"
+        "🔗 <b>Share &amp; Refer</b> — Invite friends and share your link.\n"
+        "📞 <b>Contact Owner</b> — Get help when you need it.\n\n"
+        "<b>📚 VIDEO LIBRARY</b>\n"
+        f"Available videos: <b>{total}</b>\n\n"
+        "<b>🔎 HOW TO FIND A VIDEO</b>\n"
+        "Send a video ID such as <code>v1</code>, <code>v2</code>, or <code>v3</code> to find it.\n\n"
+        "🚀 <i>Select an option from the menu below to get started.</i>"
     )
     bot.send_message(chat_id, text, parse_mode='HTML', reply_markup=welcome_markup(user_id))
 
