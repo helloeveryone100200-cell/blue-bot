@@ -830,7 +830,7 @@ def broadcast_new_content(vid_id: str):
                 markup = InlineKeyboardMarkup()
                 markup.add(InlineKeyboardButton(
                     f"▶️ Watch ({vid_id})",
-                    url=f"https://t.me/{BOT_USERNAME}?start={uid}",
+                    callback_data=f"watchvid:{vid_id}",
                     style="success"
                 ))
                 bot.send_message(
@@ -3019,6 +3019,63 @@ def handle_text(message):
 
 
 # ─── RATING CALLBACKS ─────────────────────────────────────────────────────────
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("watchvid:"))
+def cb_watch_broadcast_video(call):
+    """Send the video linked to an auto-broadcast button without requiring the user to type its ID."""
+    vid_id = call.data.split(":", 1)[1].strip()
+    vid_doc = videos.find_one({"_id": vid_id})
+    if not vid_doc:
+        bot.answer_callback_query(call.id, "This video is no longer available.", show_alert=True)
+        return
+
+    file_ids = vid_doc.get("video_ids", [])
+    if not file_ids:
+        bot.answer_callback_query(call.id, "Video media is unavailable.", show_alert=True)
+        return
+
+    chat_id = call.message.chat.id
+    caption = vid_doc.get("caption", "")
+    thumbnail = vid_doc.get("thumbnail")
+    photo_ids = vid_doc.get("photo_ids", [])
+
+    try:
+        bot.answer_callback_query(call.id, "Opening video…")
+        bot.send_chat_action(chat_id, "upload_video")
+        if thumbnail:
+            try:
+                bot.send_photo(chat_id, thumbnail, caption=f"🖼 {caption}" if caption else None, has_spoiler=True)
+            except Exception:
+                pass
+
+        if vid_doc.get("type") == "single" or len(file_ids) == 1:
+            bot.send_video(chat_id, file_ids[0], caption=caption if not thumbnail else "", has_spoiler=True)
+        else:
+            media_group = [
+                telebot.types.InputMediaVideo(fid, caption=caption if i == 0 and not thumbnail else "", has_spoiler=True)
+                for i, fid in enumerate(file_ids)
+            ]
+            bot.send_media_group(chat_id, media_group)
+
+        if photo_ids:
+            if len(photo_ids) == 1:
+                bot.send_photo(chat_id, photo_ids[0], has_spoiler=True)
+            else:
+                photo_group = [telebot.types.InputMediaPhoto(fid, has_spoiler=True) for fid in photo_ids]
+                bot.send_media_group(chat_id, photo_group)
+
+        videos.update_one({"_id": vid_id}, {"$inc": {"views": 1}})
+        bot.send_message(
+            chat_id,
+            f"<b>⭐ {h(vid_id)}</b> — You can rate this item",
+            parse_mode="HTML",
+            reply_markup=rating_markup(vid_id)
+        )
+    except Exception:
+        try:
+            bot.send_message(chat_id, "Sorry, this video could not be opened right now. Please try again.")
+        except Exception:
+            pass
 
 @bot.callback_query_handler(func=lambda c: c.data == "noop")
 def cb_noop(call):
