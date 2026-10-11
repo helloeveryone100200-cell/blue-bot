@@ -2754,11 +2754,10 @@ def handle_text(message):
             message.chat.id,
             "<b>📞 𝗖𝗼𝗻𝘁𝗮𝗰𝘁 𝗢𝘄𝗻𝗲𝗿</b>\n"
             "<i>Blue Bot Support</i>\n\n"
-            "<blockquote>သင့်မေးခွန်း သို့မဟုတ် အကူအညီလိုအပ်ချက်ကို "
-            "စာတစ်စောင်အဖြစ် ပေးပို့နိုင်ပါသည်။\n\n"
-            "• စာသားတစ်စောင် ပို့လိုက်ပါ။\n"
-            "• သင့်စာကို Owner ထံ ပေးပို့ပေးပါမည်။\n"
-            "• မပို့လိုပါက ❌ Cancel ကိုနှိပ်ပါ။</blockquote>",
+            "<blockquote>Have a question or need help? Send us a message, and we'll make sure it reaches the bot owner.\\n\\n"
+            "• Type and send your message below.\\n"
+            "• Your message will be forwarded directly to the bot owner.\\n"
+            "• To cancel, tap ❌ Cancel.</blockquote>",
             parse_mode='HTML',
             reply_markup=cancel_keyboard()
         )
