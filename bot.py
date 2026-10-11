@@ -1175,11 +1175,18 @@ def cb_profile(call):
 
     display_name = doc.get("username") or doc.get("first_name") or str(user_id)
     text = (
-        "<b>👤 𝗠𝘆 𝗣𝗿𝗼𝗳𝗶𝗹𝗲</b>\n\n"
-        f"<blockquote>• 𝗡𝗮𝗺𝗲  ——  {h(display_name)}\n"
-        f"• 𝗜𝗗  ——  {user_id}\n"
-        "• 𝗩𝗶𝗱𝗲𝗼 𝗔𝗰𝗰𝗲𝘀𝘀  ——  ∞ Unlimited\n"
-        f"• 𝗦𝗵𝗮𝗿𝗲𝘀  ——  {doc.get('shares', 0)} ဦး</blockquote>"
+        "<b>👤 MY PROFILE</b>\n"
+        "<i>Your Blue Bot account at a glance</i>\n\n"
+        "<blockquote>"
+        "<b>ACCOUNT DETAILS</b>\n"
+        f"👤 <b>Name</b>\n<code>{h(display_name)}</code>\n\n"
+        f"🆔 <b>Telegram ID</b>\n<code>{user_id}</code>\n\n"
+        "<b>VIDEO ACCESS</b>\n"
+        "🎬 <b>Unlimited</b>\n\n"
+        "<b>SHARING ACTIVITY</b>\n"
+        f"🔗 <b>Total shares:</b> {doc.get('shares', 0)}"
+        "</blockquote>\n\n"
+        "<i>Your account information is shown above.</i>"
     )
     bot.answer_callback_query(call.id)
     bot.send_message(call.message.chat.id, text, parse_mode='HTML')
