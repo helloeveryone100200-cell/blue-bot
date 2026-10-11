@@ -2637,7 +2637,7 @@ def handle_text(message):
                     f"✅ Broadcast completed\n"
                     f"━━━━━━━━━━━━━━━━━━━━\n\n"
                     f"✔ Sent successfully: {sent_ok}\n"
-                    f"✘ Failed: {sent_fail}\n"
+                    f"✘ Failed: {sent_fail}\n",
                     message.chat.id, status_msg.message_id
                 )
             except Exception:
