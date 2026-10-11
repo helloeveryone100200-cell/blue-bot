@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#080d1a">
+  <title>Blue Bot — User Dashboard</title>
+  <link rel="stylesheet" href="/app/styles.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/app/app.js" defer></script>
+</head>
+<body>
+  <main id="browser-blocked" class="browser-blocked">
+    <div class="brand-mark">B</div>
+    <p class="eyebrow">BLUE BOT</p>
+    <h1>Open inside Telegram</h1>
+    <p>Your personal dashboard is available from the Blue Bot Telegram menu.</p>
+  </main>
+  <main class="app-shell">
+    <header class="app-header">
+      <div class="brand-mark">B</div>
+      <div class="brand-copy"><span>BLUE BOT</span><small>USER SPACE</small></div>
+      <span class="secure-pill"><i></i> SECURE</span>
+    </header>
+
+    <section class="welcome">
+      <p class="eyebrow">YOUR PERSONAL DASHBOARD</p>
+      <h1 id="greeting">Welcome back</h1>
+      <p class="subheading">Your account, your activity, all in one place.</p>
+    </section>
+
+    <section id="notice" class="notice" role="status" aria-live="polite">Verifying your Telegram account…</section>
+
+    <section class="profile-card">
+      <div class="avatar" id="avatar">B</div>
+      <div class="profile-copy">
+        <p class="eyebrow">MY PROFILE</p>
+        <h2 id="profile-name">Loading profile…</h2>
+        <p id="profile-username" class="muted">@username</p>
+      </div>
+      <span id="account-status" class="status-pill">Checking</span>
+      <div class="profile-id"><span>Telegram ID</span><strong id="profile-id">—</strong></div>
+    </section>
+
+    <section class="section-heading">
+      <div><p class="eyebrow">ACCOUNT OVERVIEW</p><h2>Your activity</h2></div>
+      <button id="refresh-button" class="refresh-button" type="button" aria-label="Refresh dashboard">↻</button>
+    </section>
+    <section class="metric-grid" aria-label="Your account metrics">
+      <article class="metric-card"><span class="metric-icon">↗</span><span class="metric-label">Successful referrals</span><strong id="metric-shares">—</strong><small>People who joined from your link</small></article>
+      <article class="metric-card"><span class="metric-icon">▶</span><span class="metric-label">Public videos</span><strong id="metric-videos">—</strong><small>Available through the bot</small></article>
+      <article class="metric-card"><span class="metric-icon">▧</span><span class="metric-label">Public photos</span><strong id="metric-photos">—</strong><small>Available through the bot</small></article>
+      <article class="metric-card"><span class="metric-icon">◇</span><span class="metric-label">Private access</span><strong id="metric-private">—</strong><small>Your current access status</small></article>
+    </section>
+
+    <section class="section-heading lower-heading">
+      <div><p class="eyebrow">QUICK ACTIONS</p><h2>What would you like to do?</h2></div>
+    </section>
+    <section class="action-list">
+      <button id="open-bot" class="action-item primary-action" type="button" disabled>
+        <span class="action-icon">↗</span><span><strong>Open Blue Bot</strong><small>Search for videos and use bot features</small></span><span class="action-arrow">›</span>
+      </button>
+      <button id="share-bot" class="action-item" type="button" disabled>
+        <span class="action-icon">♧</span><span><strong>Invite a friend</strong><small>Share your personal referral link</small></span><span class="action-arrow">›</span>
+      </button>
+    </section>
+
+    <footer><span>BLUE BOT</span><span>Personal space · Read-only</span></footer>
+  </main>
+</body>
+</html>
