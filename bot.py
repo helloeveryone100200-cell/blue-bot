@@ -598,7 +598,6 @@ def main_menu_keyboard(user_id=None):
         KeyboardButton("🔗 Share & Refer", style="primary"),
     )
     markup.add(
-        KeyboardButton("📹 Videos Update", style="danger"),
         KeyboardButton("📞 Contact Owner", style="success"),
     )
     markup.add(
@@ -796,8 +795,6 @@ def send_welcome(chat_id, user_id):
         f"• Available videos: <b>{total}</b> ခု\n\n"
         "<b>🔎 How to Find Videos</b>\n"
         "• v1, v2, v3 စသဖြင့် video ID ကို ရိုက်ထည့်ပြီး ရှာဖွေပါ။\n\n"
-        "<b>🔄 Latest Updates</b>\n"
-        "• [ 📹 Videos Update ] ခလုတ်မှ နောက်ဆုံး video အရေအတွက်ကို စစ်ဆေးနိုင်ပါသည်။\n\n"
         "<i>အောက်ပါ menu မှ Profile နှင့် Share လုပ်ဆောင်ချက်များကို အသုံးပြုနိုင်ပါသည်။</i>"
         "</blockquote>"
     )
