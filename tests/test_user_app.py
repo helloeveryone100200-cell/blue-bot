@@ -159,6 +159,28 @@ class UserMiniAppTests(unittest.TestCase):
         self.assertFalse(payload["profile"]["is_banned"])
         self.assertFalse(payload["profile"]["private_access"])
 
+    
+    def test_user_app_has_a_separate_https_resolver_and_regular_user_button(self):
+        bot_source = (ROOT / "bot.py").read_text(encoding="utf-8")
+        tree = __import__("ast").parse(bot_source, filename="bot.py")
+        functions = {
+            node.name: node for node in tree.body
+            if isinstance(node, (__import__("ast").FunctionDef, __import__("ast").AsyncFunctionDef))
+        }
+        self.assertIn("resolve_user_webapp_url", functions)
+        resolver_source = __import__("ast").get_source_segment(
+            bot_source, functions["resolve_user_webapp_url"]
+        )
+        welcome_source = __import__("ast").get_source_segment(
+            bot_source, functions["welcome_markup"]
+        )
+        self.assertIn('startswith("https://")', resolver_source)
+        self.assertIn('"/app/"', resolver_source)
+        self.assertIn("resolve_user_webapp_url", welcome_source)
+        self.assertIn("User Dashboard", welcome_source)
+        self.assertIn("OWNER_IDS", welcome_source)
+        self.assertIn("ADMIN_WEBAPP_URL", bot_source)
+
 
 if __name__ == "__main__":
     unittest.main()
