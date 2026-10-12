@@ -54,6 +54,25 @@
       <article class="metric-card"><span class="metric-icon">◇</span><span class="metric-label">Private access</span><strong id="metric-private">—</strong><small>Your current access status</small></article>
     </section>
 
+    <section class="section-heading lower-heading" id="video-library-heading">
+      <div><p class="eyebrow">PUBLIC LIBRARY</p><h2>Videos</h2></div>
+      <span id="video-total" class="library-count">— videos</span>
+    </section>
+    <section class="video-library" aria-labelledby="video-library-heading">
+      <form id="video-search-form" class="video-search" role="search">
+        <label class="visually-hidden" for="video-search">Search public videos</label>
+        <input id="video-search" name="query" type="search" maxlength="80" placeholder="Search videos by title or ID…" autocomplete="off">
+        <button id="video-search-button" type="submit">Search</button>
+      </form>
+      <p id="video-notice" class="video-notice" role="status" aria-live="polite">Videos will appear here after your account is verified.</p>
+      <div id="video-grid" class="video-grid" aria-label="Public videos"></div>
+      <nav id="video-pagination" class="video-pagination" aria-label="Video pages" hidden>
+        <button id="video-previous" type="button" disabled>← Previous</button>
+        <span id="video-page-label">Page 1 of 1</span>
+        <button id="video-next" type="button" disabled>Next →</button>
+      </nav>
+    </section>
+
     <section class="section-heading lower-heading">
       <div><p class="eyebrow">QUICK ACTIONS</p><h2>What would you like to do?</h2></div>
     </section>
