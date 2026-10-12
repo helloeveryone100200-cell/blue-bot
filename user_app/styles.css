@@ -1054,3 +1054,63 @@ body::after {
   .welcome::before { animation: none; }
 }
 
+
+
+/* Full-page sculpted silhouette for the Telegram User Dashboard.
+   Keep the decorative figure behind all app content and preserve UI behavior. */
+body::before {
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  top: 50%;
+  left: 50%;
+  width: min(92vw, 980px);
+  height: 112vh;
+  opacity: .5;
+  filter: blur(.2px) saturate(1.18);
+  clip-path: polygon(
+    46% 0%, 54% 0%, 59% 2%, 62% 5%, 62% 8%, 59% 11%, 56% 13%,
+    56% 16%, 65% 18%, 75% 21%, 83% 26%, 87% 33%, 82% 40%,
+    74% 46%, 70% 51%, 73% 56%, 83% 60%, 94% 66%, 100% 74%,
+    100% 100%, 64% 100%, 61% 87%, 57% 77%, 53% 72%, 50% 71%,
+    47% 72%, 43% 77%, 39% 87%, 36% 100%, 0% 100%, 0% 74%,
+    6% 66%, 17% 60%, 27% 56%, 30% 51%, 26% 46%, 18% 40%,
+    13% 33%, 17% 26%, 25% 21%, 35% 18%, 44% 16%, 44% 13%,
+    41% 11%, 38% 8%, 38% 5%, 41% 2%
+  );
+  background:
+    radial-gradient(ellipse at 50% 7%, rgba(255, 231, 241, .9) 0%, rgba(255, 117, 169, .65) 4%, transparent 9%),
+    radial-gradient(ellipse at 50% 23%, rgba(255, 153, 193, .5) 0%, rgba(194, 24, 83, .35) 14%, transparent 26%),
+    radial-gradient(ellipse at 29% 45%, rgba(255, 128, 178, .58) 0%, rgba(179, 20, 78, .42) 18%, transparent 33%),
+    radial-gradient(ellipse at 71% 45%, rgba(255, 153, 197, .5) 0%, rgba(151, 14, 67, .48) 20%, transparent 34%),
+    radial-gradient(ellipse at 50% 70%, rgba(82, 5, 39, .72) 0%, rgba(37, 4, 22, .45) 38%, transparent 64%),
+    linear-gradient(110deg, rgba(255, 174, 208, .14), rgba(124, 10, 55, .58) 48%, rgba(255, 101, 157, .16));
+  box-shadow: inset 24px 12px 56px rgba(255, 225, 239, .12), 0 0 90px rgba(221, 28, 102, .2);
+  transform: translate(-50%, -50%);
+  animation: fullpage-sculpture 18s ease-in-out infinite alternate;
+}
+body::after {
+  z-index: -1;
+  opacity: .26;
+  filter: blur(2px);
+  background:
+    radial-gradient(ellipse at 40% 38%, rgba(255, 180, 212, .3), transparent 34%),
+    radial-gradient(ellipse at 60% 65%, rgba(179, 18, 77, .28), transparent 43%);
+  animation: ambient-organic-two 25s ease-in-out infinite alternate;
+}
+@keyframes fullpage-sculpture {
+  0% { transform: translate(-50%, -50%) rotate(-2deg) scale(.97); filter: blur(.2px) saturate(1.08) brightness(.86); }
+  100% { transform: translate(-50%, -50%) rotate(2deg) scale(1.03); filter: blur(.2px) saturate(1.25) brightness(1.08); }
+}
+@media (max-width: 559px) {
+  body::before {
+    width: 118vw;
+    height: 104vh;
+    opacity: .36;
+  }
+  body::after { opacity: .18; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before, body::after { animation: none; }
+}
