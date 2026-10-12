@@ -114,6 +114,47 @@ class UserMiniAppTests(unittest.TestCase):
         self.assertNotIn("private-field", handler.wfile.getvalue().decode())
         self.assertNotIn("file_id", handler.wfile.getvalue().decode())
 
+    def test_public_video_api_returns_only_public_metadata_and_deep_links(self):
+        self.videos.find.return_value.sort.return_value.skip.return_value.limit.return_value = [
+            {"_id": "v12", "caption": "Public title", "views": 7, "likes": 3, "dislikes": 1,
+             "video_ids": ["secret-telegram-file-id"]},
+            {"_id": "z12", "caption": "Private title", "video_ids": ["private-file-id"]},
+        ]
+        handler = self.request(path="/app/api/videos", payload={"page": 1, "pageSize": 12})
+        self.assertEqual(handler.status, 200)
+        payload = json.loads(handler.wfile.getvalue())
+        self.assertEqual(payload["total"], 8)
+        self.assertEqual(payload["items"], [{
+            "id": "v12", "title": "Public title", "views": 7, "likes": 3, "dislikes": 1,
+            "watch_url": "https://t.me/BlueBotTest?start=ref_v12",
+        }])
+        self.videos.find.assert_called_once_with(
+            {"_id": {"$regex": "^v[0-9]+$"}},
+            {"_id": 1, "caption": 1, "views": 1, "likes": 1, "dislikes": 1},
+        )
+        response_text = handler.wfile.getvalue().decode()
+        self.assertNotIn("secret-telegram-file-id", response_text)
+        self.assertNotIn("private-file-id", response_text)
+        self.assertNotIn("Private title", response_text)
+
+    def test_public_video_api_requires_valid_telegram_authentication(self):
+        body = json.dumps({"initData": "forged", "page": 1, "pageSize": 12}).encode()
+        handler = FakeHandler("/app/api/videos", "POST", {"Content-Length": str(len(body))}, body)
+        with patch.dict(os.environ, {"BOT_TOKEN": BOT_TOKEN, "OWNER_IDS": "1234"}, clear=False), patch(
+            "admin_dashboard.time.time", return_value=NOW
+        ):
+            admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        self.assertEqual(handler.status, 403)
+        self.videos.find.assert_not_called()
+        self.videos.count_documents.assert_not_called()
+
+    def test_public_video_api_rejects_banned_accounts(self):
+        self.users.find_one.return_value = {"_id": 5678, "is_banned": True}
+        handler = self.request(path="/app/api/videos")
+        self.assertEqual(handler.status, 403)
+        self.assertEqual(json.loads(handler.wfile.getvalue()), {"error": "account_restricted"})
+        self.videos.find.assert_not_called()
+
     def test_signed_telegram_user_identity_not_client_supplied_user_id_is_used(self):
         self.request(payload={"userId": "1234"})
         self.users.find_one.assert_called_once()
