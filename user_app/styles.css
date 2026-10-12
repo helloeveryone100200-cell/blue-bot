@@ -755,12 +755,14 @@ body::after { background: #8d174e; opacity: .12; }
   width: clamp(132px, 22vw, 226px);
   height: clamp(170px, 25vw, 250px);
   border: 1px solid rgba(255, 178, 205, .34);
-  border-radius: 49% 51% 42% 58% / 39% 39% 61% 61%;
+  /* A rear-view, stylized hourglass silhouette: narrow waist and exaggerated rounded hips. */
+  border-radius: 44% 44% 48% 48% / 22% 22% 68% 68%;
   background:
-    radial-gradient(ellipse at 50% 18%, rgba(255, 211, 226, .9) 0%, rgba(255, 119, 166, .72) 7%, transparent 23%),
-    radial-gradient(ellipse at 34% 42%, rgba(255, 126, 170, .88) 0%, rgba(182, 35, 91, .86) 26%, transparent 48%),
-    radial-gradient(ellipse at 68% 42%, rgba(255, 153, 188, .72) 0%, rgba(135, 20, 68, .9) 31%, transparent 53%),
-    radial-gradient(ellipse at 50% 70%, #6c123b 0%, #341020 42%, transparent 70%),
+    radial-gradient(ellipse at 50% 15%, rgba(255, 211, 226, .9) 0%, rgba(255, 119, 166, .72) 7%, transparent 23%),
+    radial-gradient(ellipse at 50% 34%, rgba(255, 166, 197, .9) 0%, rgba(193, 38, 95, .8) 16%, transparent 31%),
+    radial-gradient(ellipse at 28% 61%, rgba(255, 126, 170, .94) 0%, rgba(182, 35, 91, .9) 27%, transparent 49%),
+    radial-gradient(ellipse at 72% 61%, rgba(255, 153, 188, .84) 0%, rgba(135, 20, 68, .92) 30%, transparent 52%),
+    radial-gradient(ellipse at 50% 82%, #6c123b 0%, #341020 42%, transparent 70%),
     linear-gradient(145deg, #f46c9b 0%, #a7225a 38%, #3b1027 74%, #170a13 100%);
   box-shadow:
     inset 13px 10px 24px rgba(255, 215, 230, .22),
@@ -963,3 +965,92 @@ body::after {
   body::before, body::after { animation: none; }
   .welcome::before { animation: none; }
 }
+
+
+/* Animated exaggerated-curves ambience: abstract, non-explicit, CSS-only. */
+body::before {
+  width: min(68vw, 720px);
+  height: min(78vh, 760px);
+  left: -22vw;
+  top: 7vh;
+  border-radius: 48% 52% 44% 56% / 36% 39% 61% 64%;
+  background:
+    radial-gradient(ellipse at 58% 30%, rgba(255, 180, 211, .28), transparent 22%),
+    radial-gradient(ellipse at 48% 56%, rgba(232, 62, 120, .34), transparent 43%),
+    radial-gradient(ellipse at 60% 76%, rgba(93, 7, 43, .5), transparent 46%),
+    linear-gradient(145deg, rgba(255, 113, 166, .13), rgba(74, 5, 35, .18));
+  box-shadow: inset 24px 18px 78px rgba(255, 181, 212, .09), 0 0 110px rgba(232, 35, 111, .16);
+  animation: curvy-form-left 20s ease-in-out infinite alternate;
+}
+body::after {
+  width: min(62vw, 660px);
+  height: min(73vh, 700px);
+  right: -20vw;
+  bottom: -10vh;
+  border-radius: 52% 48% 58% 42% / 40% 35% 65% 60%;
+  background:
+    radial-gradient(ellipse at 42% 28%, rgba(255, 194, 221, .26), transparent 24%),
+    radial-gradient(ellipse at 54% 52%, rgba(205, 26, 91, .38), transparent 45%),
+    radial-gradient(ellipse at 45% 78%, rgba(74, 4, 34, .55), transparent 49%),
+    linear-gradient(135deg, rgba(242, 57, 125, .16), rgba(48, 4, 24, .18));
+  box-shadow: inset -20px -22px 76px rgba(7, 1, 6, .26), 0 0 105px rgba(190, 24, 87, .18);
+  animation: curvy-form-right 25s ease-in-out infinite alternate;
+}
+@keyframes curvy-form-left {
+  0% { transform: translate3d(-1vw, 0, 0) rotate(-9deg) scale(.94); border-radius: 48% 52% 44% 56% / 36% 39% 61% 64%; }
+  50% { transform: translate3d(4vw, 2vh, 0) rotate(2deg) scale(1.04); border-radius: 55% 45% 52% 48% / 43% 35% 65% 57%; }
+  100% { transform: translate3d(7vw, -2vh, 0) rotate(9deg) scale(1.09); border-radius: 43% 57% 47% 53% / 39% 48% 52% 61%; }
+}
+@keyframes curvy-form-right {
+  0% { transform: translate3d(1vw, 1vh, 0) rotate(8deg) scale(1.02); border-radius: 52% 48% 58% 42% / 40% 35% 65% 60%; }
+  50% { transform: translate3d(-4vw, -2vh, 0) rotate(-2deg) scale(.96); border-radius: 45% 55% 47% 53% / 48% 42% 58% 52%; }
+  100% { transform: translate3d(-7vw, -4vh, 0) rotate(-10deg) scale(1.07); border-radius: 57% 43% 42% 58% / 35% 46% 54% 65%; }
+}
+@media (max-width: 559px) {
+  body::before { width: 98vw; height: 56vh; left: -48vw; top: 14vh; }
+  body::after { width: 94vw; height: 52vh; right: -46vw; bottom: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before, body::after { animation: none; }
+}
+
+/* Stronger sculpted feminine hourglass relief in the User Dashboard hero. */
+.welcome::before {
+  top: 50%;
+  right: clamp(8px, 3vw, 34px);
+  width: clamp(190px, 30vw, 326px);
+  height: clamp(245px, 34vw, 366px);
+  border: 1px solid rgba(255, 190, 216, .56);
+  border-radius: 44% 44% 49% 49% / 19% 19% 75% 75%;
+  background:
+    radial-gradient(ellipse at 50% 13%, rgba(255, 238, 246, .98) 0%, rgba(255, 151, 191, .88) 6%, transparent 19%),
+    radial-gradient(ellipse at 50% 29%, rgba(255, 174, 204, .96) 0%, rgba(220, 49, 112, .82) 15%, transparent 30%),
+    radial-gradient(ellipse at 26% 55%, rgba(255, 151, 192, .98) 0%, rgba(224, 48, 117, .92) 23%, rgba(117, 13, 59, .3) 43%, transparent 54%),
+    radial-gradient(ellipse at 74% 55%, rgba(255, 173, 207, .92) 0%, rgba(177, 24, 83, .94) 25%, rgba(83, 8, 42, .4) 46%, transparent 57%),
+    radial-gradient(ellipse at 50% 79%, rgba(103, 12, 54, .98) 0%, rgba(44, 7, 27, .94) 42%, transparent 72%),
+    linear-gradient(112deg, #ffb4d0 0%, #e63f83 24%, #861443 57%, #210914 100%);
+  box-shadow:
+    inset 17px 9px 24px rgba(255, 239, 247, .38),
+    inset -24px -28px 36px rgba(9, 1, 7, .76),
+    inset 0 -2px 14px rgba(255, 105, 164, .24),
+    0 25px 52px rgba(0, 0, 0, .52),
+    0 0 54px rgba(239, 48, 124, .28),
+    0 0 0 14px rgba(255, 125, 176, .045),
+    0 0 0 29px rgba(255, 125, 176, .025);
+  filter: saturate(1.2) contrast(1.06);
+  transform: translateY(-50%) rotate(-7deg);
+  opacity: .98;
+  animation: sensual-relief 11s ease-in-out infinite alternate, relief-glow 7s ease-in-out infinite;
+}
+@media (max-width: 559px) {
+  .welcome::before {
+    right: -24px;
+    width: clamp(150px, 44vw, 220px);
+    height: clamp(215px, 62vw, 290px);
+    opacity: .84;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome::before { animation: none; }
+}
+
