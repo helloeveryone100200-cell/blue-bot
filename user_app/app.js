@@ -123,6 +123,9 @@
       const status = byId('account-status');
       status.textContent = profile.is_banned ? 'Restricted' : 'Active';
       status.dataset.state = profile.is_banned ? 'banned' : 'active';
+      byId('privacy-account-status').textContent = profile.is_banned ? 'Restricted' : 'Active';
+      byId('privacy-private-access').textContent = profile.private_access ? 'Granted' : 'Standard';
+      byId('privacy-telegram-id').textContent = profile.id || '—';
       botUrl = typeof payload.bot_url === 'string' ? payload.bot_url : '';
       byId('open-bot').disabled = !botUrl;
       byId('share-bot').disabled = !botUrl;
@@ -287,6 +290,10 @@
       byId(id).checked = notificationPreferences[key];
       byId(id).disabled = profileIsRestricted || !notificationPreferencesLoaded;
     });
+    const enabledCount = Object.values(notificationPreferences).filter(enabled => enabled !== false).length;
+    byId('privacy-notification-summary').textContent = notificationPreferencesLoaded
+      ? enabledCount + ' of 3 enabled'
+      : 'Unavailable';
   }
 
   async function loadNotificationPreferences() {
@@ -378,6 +385,7 @@
       savedVideoIds = new Set(ids.filter(id => typeof id === 'string' && /^v[0-9]+$/.test(id)));
       const items = Array.isArray(payload.items) ? payload.items : [];
       byId('saved-video-count').textContent = safeCount(items.length) + ' saved';
+      byId('privacy-saved-count').textContent = safeCount(items.length);
       renderVideos(items, 'saved-video-grid');
       notice.textContent = items.length
         ? 'Your saved videos are private to your account.'
