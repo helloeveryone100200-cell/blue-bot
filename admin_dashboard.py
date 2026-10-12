@@ -339,6 +339,90 @@ def handle_admin_request(handler, users, videos, settings, head_only=False, acti
         })
         return True
 
+    if path == "/app/api/saved-videos":
+        if method != "POST":
+            _json(handler, 405, {"error": "method_not_allowed"})
+            return True
+        authenticated, valid = _read_user_payload(handler)
+        if not valid:
+            return True
+        telegram_user, payload = authenticated
+        user_id = telegram_user["id"]
+        action = payload.get("action", "list")
+        if action not in ("list", "save", "remove"):
+            _json(handler, 400, {"error": "invalid_action"})
+            return True
+        media_id = payload.get("videoId")
+        if action in ("save", "remove") and (
+            not isinstance(media_id, str) or not re.fullmatch(r"v[0-9]{1,18}", media_id)
+        ):
+            _json(handler, 400, {"error": "invalid_video_id"})
+            return True
+        try:
+            user_doc = users.find_one(
+                {"_id": user_id},
+                {"_id": 1, "is_banned": 1, "saved_video_ids": 1},
+            )
+            if not user_doc:
+                _json(handler, 404, {"error": "user_not_found"})
+                return True
+            if user_doc.get("is_banned") is True:
+                _json(handler, 403, {"error": "account_restricted"})
+                return True
+            stored_ids = user_doc.get("saved_video_ids", [])
+            if not isinstance(stored_ids, list):
+                stored_ids = []
+            saved_ids = list(dict.fromkeys(
+                item for item in stored_ids
+                if isinstance(item, str) and re.fullmatch(r"v[0-9]{1,18}", item)
+            ))
+            if action == "save":
+                if media_id not in saved_ids:
+                    if len(saved_ids) >= 100:
+                        _json(handler, 409, {"error": "saved_videos_limit"})
+                        return True
+                    if not videos.find_one({"_id": media_id}, {"_id": 1}):
+                        _json(handler, 404, {"error": "media_not_found"})
+                        return True
+                    users.update_one({"_id": user_id}, {"$addToSet": {"saved_video_ids": media_id}})
+            elif action == "remove":
+                users.update_one({"_id": user_id}, {"$pull": {"saved_video_ids": media_id}})
+            latest = users.find_one({"_id": user_id}, {"_id": 1, "saved_video_ids": 1})
+            latest_ids = latest.get("saved_video_ids", []) if latest else []
+            if not isinstance(latest_ids, list):
+                latest_ids = []
+            clean_ids = list(dict.fromkeys(
+                item for item in latest_ids
+                if isinstance(item, str) and re.fullmatch(r"v[0-9]{1,18}", item)
+            ))
+            documents = list(videos.find(
+                {"_id": {"$in": clean_ids}},
+                {"_id": 1, "caption": 1, "views": 1, "likes": 1},
+            )) if clean_ids else []
+            by_id = {doc.get("_id"): doc for doc in documents if isinstance(doc.get("_id"), str)}
+            valid_ids = [item for item in clean_ids if item in by_id]
+            bot_url = ""
+            if isinstance(user_bot_username, str) and re.fullmatch(r"[A-Za-z0-9_]{5,32}", user_bot_username):
+                bot_url = f"https://t.me/{user_bot_username}"
+            items = []
+            for item in reversed(valid_ids):
+                doc = by_id[item]
+                caption = doc.get("caption")
+                if not isinstance(caption, str) or not caption.strip():
+                    caption = f"Video {item}"
+                items.append({
+                    "id": item,
+                    "title": caption.strip()[:240],
+                    "views": _safe_nonnegative_int(doc.get("views")),
+                    "likes": _safe_nonnegative_int(doc.get("likes")),
+                    "watch_url": f"{bot_url}?start=ref_{item}" if bot_url else "",
+                })
+        except Exception:
+            _json(handler, 503, {"error": "saved_videos_unavailable"})
+            return True
+        _json(handler, 200, {"ok": True, "savedIds": valid_ids, "items": items, "limit": 100})
+        return True
+
     if path == "/app/api/background":
         if method not in ("GET", "HEAD"):
             _json(handler, 405, {"error": "method_not_allowed"})

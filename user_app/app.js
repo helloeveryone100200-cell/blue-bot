@@ -8,6 +8,10 @@
   let videoPage = 1;
   let videoPages = 1;
   let videoQuery = '';
+  let savedVideoIds = new Set();
+  let currentVideoItems = [];
+  let savedVideoRequestId = 0;
+  let profileIsRestricted = false;
 
   function setNotice(message, state) {
     notice.textContent = message;
@@ -70,8 +74,20 @@
       setNotice(profile.is_banned
         ? 'Your account is currently restricted. Please contact the bot owner if you believe this is a mistake.'
         : 'Your account is connected securely. This dashboard only displays your own account information.', profile.is_banned ? 'error' : 'success');
-      if (profile.is_banned) clearVideoLibrary('Your account is restricted. Public videos are unavailable.');
-      else { videoPage = 1; loadVideos(); }
+      profileIsRestricted = profile.is_banned === true;
+      if (profileIsRestricted) {
+        clearVideoLibrary('Your account is restricted. Public videos are unavailable.');
+        savedVideoIds = new Set();
+        currentVideoItems = [];
+        renderVideos([], 'saved-video-grid');
+        byId('saved-video-count').textContent = '0 saved';
+        byId('saved-video-notice').textContent = 'Saved videos are unavailable for restricted accounts.';
+        byId('saved-video-notice').dataset.state = 'error';
+      } else {
+        videoPage = 1;
+        await loadSavedVideos();
+        loadVideos();
+      }
     } catch (error) {
       if (currentRequest !== requestId) return;
       const messages = {
@@ -94,8 +110,8 @@
     byId('video-notice').dataset.state = 'error';
   }
 
-  function renderVideos(items) {
-    const grid = byId('video-grid');
+  function renderVideos(items, gridId = 'video-grid') {
+    const grid = byId(gridId);
     grid.replaceChildren();
     items.forEach(video => {
       const card = document.createElement('article');
@@ -122,7 +138,15 @@
       watch.textContent = '▶  Watch in Telegram';
       watch.disabled = !video.watch_url;
       watch.addEventListener('click', () => openTelegramLink(video.watch_url));
-      details.append(id, title, stats, watch);
+      const isSaved = savedVideoIds.has(video.id);
+      const save = document.createElement('button');
+      save.type = 'button';
+      save.className = 'bookmark-button';
+      save.textContent = gridId === 'saved-video-grid' ? 'Remove saved' : (isSaved ? '✓ Saved' : '＋ Save video');
+      save.disabled = profileIsRestricted;
+      save.setAttribute('aria-pressed', String(isSaved));
+      save.addEventListener('click', () => toggleSavedVideo(video.id, !isSaved));
+      details.append(id, title, stats, watch, save);
       card.append(art, details);
       grid.appendChild(card);
     });
@@ -152,6 +176,7 @@
       if (currentRequest !== videoRequestId) return;
       if (!response.ok) throw new Error(payload && payload.error ? payload.error : 'videos_unavailable');
       const items = Array.isArray(payload.items) ? payload.items : [];
+      currentVideoItems = items;
       videoPage = Number.isSafeInteger(payload.page) && payload.page > 0 ? payload.page : 1;
       videoPages = Number.isSafeInteger(payload.pages) && payload.pages > 0 ? payload.pages : 1;
       byId('video-total').textContent = safeCount(payload.total) + ' videos';
@@ -174,10 +199,82 @@
       };
       notice.textContent = messages[error.message] || 'Could not load public videos. Please try again later.';
       notice.dataset.state = 'error';
+      currentVideoItems = [];
       byId('video-grid').replaceChildren();
       byId('video-pagination').hidden = true;
     } finally {
       if (currentRequest === videoRequestId) byId('video-search-button').disabled = false;
+    }
+  }
+
+  async function loadSavedVideos() {
+    const currentRequest = ++savedVideoRequestId;
+    const signedData = initData();
+    const notice = byId('saved-video-notice');
+    if (!signedData || profileIsRestricted) return;
+    notice.textContent = 'Loading your saved videos…';
+    notice.dataset.state = 'info';
+    try {
+      const response = await fetch('/app/api/saved-videos', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: JSON.stringify({initData: signedData, action: 'list'}),
+        cache: 'no-store',
+        credentials: 'omit'
+      });
+      let payload;
+      try { payload = await response.json(); } catch (_error) { throw new Error('invalid_response'); }
+      if (currentRequest !== savedVideoRequestId) return;
+      if (!response.ok) throw new Error(payload && payload.error ? payload.error : 'saved_videos_unavailable');
+      const ids = Array.isArray(payload.savedIds) ? payload.savedIds : [];
+      savedVideoIds = new Set(ids.filter(id => typeof id === 'string' && /^v[0-9]+$/.test(id)));
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      byId('saved-video-count').textContent = safeCount(items.length) + ' saved';
+      renderVideos(items, 'saved-video-grid');
+      notice.textContent = items.length
+        ? 'Your saved videos are private to your account.'
+        : 'No saved videos yet. Use “Save video” in the public library to add one.';
+      notice.dataset.state = items.length ? 'success' : 'info';
+      renderVideos(currentVideoItems);
+    } catch (error) {
+      if (currentRequest !== savedVideoRequestId) return;
+      notice.textContent = error.message === 'account_restricted'
+        ? 'Saved videos are unavailable for restricted accounts.'
+        : 'Could not load saved videos. Please try again.';
+      notice.dataset.state = 'error';
+    }
+  }
+
+  async function toggleSavedVideo(videoId, shouldSave) {
+    if (profileIsRestricted || typeof videoId !== 'string' || !/^v[0-9]+$/.test(videoId)) return;
+    const signedData = initData();
+    if (!signedData) return;
+    const notice = byId('saved-video-notice');
+    notice.textContent = shouldSave ? 'Saving video…' : 'Removing saved video…';
+    notice.dataset.state = 'info';
+    try {
+      const response = await fetch('/app/api/saved-videos', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: JSON.stringify({initData: signedData, action: shouldSave ? 'save' : 'remove', videoId}),
+        cache: 'no-store',
+        credentials: 'omit'
+      });
+      let payload;
+      try { payload = await response.json(); } catch (_error) { throw new Error('invalid_response'); }
+      if (!response.ok) throw new Error(payload && payload.error ? payload.error : 'saved_video_update_failed');
+      await loadSavedVideos();
+      renderVideos(currentVideoItems);
+      notice.textContent = shouldSave ? 'Video saved to your collection.' : 'Video removed from your saved collection.';
+      notice.dataset.state = 'success';
+    } catch (error) {
+      const messages = {
+        saved_videos_limit: 'Your collection is full. Remove a saved video before adding another (maximum 100).',
+        media_not_found: 'This video is no longer available in the public library.',
+        account_restricted: 'Your account is restricted. Saved videos are unavailable.'
+      };
+      notice.textContent = messages[error.message] || 'Could not update your saved videos. Please try again.';
+      notice.dataset.state = 'error';
     }
   }
 
