@@ -963,3 +963,51 @@ body::after {
   body::before, body::after { animation: none; }
   .welcome::before { animation: none; }
 }
+
+
+/* Animated exaggerated-curves ambience: abstract, non-explicit, CSS-only. */
+body::before {
+  width: min(68vw, 720px);
+  height: min(78vh, 760px);
+  left: -22vw;
+  top: 7vh;
+  border-radius: 48% 52% 44% 56% / 36% 39% 61% 64%;
+  background:
+    radial-gradient(ellipse at 58% 30%, rgba(255, 180, 211, .28), transparent 22%),
+    radial-gradient(ellipse at 48% 56%, rgba(232, 62, 120, .34), transparent 43%),
+    radial-gradient(ellipse at 60% 76%, rgba(93, 7, 43, .5), transparent 46%),
+    linear-gradient(145deg, rgba(255, 113, 166, .13), rgba(74, 5, 35, .18));
+  box-shadow: inset 24px 18px 78px rgba(255, 181, 212, .09), 0 0 110px rgba(232, 35, 111, .16);
+  animation: curvy-form-left 20s ease-in-out infinite alternate;
+}
+body::after {
+  width: min(62vw, 660px);
+  height: min(73vh, 700px);
+  right: -20vw;
+  bottom: -10vh;
+  border-radius: 52% 48% 58% 42% / 40% 35% 65% 60%;
+  background:
+    radial-gradient(ellipse at 42% 28%, rgba(255, 194, 221, .26), transparent 24%),
+    radial-gradient(ellipse at 54% 52%, rgba(205, 26, 91, .38), transparent 45%),
+    radial-gradient(ellipse at 45% 78%, rgba(74, 4, 34, .55), transparent 49%),
+    linear-gradient(135deg, rgba(242, 57, 125, .16), rgba(48, 4, 24, .18));
+  box-shadow: inset -20px -22px 76px rgba(7, 1, 6, .26), 0 0 105px rgba(190, 24, 87, .18);
+  animation: curvy-form-right 25s ease-in-out infinite alternate;
+}
+@keyframes curvy-form-left {
+  0% { transform: translate3d(-1vw, 0, 0) rotate(-9deg) scale(.94); border-radius: 48% 52% 44% 56% / 36% 39% 61% 64%; }
+  50% { transform: translate3d(4vw, 2vh, 0) rotate(2deg) scale(1.04); border-radius: 55% 45% 52% 48% / 43% 35% 65% 57%; }
+  100% { transform: translate3d(7vw, -2vh, 0) rotate(9deg) scale(1.09); border-radius: 43% 57% 47% 53% / 39% 48% 52% 61%; }
+}
+@keyframes curvy-form-right {
+  0% { transform: translate3d(1vw, 1vh, 0) rotate(8deg) scale(1.02); border-radius: 52% 48% 58% 42% / 40% 35% 65% 60%; }
+  50% { transform: translate3d(-4vw, -2vh, 0) rotate(-2deg) scale(.96); border-radius: 45% 55% 47% 53% / 48% 42% 58% 52%; }
+  100% { transform: translate3d(-7vw, -4vh, 0) rotate(-10deg) scale(1.07); border-radius: 57% 43% 42% 58% / 35% 46% 54% 65%; }
+}
+@media (max-width: 559px) {
+  body::before { width: 98vw; height: 56vh; left: -48vw; top: 14vh; }
+  body::after { width: 94vw; height: 52vh; right: -46vw; bottom: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before, body::after { animation: none; }
+}
