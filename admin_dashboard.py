@@ -271,6 +271,21 @@ def handle_admin_request(handler, users, videos, settings, head_only=False, acti
             _json(handler, 400, {"error": "invalid_pagination"})
             return True
         page, page_size = pagination
+        raw_query = payload.get("query", "")
+        if not isinstance(raw_query, str) or len(raw_query) > 80:
+            _json(handler, 400, {"error": "invalid_query"})
+            return True
+        query_text = raw_query.strip()
+        public_filter = {"_id": {"$regex": "^v[0-9]+$"}}
+        if query_text:
+            escaped_query = re.escape(query_text)
+            public_filter = {"$and": [
+                {"_id": {"$regex": "^v[0-9]+$"}},
+                {"$or": [
+                    {"_id": {"$regex": "^v" + re.escape(query_text.lstrip("vV")) + "$", "$options": "i"}} if re.fullmatch(r"v?\d+", query_text, re.IGNORECASE) else {"_id": {"$regex": r"(?!)"}},
+                    {"caption": {"$regex": escaped_query, "$options": "i"}},
+                ]},
+            ]}
         try:
             user_doc = users.find_one({"_id": telegram_user["id"]}, {"_id": 1, "is_banned": 1})
             if not user_doc:
@@ -280,7 +295,6 @@ def handle_admin_request(handler, users, videos, settings, head_only=False, acti
                 _json(handler, 403, {"error": "account_restricted"})
                 return True
 
-            public_filter = {"_id": {"$regex": "^v[0-9]+$"}}
             total = videos.count_documents(public_filter)
             pages = max(1, (total + page_size - 1) // page_size)
             page = min(page, pages)
