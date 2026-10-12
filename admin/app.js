@@ -61,9 +61,13 @@
       tab.setAttribute('aria-controls', 'control-panel-' + definition.id);
       tab.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
       tab.tabIndex = index === 0 ? 0 : -1;
-      tab.innerHTML = '<span class="control-tab-title"></span><span class="control-tab-description"></span>';
-      tab.querySelector('.control-tab-title').textContent = definition.label;
-      tab.querySelector('.control-tab-description').textContent = definition.description;
+      const tabTitle = document.createElement('span');
+      tabTitle.className = 'control-tab-title';
+      tabTitle.textContent = definition.label;
+      const tabDescription = document.createElement('span');
+      tabDescription.className = 'control-tab-description';
+      tabDescription.textContent = definition.description;
+      tab.append(tabTitle, tabDescription);
       navigation.append(tab);
 
       const panel = document.createElement('div');
