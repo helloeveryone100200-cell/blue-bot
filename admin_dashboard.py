@@ -396,7 +396,7 @@ def handle_admin_request(handler, users, videos, settings, head_only=False, acti
                 if isinstance(item, str) and re.fullmatch(r"v[0-9]{1,18}", item)
             ))
             documents = list(videos.find(
-                {"_id": {"$in": clean_ids, "$regex": "^v[0-9]+$"}},
+                {"_id": {"$in": clean_ids}},
                 {"_id": 1, "caption": 1, "views": 1, "likes": 1},
             )) if clean_ids else []
             by_id = {doc.get("_id"): doc for doc in documents if isinstance(doc.get("_id"), str)}
