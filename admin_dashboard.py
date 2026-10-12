@@ -258,6 +258,82 @@ def handle_admin_request(handler, users, videos, settings, head_only=False, acti
         })
         return True
 
+    if path == "/app/api/videos":
+        if method != "POST":
+            _json(handler, 405, {"error": "method_not_allowed"})
+            return True
+        authenticated, valid = _read_user_payload(handler)
+        if not valid:
+            return True
+        telegram_user, payload = authenticated
+        pagination = _parse_pagination(payload)
+        if pagination is None:
+            _json(handler, 400, {"error": "invalid_pagination"})
+            return True
+        page, page_size = pagination
+        raw_query = payload.get("query", "")
+        if not isinstance(raw_query, str) or len(raw_query) > 80:
+            _json(handler, 400, {"error": "invalid_query"})
+            return True
+        query_text = raw_query.strip()
+        public_filter = {"_id": {"$regex": "^v[0-9]+$"}}
+        if query_text:
+            search_terms = [{"caption": {"$regex": re.escape(query_text), "$options": "i"}}]
+            if re.fullmatch(r"v?\d+", query_text, re.IGNORECASE):
+                numeric_id = query_text[1:] if query_text[:1].lower() == "v" else query_text
+                search_terms.append({"_id": {"$regex": "^v" + numeric_id + "$"}})
+            public_filter = {"$and": [
+                {"_id": {"$regex": "^v[0-9]+$"}},
+                {"$or": search_terms},
+            ]}
+        try:
+            user_doc = users.find_one({"_id": telegram_user["id"]}, {"_id": 1, "is_banned": 1})
+            if not user_doc:
+                _json(handler, 404, {"error": "user_not_found"})
+                return True
+            if user_doc.get("is_banned") is True:
+                _json(handler, 403, {"error": "account_restricted"})
+                return True
+
+            total = videos.count_documents(public_filter)
+            pages = max(1, (total + page_size - 1) // page_size)
+            page = min(page, pages)
+            cursor = videos.find(
+                public_filter,
+                {"_id": 1, "caption": 1, "views": 1, "likes": 1, "dislikes": 1},
+            ).sort("_id", -1).skip((page - 1) * page_size).limit(page_size)
+
+            bot_url = ""
+            if isinstance(user_bot_username, str) and re.fullmatch(r"[A-Za-z0-9_]{5,32}", user_bot_username):
+                bot_url = f"https://t.me/{user_bot_username}"
+            items = []
+            for doc in cursor:
+                media_id = doc.get("_id")
+                if not isinstance(media_id, str) or not re.fullmatch(r"v[0-9]+", media_id):
+                    continue
+                caption = doc.get("caption")
+                if not isinstance(caption, str) or not caption.strip():
+                    caption = f"Video {media_id}"
+                items.append({
+                    "id": media_id,
+                    "title": caption.strip()[:240],
+                    "views": _safe_nonnegative_int(doc.get("views")),
+                    "likes": _safe_nonnegative_int(doc.get("likes")),
+                    "dislikes": _safe_nonnegative_int(doc.get("dislikes")),
+                    "watch_url": f"{bot_url}?start=ref_{media_id}" if bot_url else "",
+                })
+        except Exception:
+            _json(handler, 503, {"error": "videos_unavailable"})
+            return True
+        _json(handler, 200, {
+            "items": items,
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "pages": pages,
+        })
+        return True
+
     if path in ("/admin/api/overview", "/admin/api/users", "/admin/api/user-detail", "/admin/api/media", "/admin/api/settings", "/admin/api/action"):
         if method != "POST":
             _json(handler, 405, {"error": "method_not_allowed"})
