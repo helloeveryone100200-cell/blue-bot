@@ -893,3 +893,73 @@ footer { border-top-color: rgba(255,130,174,.15); }
 @media (prefers-reduced-motion: reduce) {
   .welcome::before { animation: none; }
 }
+
+
+/* Animated abstract organic relief backdrop — CSS-only, non-explicit. */
+body {
+  background-size: 140% 140%, 130% 130%, 150% 150%, 100% 100%;
+  animation: ambient-burgundy 24s ease-in-out infinite alternate;
+}
+body::before,
+body::after {
+  position: fixed;
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(2px);
+  will-change: transform, opacity;
+}
+body::before {
+  width: min(58vw, 620px);
+  height: min(72vh, 680px);
+  left: -18vw;
+  top: 8vh;
+  border-radius: 44% 56% 61% 39% / 43% 38% 62% 57%;
+  background:
+    radial-gradient(ellipse at 45% 34%, rgba(255, 148, 190, .3), transparent 31%),
+    radial-gradient(ellipse at 58% 62%, rgba(194, 25, 88, .34), transparent 52%),
+    linear-gradient(135deg, rgba(95, 10, 47, .08), rgba(238, 44, 115, .18));
+  box-shadow: inset 20px 18px 70px rgba(255, 177, 208, .06), 0 0 100px rgba(184, 20, 83, .1);
+  animation: ambient-organic-one 22s ease-in-out infinite alternate;
+}
+body::after {
+  width: min(52vw, 560px);
+  height: min(64vh, 610px);
+  right: -17vw;
+  bottom: -8vh;
+  border-radius: 58% 42% 38% 62% / 54% 47% 53% 46%;
+  background:
+    radial-gradient(ellipse at 38% 32%, rgba(255, 190, 214, .2), transparent 25%),
+    radial-gradient(ellipse at 55% 55%, rgba(150, 16, 69, .42), transparent 58%),
+    linear-gradient(145deg, rgba(234, 57, 123, .13), rgba(65, 8, 34, .06));
+  box-shadow: inset -18px -20px 68px rgba(7, 1, 6, .22), 0 0 90px rgba(190, 24, 87, .12);
+  animation: ambient-organic-two 28s ease-in-out infinite alternate;
+}
+.welcome::before {
+  animation: sensual-relief 11s ease-in-out infinite alternate, relief-glow 7s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+@keyframes ambient-burgundy {
+  0% { background-position: 0% 0%, 100% 20%, 45% 100%, 50% 0%; }
+  100% { background-position: 30% 20%, 70% 60%, 55% 80%, 50% 100%; }
+}
+@keyframes ambient-organic-one {
+  0% { transform: translate3d(0, 0, 0) rotate(-12deg) scale(.92); border-radius: 44% 56% 61% 39% / 43% 38% 62% 57%; opacity: .58; }
+  100% { transform: translate3d(7vw, 5vh, 0) rotate(10deg) scale(1.08); border-radius: 57% 43% 45% 55% / 52% 61% 39% 48%; opacity: .92; }
+}
+@keyframes ambient-organic-two {
+  0% { transform: translate3d(0, 0, 0) rotate(10deg) scale(1.04); border-radius: 58% 42% 38% 62% / 54% 47% 53% 46%; opacity: .54; }
+  100% { transform: translate3d(-6vw, -5vh, 0) rotate(-13deg) scale(.92); border-radius: 41% 59% 56% 44% / 42% 56% 44% 58%; opacity: .88; }
+}
+@keyframes relief-glow {
+  0%, 100% { filter: saturate(1.02) brightness(.96); }
+  50% { filter: saturate(1.18) brightness(1.08); }
+}
+@media (max-width: 559px) {
+  body::before { width: 86vw; height: 48vh; left: -38vw; top: 16vh; opacity: .55; }
+  body::after { width: 82vw; height: 46vh; right: -38vw; bottom: 2vh; opacity: .52; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body { animation: none; }
+  body::before, body::after { animation: none; }
+  .welcome::before { animation: none; }
+}
