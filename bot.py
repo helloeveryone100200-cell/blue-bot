@@ -55,6 +55,17 @@ def ensure_z_photo_counter():
 ensure_photo_counter()
 ensure_z_photo_counter()
 
+def user_notification_enabled(user_doc, category: str) -> bool:
+    """Return a user's preference, defaulting to enabled for existing accounts."""
+    allowed = {"new_content", "referral_updates", "system_updates"}
+    if category not in allowed or not isinstance(user_doc, dict):
+        return True
+    preferences = user_doc.get("notification_preferences")
+    if not isinstance(preferences, dict):
+        return True
+    return preferences.get(category) is not False
+
+
 def get_broadcast_new_video() -> bool:
     """Return True if auto-broadcast of new public videos is enabled (default: on)."""
     doc = settings.find_one({"_id": "broadcast_new_video"})
@@ -260,7 +271,7 @@ def _start_owner_broadcast(owner_id, target, message_text):
         raise ValueError("invalid_broadcast_message")
     if target == "all":
         target_ids = None
-        total = users.count_documents({})
+        total = users.count_documents({"notification_preferences.system_updates": {"$ne": False}})
     else:
         target_ids = [_valid_owner_target_id(target)]
         total = 1
@@ -281,7 +292,10 @@ def _start_owner_broadcast(owner_id, target, message_text):
         try:
             if target_ids is None:
                 recipients = (
-                    doc["_id"] for doc in users.find({}, {"_id": 1})
+                    doc["_id"] for doc in users.find(
+                        {"notification_preferences.system_updates": {"$ne": False}},
+                        {"_id": 1},
+                    )
                     if isinstance(doc.get("_id"), int) and not isinstance(doc.get("_id"), bool)
                 )
             else:
@@ -824,7 +838,13 @@ def broadcast_new_content(vid_id: str):
     if not get_broadcast_new_video():
         return
     def _send():
-        all_ids = [u["_id"] for u in users.find({"is_banned": {"$ne": True}}, {"_id": 1})]
+        all_ids = [u["_id"] for u in users.find(
+            {
+                "is_banned": {"$ne": True},
+                "notification_preferences.new_content": {"$ne": False},
+            },
+            {"_id": 1},
+        )]
         for uid in all_ids:
             try:
                 markup = InlineKeyboardMarkup()
@@ -1082,15 +1102,16 @@ def cmd_start(message):
                         {"_id": referrer_id},
                         {"$inc": {"shares": 1}}
                     )
-                    try:
-                        bot.send_message(
-                            referrer_id,
-                            "<b>🎉 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹 𝗦𝘂𝗰𝗰𝗲𝘀𝘀!</b>\n\n"
-                            "<blockquote>• A friend has joined the bot ✅</blockquote>",
-                            parse_mode='HTML'
-                        )
-                    except Exception:
-                        pass
+                    if user_notification_enabled(referrer, "referral_updates"):
+                        try:
+                            bot.send_message(
+                                referrer_id,
+                                "<b>🎉 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹 𝗦𝘂𝗰𝗰𝗲𝘀𝘀!</b>\n\n"
+                                "<blockquote>• A friend has joined the bot ✅</blockquote>",
+                                parse_mode='HTML'
+                            )
+                        except Exception:
+                            pass
         except (ValueError, TypeError):
             pass
 
@@ -1615,7 +1636,7 @@ def cmd_broadcast(message):
     owner_id = message.from_user.id
 
     if arg.lower() == "all":
-        total = users.count_documents({})
+        total = users.count_documents({"notification_preferences.system_updates": {"$ne": False}})
         broadcast_targets[owner_id] = "all"
         bot.send_message(
             message.chat.id,
@@ -2605,7 +2626,10 @@ def handle_text(message):
 
         if target == "all":
             # ── Broadcast to every registered user ───────────────────────────
-            all_ids    = [u["_id"] for u in users.find({}, {"_id": 1})]
+            all_ids    = [u["_id"] for u in users.find(
+                {"notification_preferences.system_updates": {"$ne": False}},
+                {"_id": 1},
+            )]
             sent_ok    = 0
             sent_fail  = 0
             status_msg = bot.send_message(
