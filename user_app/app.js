@@ -63,6 +63,8 @@
       setNotice(profile.is_banned
         ? 'Your account is currently restricted. Please contact the bot owner if you believe this is a mistake.'
         : 'Your account is connected securely. This dashboard only displays your own account information.', profile.is_banned ? 'error' : 'success');
+      if (profile.is_banned) clearVideoLibrary('Your account is restricted. Public videos are unavailable.');
+      else { videoPage = 1; loadVideos(); }
     } catch (error) {
       if (currentRequest !== requestId) return;
       const messages = {
@@ -179,6 +181,18 @@
   }
 
   byId('refresh-button').addEventListener('click', loadProfile);
+  byId('video-search-form').addEventListener('submit', event => {
+    event.preventDefault();
+    videoQuery = byId('video-search').value.trim().slice(0, 80);
+    videoPage = 1;
+    loadVideos();
+  });
+  byId('video-previous').addEventListener('click', () => {
+    if (videoPage > 1) { videoPage -= 1; loadVideos(); }
+  });
+  byId('video-next').addEventListener('click', () => {
+    if (videoPage < videoPages) { videoPage += 1; loadVideos(); }
+  });
   byId('open-bot').addEventListener('click', () => openTelegramLink(botUrl));
   byId('share-bot').addEventListener('click', () => {
     if (!botUrl) return;
