@@ -56,3 +56,93 @@ body.telegram-ready .app-shell{display:block}body.telegram-ready #browser-blocke
 @media (max-width: 360px) { .control-card { padding: 12px; } .owner-stats { grid-template-columns: minmax(0, 1fr); } }
 
 .background-preview-wrap{margin:14px 0;border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#0b1020;max-height:260px}.background-preview-wrap img{display:block;width:100%;max-height:260px;object-fit:cover;object-position:center}.background-upload-card .field-hint{line-height:1.6}
+
+
+/* Premium brand mark, icon system, borders and button feedback. */
+.brand-mark {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  border: 1px solid rgba(224, 222, 255, .58);
+  background: linear-gradient(145deg, #aaa6ff 0%, #7775ff 38%, #4b43d4 72%, #302a93 100%);
+  box-shadow: 0 8px 24px rgba(91, 84, 255, .3), inset 0 1px 0 rgba(255,255,255,.42);
+  animation: brand-mark-float 5s ease-in-out infinite;
+}
+.brand-mark::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -4px;
+  border: 1px solid rgba(140, 137, 255, .52);
+  border-radius: inherit;
+  box-shadow: 0 0 18px rgba(119, 117, 255, .2);
+  animation: brand-ring-pulse 3.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.brand-mark::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(112deg, transparent 20%, rgba(255,255,255,.38) 47%, transparent 66%);
+  transform: translateX(-135%);
+  animation: brand-mark-sheen 6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes brand-mark-float {
+  0%, 100% { transform: translateY(0); box-shadow: 0 8px 24px rgba(91,84,255,.28), inset 0 1px 0 rgba(255,255,255,.42); }
+  50% { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(91,84,255,.42), 0 0 18px rgba(119,117,255,.16), inset 0 1px 0 rgba(255,255,255,.48); }
+}
+@keyframes brand-ring-pulse {
+  0%, 100% { opacity: .48; transform: scale(.98); }
+  50% { opacity: 1; transform: scale(1.045); }
+}
+@keyframes brand-mark-sheen {
+  0%, 68%, 100% { transform: translateX(-135%); }
+  84% { transform: translateX(135%); }
+}
+.metric-icon, .management-icon, .media-avatar {
+  transition: transform .22s ease, border-color .22s ease, background-color .22s ease, box-shadow .22s ease, color .22s ease;
+}
+.metric-card:hover .metric-icon, .management-item:hover .management-icon, .media-card:hover .media-avatar {
+  transform: translateY(-2px) scale(1.045);
+  border-color: rgba(153, 149, 255, .65);
+  background-color: rgba(119, 117, 255, .2);
+  box-shadow: 0 5px 18px rgba(91, 84, 255, .16);
+}
+.metric-card, .media-card, .setting-card, .control-card, .user-detail-panel, .user-detail-field {
+  transition: border-color .22s ease, box-shadow .22s ease, transform .22s ease;
+}
+.metric-card:hover, .media-card:hover, .setting-card:hover, .control-card:hover {
+  border-color: rgba(119, 117, 255, .38);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .18), 0 0 0 1px rgba(119, 117, 255, .035);
+}
+.management-item, .primary-button, .secondary-button, .danger-button, .refresh-button,
+.user-detail-button, .back-button, .page-button {
+  transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+.management-item:hover:not(:disabled), .user-detail-button:hover:not(:disabled), .back-button:hover:not(:disabled), .page-button:hover:not(:disabled), .refresh-button:hover:not(:disabled) {
+  border-color: rgba(137, 133, 255, .58);
+  box-shadow: 0 5px 18px rgba(68, 62, 190, .14);
+}
+.primary-button:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+  box-shadow: 0 7px 20px rgba(91, 84, 255, .25);
+}
+.secondary-button:hover:not(:disabled), .danger-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(160, 164, 255, .45);
+  background-color: rgba(119, 117, 255, .12);
+}
+button:active:not(:disabled) { transform: translateY(1px) scale(.99); }
+button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 2px solid #a7a4ff;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-mark, .brand-mark::before, .brand-mark::after { animation: none !important; }
+  .metric-icon, .management-icon, .media-avatar, .metric-card, .media-card, .setting-card, .control-card,
+  .management-item, .primary-button, .secondary-button, .danger-button, .refresh-button,
+  .user-detail-button, .back-button, .page-button { transition: none !important; }
+}
