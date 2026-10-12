@@ -1407,3 +1407,46 @@ button:active:not(:disabled) { transform: translateY(1px) scale(.99); }
 @media (prefers-reduced-motion: reduce) {
   .help-faq *, #open-support { transition: none !important; }
 }
+
+
+/* My Activity — device-local dashboard actions */
+.clear-activity-button {
+  flex: 0 0 auto;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(12, 9, 6, .28);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  transition: border-color .2s ease, color .2s ease;
+}
+.clear-activity-button:hover { border-color: var(--border-strong); color: var(--text); }
+.activity-panel {
+  padding: clamp(16px, 3vw, 22px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, rgba(49, 32, 18, .95), rgba(31, 20, 11, .98));
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, .025);
+}
+.activity-notice { margin: 0 0 13px; color: var(--muted); font-size: 11px; line-height: 1.7; }
+.activity-notice[data-state="success"] { color: #a5edd4; }
+.activity-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.activity-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 13px 0;
+  border-top: 1px solid var(--border);
+}
+.activity-entry-label { color: #f3e3d4; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.activity-entry-time { color: var(--muted); font-size: 10px; line-height: 1.6; text-align: right; }
+.activity-empty { padding: 12px 0 2px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+@media (max-width: 480px) {
+  .activity-entry { grid-template-columns: 1fr; gap: 4px; }
+  .activity-entry-time { text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .clear-activity-button { transition: none !important; }
+}
