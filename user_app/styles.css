@@ -1325,3 +1325,85 @@ button:active:not(:disabled) { transform: translateY(1px) scale(.99); }
   background: rgba(85, 214, 166, .07);
   color: #a5edd4;
 }
+
+
+/* Help & Support Center */
+.help-center {
+  padding: clamp(16px, 3vw, 22px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, rgba(49, 32, 18, .95), rgba(31, 20, 11, .98));
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, .025);
+}
+.help-intro { margin: 0 0 15px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.help-faq { display: grid; gap: 8px; }
+.help-faq details {
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: rgba(12, 9, 6, .28);
+}
+.help-faq summary {
+  position: relative;
+  padding: 14px 38px 14px 14px;
+  color: #f3e3d4;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  list-style: none;
+}
+.help-faq summary::-webkit-details-marker { display: none; }
+.help-faq summary::after {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  color: var(--indigo-bright);
+  content: "+";
+  font-size: 19px;
+  font-weight: 500;
+  transform: translateY(-50%);
+}
+.help-faq details[open] summary::after { content: "−"; }
+.help-faq details p {
+  margin: 0;
+  padding: 0 14px 15px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.75;
+}
+.help-faq details p strong { color: #f3e3d4; }
+.support-contact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 17px;
+  padding-top: 17px;
+  border-top: 1px solid var(--border);
+}
+.support-contact strong { font-size: 13px; }
+.support-contact p { margin: 6px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+#open-support {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 8px;
+  min-height: 42px;
+  padding: 11px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f3b47e, #b9743c);
+  color: #241407;
+  font-size: 11px;
+  font-weight: 800;
+  transition: transform .2s ease, filter .2s ease;
+}
+#open-support:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
+@media (max-width: 560px) {
+  .support-contact { align-items: stretch; flex-direction: column; }
+  #open-support { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .help-faq *, #open-support { transition: none !important; }
+}
