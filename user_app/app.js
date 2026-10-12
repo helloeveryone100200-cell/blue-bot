@@ -4,6 +4,10 @@
   const notice = byId('notice');
   let botUrl = '';
   let requestId = 0;
+  let videoRequestId = 0;
+  let videoPage = 1;
+  let videoPages = 1;
+  let videoQuery = '';
 
   function setNotice(message, state) {
     notice.textContent = message;
