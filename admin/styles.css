@@ -146,3 +146,60 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   .management-item, .primary-button, .secondary-button, .danger-button, .refresh-button,
   .user-detail-button, .back-button, .page-button { transition: none !important; }
 }
+
+
+/* Owner console information architecture: compact category navigation and focused panels. */
+.control-section-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 2px 0 4px;
+  padding: 8px;
+  border: 1px solid rgba(119,117,255,.18);
+  border-radius: 17px;
+  background: rgba(8,13,26,.62);
+}
+.control-section-tab {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+}
+.control-tab-title { color: inherit; font-size: 12px; font-weight: 800; line-height: 1.25; }
+.control-tab-description { color: #7887a5; font-size: 9px; line-height: 1.4; }
+.control-section-tab[aria-selected="true"] {
+  border-color: rgba(137,133,255,.48);
+  background: linear-gradient(135deg, rgba(119,117,255,.2), rgba(81,72,217,.09));
+  color: #e4e3ff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 5px 18px rgba(50,45,130,.12);
+}
+.control-section-tab[aria-selected="true"] .control-tab-description { color: #a6a8d7; }
+.control-section-tab:hover { border-color: rgba(137,133,255,.3); color: var(--text); }
+.control-section-tab:focus-visible { outline: 2px solid #a7a4ff; outline-offset: 2px; }
+.control-section-panels { min-width: 0; }
+.control-section-panel { display: grid; gap: 12px; min-width: 0; }
+.control-section-panel[hidden] { display: none !important; }
+.control-section-panel > .control-card { margin: 0; }
+.owner-controls-view > .section-heading { margin-top: 18px; }
+.owner-controls-view > .controls-intro { margin: -4px 1px 4px; }
+@media (min-width: 520px) {
+  .control-section-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 9px; }
+  .control-section-tab { min-height: 70px; }
+}
+@media (max-width: 360px) {
+  .control-section-nav { gap: 6px; padding: 6px; }
+  .control-section-tab { min-height: 59px; padding: 9px; }
+  .control-tab-title { font-size: 11px; }
+  .control-tab-description { font-size: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .control-section-tab { transition: none !important; }
+}

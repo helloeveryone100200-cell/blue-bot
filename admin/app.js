@@ -24,6 +24,103 @@
   let ownerStatsRequest = 0;
   let userDetailRequest = 0;
 
+
+  function setupOwnerControlSections() {
+    if (!ownerControlsView || ownerControlsView.dataset.sectionsReady === 'true') return;
+    ownerControlsView.dataset.sectionsReady = 'true';
+
+    const backButton = byId('back-from-owner-controls');
+    const heading = ownerControlsView.querySelector(':scope > .section-heading');
+    const intro = ownerControlsView.querySelector(':scope > .controls-intro');
+    const cards = Array.from(ownerControlsView.querySelectorAll(':scope > .control-card'));
+    if (!heading || !intro || cards.length === 0) return;
+
+    const definitions = [
+      {id: 'overview', label: 'Overview', description: 'Statistics and system snapshot', titles: ['Owner overview']},
+      {id: 'appearance', label: 'Appearance', description: 'User dashboard visual settings', titles: ['Background image']},
+      {id: 'bot-setup', label: 'Bot setup', description: 'Channels, groups and automation', titles: ['Auto broadcast new videos', 'Channel join requirement', 'Admin group configuration']},
+      {id: 'users-messaging', label: 'Users & messaging', description: 'Account actions and broadcasts', titles: ['Account actions', 'Send a message']},
+      {id: 'media-tools', label: 'Media tools', description: 'Media records, thumbnails and links', titles: ['Delete media or manage thumbnails']}
+    ];
+
+    const navigation = document.createElement('div');
+    navigation.className = 'control-section-nav';
+    navigation.setAttribute('role', 'tablist');
+    navigation.setAttribute('aria-label', 'Owner control categories');
+
+    const panelHost = document.createElement('div');
+    panelHost.className = 'control-section-panels';
+
+    const panels = new Map();
+    definitions.forEach((definition, index) => {
+      const tab = document.createElement('button');
+      tab.type = 'button';
+      tab.className = 'control-section-tab';
+      tab.id = 'control-tab-' + definition.id;
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-controls', 'control-panel-' + definition.id);
+      tab.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
+      tab.tabIndex = index === 0 ? 0 : -1;
+      const tabTitle = document.createElement('span');
+      tabTitle.className = 'control-tab-title';
+      tabTitle.textContent = definition.label;
+      const tabDescription = document.createElement('span');
+      tabDescription.className = 'control-tab-description';
+      tabDescription.textContent = definition.description;
+      tab.append(tabTitle, tabDescription);
+      navigation.append(tab);
+
+      const panel = document.createElement('div');
+      panel.className = 'control-section-panel';
+      panel.id = 'control-panel-' + definition.id;
+      panel.setAttribute('role', 'tabpanel');
+      panel.setAttribute('aria-labelledby', tab.id);
+      panel.hidden = index !== 0;
+      panelHost.append(panel);
+      panels.set(definition.id, panel);
+
+      const activate = () => {
+        definitions.forEach(item => {
+          const selected = item.id === definition.id;
+          const itemTab = byId('control-tab-' + item.id);
+          const itemPanel = byId('control-panel-' + item.id);
+          if (itemTab) {
+            itemTab.setAttribute('aria-selected', selected ? 'true' : 'false');
+            itemTab.tabIndex = selected ? 0 : -1;
+          }
+          if (itemPanel) itemPanel.hidden = !selected;
+        });
+      };
+      tab.addEventListener('click', activate);
+      tab.addEventListener('keydown', event => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight' && event.key !== 'Home' && event.key !== 'End') return;
+        event.preventDefault();
+        const current = definitions.findIndex(item => item.id === definition.id);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? definitions.length - 1
+          : (current + (event.key === 'ArrowRight' ? 1 : definitions.length - 1)) % definitions.length;
+        const nextTab = byId('control-tab-' + definitions[next].id);
+        if (nextTab) { nextTab.click(); nextTab.focus(); }
+      });
+    });
+
+    cards.forEach(card => {
+      const title = card.querySelector('h3')?.textContent.trim();
+      const definition = definitions.find(item => item.titles.includes(title));
+      if (definition) panels.get(definition.id).append(card);
+    });
+
+    // Keep the existing controls intact; only reorganize their presentation.
+    ownerControlsView.insertBefore(heading, intro);
+    if (backButton) {
+      ownerControlsView.insertBefore(navigation, intro.nextSibling);
+    } else {
+      ownerControlsView.insertBefore(navigation, intro.nextSibling);
+    }
+    ownerControlsView.insertBefore(panelHost, navigation.nextSibling);
+  }
+
+  setupOwnerControlSections();
+
   if (webApp && webApp.initData) document.body.classList.add('telegram-ready');
 
   function setNotice(message, state) {
