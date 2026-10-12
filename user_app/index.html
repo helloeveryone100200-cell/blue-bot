@@ -54,6 +54,29 @@
       <article class="metric-card"><span class="metric-icon">◇</span><span class="metric-label">Private access</span><strong id="metric-private">—</strong><small>Your current access status</small></article>
     </section>
 
+    <section class="section-heading lower-heading" id="referral-heading">
+      <div><p class="eyebrow">GROW WITH BLUE BOT</p><h2>Referral Center</h2></div>
+    </section>
+    <section class="referral-panel" aria-labelledby="referral-heading">
+      <div class="referral-summary">
+        <span class="referral-icon" aria-hidden="true">↗</span>
+        <div>
+          <p class="eyebrow">SUCCESSFUL REFERRALS</p>
+          <strong id="referral-success-count">—</strong>
+          <p class="referral-description">Friends who joined Blue Bot using your personal referral link.</p>
+        </div>
+      </div>
+      <label class="referral-link-label" for="referral-link">Your personal referral link</label>
+      <div class="referral-link-row">
+        <input id="referral-link" type="text" readonly spellcheck="false" autocomplete="off" placeholder="Your referral link will appear here">
+        <button id="copy-referral-link" class="referral-button" type="button" disabled>Copy link</button>
+      </div>
+      <button id="share-referral-link" class="referral-share-button" type="button" disabled>
+        <span aria-hidden="true">↗</span> Share with friends
+      </button>
+      <p id="referral-notice" class="referral-notice" role="status" aria-live="polite">Your referral link will be ready after your account is verified.</p>
+    </section>
+
     <section class="section-heading lower-heading" id="video-library-heading">
       <div><p class="eyebrow">PUBLIC LIBRARY</p><h2>Videos</h2></div>
       <span id="video-total" class="library-count">— videos</span>

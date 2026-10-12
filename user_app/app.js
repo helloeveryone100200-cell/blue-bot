@@ -60,6 +60,13 @@
       botUrl = typeof payload.bot_url === 'string' ? payload.bot_url : '';
       byId('open-bot').disabled = !botUrl;
       byId('share-bot').disabled = !botUrl;
+      byId('referral-link').value = botUrl;
+      byId('referral-success-count').textContent = safeCount(profile.shares);
+      byId('copy-referral-link').disabled = !botUrl;
+      byId('share-referral-link').disabled = !botUrl;
+      byId('referral-notice').textContent = botUrl
+        ? 'Share this link with friends. Successful new-user referrals are counted by Blue Bot.'
+        : 'Your referral link is temporarily unavailable.';
       setNotice(profile.is_banned
         ? 'Your account is currently restricted. Please contact the bot owner if you believe this is a mistake.'
         : 'Your account is connected securely. This dashboard only displays your own account information.', profile.is_banned ? 'error' : 'success');
@@ -197,6 +204,33 @@
   byId('share-bot').addEventListener('click', () => {
     if (!botUrl) return;
     openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(botUrl));
+  });
+  byId('share-referral-link').addEventListener('click', () => {
+    if (!botUrl) return;
+    openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(botUrl));
+  });
+  byId('copy-referral-link').addEventListener('click', async () => {
+    if (!botUrl) return;
+    const button = byId('copy-referral-link');
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(botUrl);
+      } else {
+        const field = byId('referral-link');
+        field.focus();
+        field.select();
+        if (!document.execCommand('copy')) throw new Error('copy_unavailable');
+      }
+      byId('referral-notice').textContent = 'Referral link copied. Share it with a friend to invite them to Blue Bot.';
+      byId('referral-notice').dataset.state = 'success';
+      button.textContent = 'Copied';
+    } catch (_error) {
+      const field = byId('referral-link');
+      field.focus();
+      field.select();
+      byId('referral-notice').textContent = 'Copy is unavailable here. Select the link above and copy it manually.';
+      byId('referral-notice').dataset.state = 'error';
+    }
   });
 
   async function loadDashboardBackground() {
