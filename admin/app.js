@@ -676,6 +676,85 @@
     } catch (_error) {}
   });
 
+  let backgroundPreviewUrl = '';
+  const backgroundFileInput = byId('background-image-file');
+  const backgroundPreview = byId('background-preview');
+  const backgroundPreviewWrap = byId('background-preview-wrap');
+  const backgroundUploadButton = byId('upload-background');
+  const backgroundStatus = byId('background-upload-status');
+
+  backgroundFileInput.addEventListener('change', () => {
+    const file = backgroundFileInput.files && backgroundFileInput.files[0];
+    backgroundUploadButton.disabled = !file;
+    if (backgroundPreviewUrl) URL.revokeObjectURL(backgroundPreviewUrl);
+    backgroundPreviewUrl = '';
+    if (!file) {
+      backgroundPreviewWrap.hidden = true;
+      backgroundPreview.removeAttribute('src');
+      return;
+    }
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 2500000) {
+      backgroundFileInput.value = '';
+      backgroundUploadButton.disabled = true;
+      backgroundPreviewWrap.hidden = true;
+      backgroundStatus.textContent = 'Choose a PNG, JPEG, or WebP image no larger than 2.5 MB.';
+      setNotice('Invalid background image. Use PNG, JPEG, or WebP up to 2.5 MB.', 'error');
+      return;
+    }
+    backgroundPreviewUrl = URL.createObjectURL(file);
+    backgroundPreview.src = backgroundPreviewUrl;
+    backgroundPreviewWrap.hidden = false;
+    backgroundStatus.textContent = 'Preview ready. Upload to apply this image to all users.';
+  });
+
+  backgroundUploadButton.addEventListener('click', async () => {
+    const file = backgroundFileInput.files && backgroundFileInput.files[0];
+    if (!file) return;
+    if (!window.confirm('Apply this image as the background for every User Dashboard?')) return;
+    backgroundUploadButton.disabled = true;
+    backgroundStatus.textContent = 'Uploading background image…';
+    try {
+      const imageData = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('image_read_failed'));
+        reader.onerror = () => reject(new Error('image_read_failed'));
+        reader.readAsDataURL(file);
+      });
+      await postOwnerApi('/admin/api/background', {action: 'upload', imageData});
+      backgroundStatus.textContent = 'Background uploaded and applied to the User Dashboard.';
+      setNotice('User Dashboard background updated successfully.', 'success');
+      backgroundFileInput.value = '';
+    } catch (error) {
+      const messages = {
+        image_size_limit: 'The image exceeds the 2.5 MB limit.',
+        invalid_image: 'The uploaded file is not a supported image.',
+        image_type_mismatch: 'The image content does not match its file type.',
+        telegram_owner_authentication_failed: 'Owner authentication failed. Reopen the Mini App from Telegram.'
+      };
+      backgroundStatus.textContent = messages[error.message] || 'Upload failed. Please try again.';
+      setNotice(backgroundStatus.textContent, 'error');
+    } finally {
+      backgroundUploadButton.disabled = !backgroundFileInput.files || !backgroundFileInput.files[0];
+    }
+  });
+
+  byId('remove-background').addEventListener('click', async () => {
+    if (!window.confirm('Remove the uploaded background and restore the default User Dashboard design?')) return;
+    const button = byId('remove-background');
+    button.disabled = true;
+    backgroundStatus.textContent = 'Restoring default background…';
+    try {
+      await postOwnerApi('/admin/api/background', {action: 'remove'});
+      backgroundStatus.textContent = 'Custom background removed. The default design is restored.';
+      setNotice('Default User Dashboard background restored.', 'success');
+    } catch (_error) {
+      backgroundStatus.textContent = 'Could not remove the background. Please try again.';
+      setNotice(backgroundStatus.textContent, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  });
+
   document.querySelectorAll('[data-feature]').forEach(button => {
     button.addEventListener('click', () => {
       if (button.dataset.feature === 'users') {
