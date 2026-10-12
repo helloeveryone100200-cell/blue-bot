@@ -1125,3 +1125,26 @@ body.has-custom-dashboard-background {
   background-attachment: fixed, fixed;
   background-repeat: no-repeat, no-repeat;
 }
+
+
+/* A custom uploaded image replaces every decorative silhouette layer. */
+body.has-custom-dashboard-background {
+  animation: none;
+  background-color: #10070d;
+  background-image:
+    linear-gradient(180deg, rgba(16, 7, 13, .28), rgba(16, 7, 13, .48)),
+    var(--user-dashboard-background-image);
+  background-size: cover, cover;
+  background-position: center, center;
+  background-attachment: fixed, fixed;
+  background-repeat: no-repeat, no-repeat;
+}
+body.has-custom-dashboard-background::before,
+body.has-custom-dashboard-background::after,
+body.has-custom-dashboard-background .welcome::before,
+body.has-custom-dashboard-background .welcome::after {
+  content: none !important;
+  display: none !important;
+  animation: none !important;
+  box-shadow: none !important;
+}
