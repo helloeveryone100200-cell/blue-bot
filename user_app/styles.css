@@ -755,12 +755,14 @@ body::after { background: #8d174e; opacity: .12; }
   width: clamp(132px, 22vw, 226px);
   height: clamp(170px, 25vw, 250px);
   border: 1px solid rgba(255, 178, 205, .34);
-  border-radius: 49% 51% 42% 58% / 39% 39% 61% 61%;
+  /* A rear-view, stylized hourglass silhouette: narrow waist and exaggerated rounded hips. */
+  border-radius: 44% 44% 48% 48% / 22% 22% 68% 68%;
   background:
-    radial-gradient(ellipse at 50% 18%, rgba(255, 211, 226, .9) 0%, rgba(255, 119, 166, .72) 7%, transparent 23%),
-    radial-gradient(ellipse at 34% 42%, rgba(255, 126, 170, .88) 0%, rgba(182, 35, 91, .86) 26%, transparent 48%),
-    radial-gradient(ellipse at 68% 42%, rgba(255, 153, 188, .72) 0%, rgba(135, 20, 68, .9) 31%, transparent 53%),
-    radial-gradient(ellipse at 50% 70%, #6c123b 0%, #341020 42%, transparent 70%),
+    radial-gradient(ellipse at 50% 15%, rgba(255, 211, 226, .9) 0%, rgba(255, 119, 166, .72) 7%, transparent 23%),
+    radial-gradient(ellipse at 50% 34%, rgba(255, 166, 197, .9) 0%, rgba(193, 38, 95, .8) 16%, transparent 31%),
+    radial-gradient(ellipse at 28% 61%, rgba(255, 126, 170, .94) 0%, rgba(182, 35, 91, .9) 27%, transparent 49%),
+    radial-gradient(ellipse at 72% 61%, rgba(255, 153, 188, .84) 0%, rgba(135, 20, 68, .92) 30%, transparent 52%),
+    radial-gradient(ellipse at 50% 82%, #6c123b 0%, #341020 42%, transparent 70%),
     linear-gradient(145deg, #f46c9b 0%, #a7225a 38%, #3b1027 74%, #170a13 100%);
   box-shadow:
     inset 13px 10px 24px rgba(255, 215, 230, .22),
