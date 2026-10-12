@@ -278,13 +278,13 @@ def handle_admin_request(handler, users, videos, settings, head_only=False, acti
         query_text = raw_query.strip()
         public_filter = {"_id": {"$regex": "^v[0-9]+$"}}
         if query_text:
-            escaped_query = re.escape(query_text)
+            search_terms = [{"caption": {"$regex": re.escape(query_text), "$options": "i"}}]
+            if re.fullmatch(r"v?\d+", query_text, re.IGNORECASE):
+                numeric_id = query_text[1:] if query_text[:1].lower() == "v" else query_text
+                search_terms.append({"_id": {"$regex": "^v" + numeric_id + "$"}})
             public_filter = {"$and": [
                 {"_id": {"$regex": "^v[0-9]+$"}},
-                {"$or": [
-                    {"_id": {"$regex": "^v" + re.escape(query_text.lstrip("vV")) + "$", "$options": "i"}} if re.fullmatch(r"v?\d+", query_text, re.IGNORECASE) else {"_id": {"$regex": r"(?!)"}},
-                    {"caption": {"$regex": escaped_query, "$options": "i"}},
-                ]},
+                {"$or": search_terms},
             ]}
         try:
             user_doc = users.find_one({"_id": telegram_user["id"]}, {"_id": 1, "is_banned": 1})
