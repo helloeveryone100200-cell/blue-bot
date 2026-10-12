@@ -423,6 +423,56 @@ def handle_admin_request(handler, users, videos, settings, head_only=False, acti
         _json(handler, 200, {"ok": True, "savedIds": valid_ids, "items": items, "limit": 100})
         return True
 
+    if path == "/app/api/notification-preferences":
+        if method != "POST":
+            _json(handler, 405, {"error": "method_not_allowed"})
+            return True
+        authenticated, valid = _read_user_payload(handler)
+        if not valid:
+            return True
+        telegram_user, payload = authenticated
+        user_id = telegram_user["id"]
+        action = payload.get("action", "get")
+        categories = ("new_content", "referral_updates", "system_updates")
+        if action not in ("get", "update"):
+            _json(handler, 400, {"error": "invalid_action"})
+            return True
+        category = payload.get("category")
+        if action == "update" and (
+            category not in categories or type(payload.get("enabled")) is not bool
+        ):
+            _json(handler, 400, {"error": "invalid_preference"})
+            return True
+        try:
+            user_doc = users.find_one(
+                {"_id": user_id},
+                {"_id": 1, "is_banned": 1, "notification_preferences": 1},
+            )
+            if not user_doc:
+                _json(handler, 404, {"error": "user_not_found"})
+                return True
+            if user_doc.get("is_banned") is True:
+                _json(handler, 403, {"error": "account_restricted"})
+                return True
+            if action == "update":
+                users.update_one(
+                    {"_id": user_id},
+                    {"$set": {f"notification_preferences.{category}": payload["enabled"]}},
+                )
+                user_doc = users.find_one(
+                    {"_id": user_id},
+                    {"_id": 1, "is_banned": 1, "notification_preferences": 1},
+                ) or user_doc
+            stored = user_doc.get("notification_preferences", {})
+            if not isinstance(stored, dict):
+                stored = {}
+            preferences = {key: stored.get(key) is not False for key in categories}
+        except Exception:
+            _json(handler, 503, {"error": "preferences_unavailable"})
+            return True
+        _json(handler, 200, {"ok": True, "preferences": preferences})
+        return True
+
     if path == "/app/api/background":
         if method not in ("GET", "HEAD"):
             _json(handler, 405, {"error": "method_not_allowed"})

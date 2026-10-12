@@ -1450,3 +1450,37 @@ button:active:not(:disabled) { transform: translateY(1px) scale(.99); }
 @media (prefers-reduced-motion: reduce) {
   .clear-activity-button { transition: none !important; }
 }
+
+
+/* Notification Preferences */
+.notification-panel {
+  padding: clamp(16px, 3vw, 22px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, rgba(49, 32, 18, .95), rgba(31, 20, 11, .98));
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, .025);
+}
+.notification-notice { margin: 0 0 10px; color: var(--muted); font-size: 11px; line-height: 1.7; }
+.notification-notice[data-state="success"] { color: #a5edd4; }
+.notification-notice[data-state="error"] { color: #ffb8c3; }
+.notification-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 0;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+}
+.notification-option span { display: grid; gap: 5px; min-width: 0; }
+.notification-option strong { color: #f3e3d4; font-size: 12px; }
+.notification-option small { color: var(--muted); font-size: 11px; line-height: 1.6; }
+.notification-option input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  margin: 0;
+  accent-color: var(--indigo);
+}
+.notification-option input[type="checkbox"]:disabled { cursor: not-allowed; }
+.notification-footnote { margin: 9px 0 0; padding-top: 13px; border-top: 1px solid var(--border); color: var(--muted); font-size: 10px; line-height: 1.7; }

@@ -162,6 +162,26 @@
       <ol id="activity-list" class="activity-list" aria-label="Recent dashboard activity"></ol>
     </section>
 
+    <section class="section-heading lower-heading" id="notification-preferences-heading">
+      <div><p class="eyebrow">YOUR CHOICES</p><h2>Notification Preferences</h2></div>
+    </section>
+    <section class="notification-panel" aria-labelledby="notification-preferences-heading">
+      <p id="notification-notice" class="notification-notice" role="status" aria-live="polite">Loading your notification preferences…</p>
+      <label class="notification-option" for="pref-new-content">
+        <span><strong>New Content Alerts</strong><small>Get notified when new public videos are added.</small></span>
+        <input id="pref-new-content" type="checkbox" disabled>
+      </label>
+      <label class="notification-option" for="pref-referral-updates">
+        <span><strong>Referral Updates</strong><small>Receive a message when a new user joins through your referral link.</small></span>
+        <input id="pref-referral-updates" type="checkbox" disabled>
+      </label>
+      <label class="notification-option" for="pref-system-updates">
+        <span><strong>System Announcements</strong><small>Receive owner announcements sent to all users.</small></span>
+        <input id="pref-system-updates" type="checkbox" disabled>
+      </label>
+      <p class="notification-footnote">Preferences are saved to your Blue Bot account. Direct owner messages and essential account checks are not controlled by these options.</p>
+    </section>
+
     <footer><span>BLUE BOT</span><span>Personal space · Read-only</span></footer>
   </main>
 </body>
