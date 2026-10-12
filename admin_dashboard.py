@@ -1,4 +1,6 @@
 """Telegram Mini App assets and owner-authenticated read-only API for Blue Bot."""
+import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -11,6 +13,9 @@ from urllib.parse import parse_qsl, urlsplit
 ADMIN_DIR = Path(__file__).resolve().parent / "admin"
 USER_APP_DIR = Path(__file__).resolve().parent / "user_app"
 MAX_API_BODY = 16 * 1024
+MAX_BACKGROUND_BODY = 4 * 1024 * 1024
+MAX_BACKGROUND_IMAGE_BYTES = 2_500_000
+BACKGROUND_SETTING_ID = "user_dashboard_background"
 INIT_DATA_MAX_AGE_SECONDS = 24 * 60 * 60
 MAX_USER_PAGE_SIZE = 50
 
@@ -147,13 +152,13 @@ def _parse_pagination(payload):
     return page, min(max(page_size, 1), MAX_USER_PAGE_SIZE)
 
 
-def _read_owner_payload(handler):
+def _read_owner_payload(handler, max_body=MAX_API_BODY):
     """Read a bounded JSON request and authenticate its Telegram owner initData."""
     try:
         length = int(handler.headers.get("Content-Length", "0"))
     except (TypeError, ValueError):
-        length = MAX_API_BODY + 1
-    if length <= 0 or length > MAX_API_BODY:
+        length = max_body + 1
+    if length <= 0 or length > max_body:
         _json(handler, 413, {"error": "invalid_request_size"})
         return None, False
     try:
@@ -332,6 +337,83 @@ def handle_admin_request(handler, users, videos, settings, head_only=False, acti
             "total": total,
             "pages": pages,
         })
+        return True
+
+    if path == "/app/api/background":
+        if method not in ("GET", "HEAD"):
+            _json(handler, 405, {"error": "method_not_allowed"})
+            return True
+        try:
+            doc = settings.find_one(
+                {"_id": BACKGROUND_SETTING_ID},
+                {"image_data": 1, "mime_type": 1},
+            )
+            image_data = doc.get("image_data") if doc else None
+            mime_type = doc.get("mime_type") if doc else None
+            allowed_types = {"image/png", "image/jpeg", "image/webp"}
+            if not isinstance(image_data, str) or mime_type not in allowed_types or not image_data.startswith(f"data:{mime_type};base64,"):
+                image_data = None
+                mime_type = None
+        except Exception:
+            _json(handler, 503, {"error": "background_unavailable"})
+            return True
+        _json(handler, 200, {"imageData": image_data, "mimeType": mime_type})
+        return True
+
+    if path == "/admin/api/background":
+        if method != "POST":
+            _json(handler, 405, {"error": "method_not_allowed"})
+            return True
+        authenticated, valid = _read_owner_payload(handler, max_body=MAX_BACKGROUND_BODY)
+        if not valid:
+            return True
+        owner, payload = authenticated
+        action = payload.get("action", "upload")
+        try:
+            if action == "remove":
+                settings.delete_one({"_id": BACKGROUND_SETTING_ID})
+                _json(handler, 200, {"ok": True, "removed": True})
+                return True
+            if action != "upload":
+                _json(handler, 400, {"error": "invalid_action"})
+                return True
+            image_data = payload.get("imageData")
+            match = re.fullmatch(r"data:(image/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})", image_data or "")
+            if not match:
+                _json(handler, 400, {"error": "invalid_image"})
+                return True
+            mime_type, encoded = match.groups()
+            try:
+                image_bytes = base64.b64decode(encoded, validate=True)
+            except (ValueError, binascii.Error):
+                _json(handler, 400, {"error": "invalid_image"})
+                return True
+            if not image_bytes or len(image_bytes) > MAX_BACKGROUND_IMAGE_BYTES:
+                _json(handler, 413, {"error": "image_size_limit"})
+                return True
+            valid_signature = (
+                (mime_type == "image/png" and image_bytes.startswith(bytes.fromhex("89504e470d0a1a0a")))
+                or (mime_type == "image/jpeg" and image_bytes.startswith(bytes.fromhex("ffd8ff")))
+                or (mime_type == "image/webp" and len(image_bytes) >= 12 and image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP")
+            )
+            if not valid_signature:
+                _json(handler, 400, {"error": "image_type_mismatch"})
+                return True
+            canonical_data = f"data:{mime_type};base64," + base64.b64encode(image_bytes).decode("ascii")
+            settings.update_one(
+                {"_id": BACKGROUND_SETTING_ID},
+                {"$set": {
+                    "image_data": canonical_data,
+                    "mime_type": mime_type,
+                    "updated_at": int(time.time()),
+                    "updated_by": owner["id"],
+                }},
+                upsert=True,
+            )
+        except Exception:
+            _json(handler, 503, {"error": "background_save_failed"})
+            return True
+        _json(handler, 200, {"ok": True, "mimeType": mime_type})
         return True
 
     if path in ("/admin/api/overview", "/admin/api/users", "/admin/api/user-detail", "/admin/api/media", "/admin/api/settings", "/admin/api/action"):
