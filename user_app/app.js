@@ -12,6 +12,61 @@
   let currentVideoItems = [];
   let savedVideoRequestId = 0;
   let profileIsRestricted = false;
+  let activityUserId = '';
+  let profileLoadedOnce = false;
+
+  function readActivity() {
+    if (!activityUserId) return [];
+    try {
+      const raw = localStorage.getItem('bluebot.activity.v1.' + activityUserId);
+      const entries = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(entries)) return [];
+      return entries.filter(item =>
+        item && typeof item.label === 'string' && typeof item.at === 'string' &&
+        Number.isFinite(Date.parse(item.at))
+      ).slice(0, 20);
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  function renderActivity() {
+    const list = byId('activity-list');
+    list.replaceChildren();
+    const entries = readActivity();
+    if (!entries.length) {
+      const empty = document.createElement('li');
+      empty.className = 'activity-empty';
+      empty.textContent = 'No dashboard activity recorded on this device yet.';
+      list.appendChild(empty);
+      return;
+    }
+    entries.forEach(entry => {
+      const item = document.createElement('li');
+      item.className = 'activity-entry';
+      const label = document.createElement('span');
+      label.className = 'activity-entry-label';
+      label.textContent = entry.label;
+      const time = document.createElement('time');
+      time.className = 'activity-entry-time';
+      time.dateTime = entry.at;
+      time.textContent = new Date(entry.at).toLocaleString();
+      item.append(label, time);
+      list.appendChild(item);
+    });
+  }
+
+  function recordActivity(label) {
+    if (!activityUserId || typeof label !== 'string' || !label.trim()) return;
+    const entry = {label: label.trim().slice(0, 120), at: new Date().toISOString()};
+    const entries = [entry, ...readActivity()].slice(0, 20);
+    try {
+      localStorage.setItem('bluebot.activity.v1.' + activityUserId, JSON.stringify(entries));
+    } catch (_error) {
+      // Activity tracking is optional; dashboard features must continue if storage is unavailable.
+    }
+    renderActivity();
+  }
 
   function setNotice(message, state) {
     notice.textContent = message;
@@ -48,6 +103,11 @@
       if (currentRequest !== requestId) return;
       if (!response.ok) throw new Error(payload && payload.error ? payload.error : 'profile_unavailable');
       const profile = payload.profile || {};
+      const wasLoaded = profileLoadedOnce;
+      activityUserId = typeof profile.id === 'string' && /^[0-9]{1,20}$/.test(profile.id) ? profile.id : '';
+      profileLoadedOnce = true;
+      renderActivity();
+      recordActivity(wasLoaded ? 'Dashboard refreshed' : 'Dashboard opened');
       const name = profile.first_name || profile.username || 'Blue Bot User';
       byId('greeting').textContent = 'Welcome, ' + name;
       byId('profile-name').textContent = name;
@@ -138,7 +198,10 @@
       watch.className = 'watch-button';
       watch.textContent = '▶  Watch in Telegram';
       watch.disabled = !video.watch_url;
-      watch.addEventListener('click', () => openTelegramLink(video.watch_url));
+      watch.addEventListener('click', () => {
+        recordActivity('Opened video ' + video.id);
+        openTelegramLink(video.watch_url);
+      });
       const isSaved = savedVideoIds.has(video.id);
       const save = document.createElement('button');
       save.type = 'button';
@@ -268,6 +331,7 @@
       renderVideos(currentVideoItems);
       notice.textContent = shouldSave ? 'Video saved to your collection.' : 'Video removed from your saved collection.';
       notice.dataset.state = 'success';
+      recordActivity((shouldSave ? 'Saved video ' : 'Removed saved video ') + videoId);
     } catch (error) {
       const messages = {
         saved_videos_limit: 'Your collection is full. Remove a saved video before adding another (maximum 100).',
@@ -289,6 +353,7 @@
   byId('video-search-form').addEventListener('submit', event => {
     event.preventDefault();
     videoQuery = byId('video-search').value.trim().slice(0, 80);
+    recordActivity('Searched public video library');
     videoPage = 1;
     loadVideos();
   });
@@ -298,9 +363,14 @@
   byId('video-next').addEventListener('click', () => {
     if (videoPage < videoPages) { videoPage += 1; loadVideos(); }
   });
-  byId('open-bot').addEventListener('click', () => openTelegramLink(botUrl));
+  byId('open-bot').addEventListener('click', () => {
+    if (!botUrl) return;
+    recordActivity('Opened Blue Bot chat');
+    openTelegramLink(botUrl);
+  });
   byId('open-support').addEventListener('click', () => {
     if (!botUrl) return;
+    recordActivity('Opened support chat');
     try {
       const supportUrl = new URL(botUrl);
       supportUrl.search = '';
@@ -312,10 +382,12 @@
   });
   byId('share-bot').addEventListener('click', () => {
     if (!botUrl) return;
+    recordActivity('Shared personal referral link');
     openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(botUrl));
   });
   byId('share-referral-link').addEventListener('click', () => {
     if (!botUrl) return;
+    recordActivity('Shared personal referral link');
     openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(botUrl));
   });
   byId('copy-referral-link').addEventListener('click', async () => {
@@ -333,6 +405,7 @@
       byId('referral-notice').textContent = 'Referral link copied. Share it with a friend to invite them to Blue Bot.';
       byId('referral-notice').dataset.state = 'success';
       button.textContent = 'Copied';
+      recordActivity('Copied personal referral link');
     } catch (_error) {
       const field = byId('referral-link');
       field.focus();
@@ -340,6 +413,19 @@
       byId('referral-notice').textContent = 'Copy is unavailable here. Select the link above and copy it manually.';
       byId('referral-notice').dataset.state = 'error';
     }
+  });
+
+  byId('clear-activity').addEventListener('click', () => {
+    if (activityUserId) {
+      try {
+        localStorage.removeItem('bluebot.activity.v1.' + activityUserId);
+      } catch (_error) {
+        // The view can still be cleared for this session if storage is blocked.
+      }
+    }
+    renderActivity();
+    byId('activity-notice').textContent = 'Local activity history cleared for this account on this device.';
+    byId('activity-notice').dataset.state = 'success';
   });
 
   async function loadDashboardBackground() {
