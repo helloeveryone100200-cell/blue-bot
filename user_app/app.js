@@ -12,6 +12,8 @@
   let currentVideoItems = [];
   let savedVideoRequestId = 0;
   let profileIsRestricted = false;
+  let notificationPreferences = {new_content: true, referral_updates: true, system_updates: true};
+  let notificationPreferencesLoaded = false;
   let activityUserId = '';
   let profileLoadedOnce = false;
 
@@ -137,6 +139,9 @@
         : 'Your account is connected securely. This dashboard only displays your own account information.', profile.is_banned ? 'error' : 'success');
       profileIsRestricted = profile.is_banned === true;
       if (profileIsRestricted) {
+        ['pref-new-content', 'pref-referral-updates', 'pref-system-updates'].forEach(id => { byId(id).disabled = true; });
+        byId('notification-notice').textContent = 'Notification preferences are unavailable for restricted accounts.';
+        byId('notification-notice').dataset.state = 'error';
         clearVideoLibrary('Your account is restricted. Public videos are unavailable.');
         savedVideoIds = new Set();
         currentVideoItems = [];
@@ -146,7 +151,7 @@
         byId('saved-video-notice').dataset.state = 'error';
       } else {
         videoPage = 1;
-        await loadSavedVideos();
+        await Promise.all([loadSavedVideos(), loadNotificationPreferences()]);
         loadVideos();
       }
     } catch (error) {
@@ -270,6 +275,85 @@
       if (currentRequest === videoRequestId) byId('video-search-button').disabled = false;
     }
   }
+
+  function applyNotificationPreferences(preferences) {
+    const controls = {
+      new_content: 'pref-new-content',
+      referral_updates: 'pref-referral-updates',
+      system_updates: 'pref-system-updates'
+    };
+    Object.entries(controls).forEach(([key, id]) => {
+      notificationPreferences[key] = preferences[key] !== false;
+      byId(id).checked = notificationPreferences[key];
+      byId(id).disabled = profileIsRestricted || !notificationPreferencesLoaded;
+    });
+  }
+
+  async function loadNotificationPreferences() {
+    const signedData = initData();
+    if (!signedData || profileIsRestricted) return;
+    const notice = byId('notification-notice');
+    notice.textContent = 'Loading your notification preferences…';
+    notice.dataset.state = 'info';
+    try {
+      const response = await fetch('/app/api/notification-preferences', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: JSON.stringify({initData: signedData, action: 'get'}),
+        cache: 'no-store',
+        credentials: 'omit'
+      });
+      let payload;
+      try { payload = await response.json(); } catch (_error) { throw new Error('invalid_response'); }
+      if (!response.ok || !payload.preferences) throw new Error(payload && payload.error ? payload.error : 'preferences_unavailable');
+      notificationPreferencesLoaded = true;
+      applyNotificationPreferences(payload.preferences);
+      notice.textContent = 'Your preferences are saved to your Blue Bot account.';
+      notice.dataset.state = 'success';
+    } catch (_error) {
+      notificationPreferencesLoaded = false;
+      applyNotificationPreferences(notificationPreferences);
+      notice.textContent = 'Notification preferences are temporarily unavailable. Your current settings have not been changed.';
+      notice.dataset.state = 'error';
+    }
+  }
+
+  async function updateNotificationPreference(category, checkbox) {
+    if (!notificationPreferencesLoaded || profileIsRestricted) return;
+    const previous = notificationPreferences[category] !== false;
+    const desired = checkbox.checked;
+    checkbox.disabled = true;
+    const notice = byId('notification-notice');
+    notice.textContent = 'Saving notification preference…';
+    notice.dataset.state = 'info';
+    try {
+      const response = await fetch('/app/api/notification-preferences', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: JSON.stringify({initData: initData(), action: 'update', category, enabled: desired}),
+        cache: 'no-store',
+        credentials: 'omit'
+      });
+      let payload;
+      try { payload = await response.json(); } catch (_error) { throw new Error('invalid_response'); }
+      if (!response.ok || !payload.preferences) throw new Error(payload && payload.error ? payload.error : 'preferences_unavailable');
+      applyNotificationPreferences(payload.preferences);
+      notice.textContent = 'Notification preference saved.';
+      notice.dataset.state = 'success';
+      recordActivity('Updated notification preferences');
+    } catch (_error) {
+      notificationPreferences[category] = previous;
+      checkbox.checked = previous;
+      notice.textContent = 'Could not save this preference. Your previous setting has been restored.';
+      notice.dataset.state = 'error';
+    } finally {
+      checkbox.disabled = profileIsRestricted || !notificationPreferencesLoaded;
+    }
+  }
+
+  byId('pref-new-content').addEventListener('change', event => updateNotificationPreference('new_content', event.currentTarget));
+  byId('pref-referral-updates').addEventListener('change', event => updateNotificationPreference('referral_updates', event.currentTarget));
+  byId('pref-system-updates').addEventListener('change', event => updateNotificationPreference('system_updates', event.currentTarget));
 
   async function loadSavedVideos() {
     const currentRequest = ++savedVideoRequestId;
