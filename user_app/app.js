@@ -199,10 +199,31 @@
     openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(botUrl));
   });
 
+  async function loadDashboardBackground() {
+    try {
+      const response = await fetch('/app/api/background', {
+        method: 'GET',
+        headers: {'Accept': 'application/json'},
+        cache: 'no-store',
+        credentials: 'omit'
+      });
+      if (!response.ok) return;
+      const payload = await response.json();
+      if (typeof payload.imageData === 'string' &&
+          /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(payload.imageData)) {
+        document.documentElement.style.setProperty('--user-dashboard-background-image', 'url("' + payload.imageData + '")');
+        document.body.classList.add('has-custom-dashboard-background');
+      }
+    } catch (_error) {
+      // Keep the built-in background if the optional custom image is unavailable.
+    }
+  }
+
   if (webApp && typeof webApp.initData === 'string' && webApp.initData) {
     document.body.classList.add('telegram-ready');
     if (typeof webApp.ready === 'function') webApp.ready();
     if (typeof webApp.expand === 'function') webApp.expand();
+    loadDashboardBackground();
     loadProfile();
   }
 })();

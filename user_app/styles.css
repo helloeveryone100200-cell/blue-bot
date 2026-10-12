@@ -1114,3 +1114,14 @@ body::after {
 @media (prefers-reduced-motion: reduce) {
   body::before, body::after { animation: none; }
 }
+
+/* Owner-uploaded dashboard background; the default design remains the fallback. */
+body.has-custom-dashboard-background {
+  background-image:
+    linear-gradient(180deg, rgba(23, 14, 7, .72), rgba(23, 14, 7, .84)),
+    var(--user-dashboard-background-image);
+  background-size: cover, cover;
+  background-position: center, center;
+  background-attachment: fixed, fixed;
+  background-repeat: no-repeat, no-repeat;
+}

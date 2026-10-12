@@ -157,7 +157,7 @@ class MiniAppRouteTests(unittest.TestCase):
     def test_every_admin_api_route_rejects_non_owner(self):
         paths = (
             "/admin/api/overview", "/admin/api/users", "/admin/api/user-detail",
-            "/admin/api/media", "/admin/api/settings", "/admin/api/action",
+            "/admin/api/media", "/admin/api/settings", "/admin/api/action", "/admin/api/background",
         )
         body = json.dumps({"initData": make_init_data(user_id=9999)}).encode()
         with patch.dict(os.environ, {"BOT_TOKEN": BOT_TOKEN, "OWNER_IDS": "1234"}, clear=False), patch(
@@ -458,6 +458,40 @@ class MiniAppRouteTests(unittest.TestCase):
         handler = self.authed_request("/admin/api/settings", {})
         self.assertEqual(handler.status, 503)
         self.assertEqual(json.loads(handler.response_body), {"error": "settings_unavailable"})
+
+    def test_background_upload_requires_owner_authentication(self):
+        body = json.dumps({"initData": make_init_data(user_id=9999), "action": "upload", "imageData": "data:image/png;base64,iVBORw0KGgo="}).encode()
+        handler = FakeHandler("/admin/api/background", command="POST", headers={"Content-Length": str(len(body))}, body=body)
+        with patch.dict(os.environ, {"BOT_TOKEN": BOT_TOKEN, "OWNER_IDS": "1234"}, clear=False), patch(
+            "admin_dashboard.time.time", return_value=1800000000
+        ):
+            admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        self.assertEqual(handler.status, 403)
+        self.settings.update_one.assert_not_called()
+
+    def test_background_upload_validates_image_signature_and_saves_setting(self):
+        png_data = "data:image/png;base64,iVBORw0KGgo="
+        handler = self.authed_request("/admin/api/background", {"action": "upload", "imageData": png_data})
+        self.assertEqual(handler.status, 200)
+        self.assertEqual(json.loads(handler.response_body), {"ok": True, "mimeType": "image/png"})
+        self.settings.update_one.assert_called_once()
+        args, kwargs = self.settings.update_one.call_args
+        self.assertEqual(args[0], {"_id": "user_dashboard_background"})
+        self.assertTrue(kwargs["upsert"])
+
+    def test_public_background_endpoint_returns_only_image_setting(self):
+        self.settings.find_one.return_value = {
+            "_id": "user_dashboard_background",
+            "image_data": "data:image/png;base64,iVBORw0KGgo=",
+            "mime_type": "image/png",
+            "updated_by": 1234,
+        }
+        handler = FakeHandler("/app/api/background", command="GET")
+        admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        self.assertEqual(handler.status, 200)
+        payload = json.loads(handler.response_body)
+        self.assertEqual(payload, {"imageData": "data:image/png;base64,iVBORw0KGgo=", "mimeType": "image/png"})
+        self.assertNotIn("updated_by", handler.response_body.decode())
 
     def test_metrics_database_failure_returns_service_unavailable(self):
         self.users.count_documents.side_effect = RuntimeError("database unavailable")

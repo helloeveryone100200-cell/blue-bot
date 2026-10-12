@@ -87,6 +87,15 @@
     </section>
     <section id="owner-controls-view" class="owner-controls-view" hidden>
       <button id="back-from-owner-controls" class="back-button">‹ <span>Back to overview</span></button>
+      <section class="control-card background-upload-card">
+        <p class="eyebrow">USER DASHBOARD APPEARANCE</p><h3>Background image</h3>
+        <p class="field-hint">Upload a PNG, JPEG, or WebP image (maximum 2.5 MB). The saved image will appear behind the User Dashboard for all users.</p>
+        <label class="search-label" for="background-image-file">Choose background image</label>
+        <input id="background-image-file" class="search-input" type="file" accept="image/png,image/jpeg,image/webp">
+        <div id="background-preview-wrap" class="background-preview-wrap" hidden><img id="background-preview" alt="User Dashboard background preview"></div>
+        <div class="control-actions"><button id="upload-background" class="primary-button" type="button" disabled>Upload and apply</button><button id="remove-background" class="secondary-button danger-button" type="button">Remove custom background</button></div>
+        <p id="background-upload-status" class="list-status" role="status" aria-live="polite">The default background is active until you upload an image.</p>
+      </section>
       <div class="section-heading user-heading"><div><p class="eyebrow">OWNER CONTROL PANEL</p><h2>Owner controls</h2></div><span class="count-pill">OWNER ONLY</span></div>
       <p class="controls-intro">Actions here use Blue Bot's existing database records and Telegram bot. Confirm destructive or bulk actions before submitting.</p>
       <section class="control-card">
