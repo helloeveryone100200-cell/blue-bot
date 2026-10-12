@@ -1013,3 +1013,44 @@ body::after {
 @media (prefers-reduced-motion: reduce) {
   body::before, body::after { animation: none; }
 }
+
+/* Stronger sculpted feminine hourglass relief in the User Dashboard hero. */
+.welcome::before {
+  top: 50%;
+  right: clamp(8px, 3vw, 34px);
+  width: clamp(190px, 30vw, 326px);
+  height: clamp(245px, 34vw, 366px);
+  border: 1px solid rgba(255, 190, 216, .56);
+  border-radius: 44% 44% 49% 49% / 19% 19% 75% 75%;
+  background:
+    radial-gradient(ellipse at 50% 13%, rgba(255, 238, 246, .98) 0%, rgba(255, 151, 191, .88) 6%, transparent 19%),
+    radial-gradient(ellipse at 50% 29%, rgba(255, 174, 204, .96) 0%, rgba(220, 49, 112, .82) 15%, transparent 30%),
+    radial-gradient(ellipse at 26% 55%, rgba(255, 151, 192, .98) 0%, rgba(224, 48, 117, .92) 23%, rgba(117, 13, 59, .3) 43%, transparent 54%),
+    radial-gradient(ellipse at 74% 55%, rgba(255, 173, 207, .92) 0%, rgba(177, 24, 83, .94) 25%, rgba(83, 8, 42, .4) 46%, transparent 57%),
+    radial-gradient(ellipse at 50% 79%, rgba(103, 12, 54, .98) 0%, rgba(44, 7, 27, .94) 42%, transparent 72%),
+    linear-gradient(112deg, #ffb4d0 0%, #e63f83 24%, #861443 57%, #210914 100%);
+  box-shadow:
+    inset 17px 9px 24px rgba(255, 239, 247, .38),
+    inset -24px -28px 36px rgba(9, 1, 7, .76),
+    inset 0 -2px 14px rgba(255, 105, 164, .24),
+    0 25px 52px rgba(0, 0, 0, .52),
+    0 0 54px rgba(239, 48, 124, .28),
+    0 0 0 14px rgba(255, 125, 176, .045),
+    0 0 0 29px rgba(255, 125, 176, .025);
+  filter: saturate(1.2) contrast(1.06);
+  transform: translateY(-50%) rotate(-7deg);
+  opacity: .98;
+  animation: sensual-relief 11s ease-in-out infinite alternate, relief-glow 7s ease-in-out infinite;
+}
+@media (max-width: 559px) {
+  .welcome::before {
+    right: -24px;
+    width: clamp(150px, 44vw, 220px);
+    height: clamp(215px, 62vw, 290px);
+    opacity: .84;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome::before { animation: none; }
+}
+
