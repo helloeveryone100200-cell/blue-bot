@@ -64,6 +64,7 @@
       botUrl = typeof payload.bot_url === 'string' ? payload.bot_url : '';
       byId('open-bot').disabled = !botUrl;
       byId('share-bot').disabled = !botUrl;
+      byId('open-support').disabled = !botUrl;
       byId('referral-link').value = botUrl;
       byId('referral-success-count').textContent = safeCount(profile.shares);
       byId('copy-referral-link').disabled = !botUrl;
@@ -298,6 +299,17 @@
     if (videoPage < videoPages) { videoPage += 1; loadVideos(); }
   });
   byId('open-bot').addEventListener('click', () => openTelegramLink(botUrl));
+  byId('open-support').addEventListener('click', () => {
+    if (!botUrl) return;
+    try {
+      const supportUrl = new URL(botUrl);
+      supportUrl.search = '';
+      supportUrl.hash = '';
+      openTelegramLink(supportUrl.toString());
+    } catch (_error) {
+      openTelegramLink(botUrl);
+    }
+  });
   byId('share-bot').addEventListener('click', () => {
     if (!botUrl) return;
     openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(botUrl));
