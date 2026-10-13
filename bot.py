@@ -3,6 +3,8 @@ import re
 import time
 import json
 import threading
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from http.server import HTTPServer, ThreadingHTTPServer, BaseHTTPRequestHandler
 from collections import defaultdict
 from types import SimpleNamespace
@@ -593,6 +595,23 @@ def handle_owner_action(owner, payload):
 
 # ─── HELPER FUNCTIONS ─────────────────────────────────────────────────────────
 
+def record_user_activity(user_id, now=None):
+    """Persist private-chat activity and start a fresh inactivity cycle."""
+    if user_id is None:
+        return
+    now = now or datetime.now(timezone.utc)
+    users.update_one(
+        {"_id": user_id},
+        {
+            "$set": {"last_active_at": now},
+            "$unset": {
+                "inactivity_reminder_sent_at": "",
+                "inactivity_reminder_attempted_at": "",
+            },
+        },
+    )
+
+
 def get_or_create_user(user):
     doc = users.find_one({"_id": user.id})
     if doc is None:
@@ -1090,6 +1109,8 @@ def cmd_start(message):
 
     if is_new:
         get_or_create_user(new_user)
+    if message.chat.type == "private":
+        record_user_activity(new_user.id)
 
     # Referral logic (works from any chat)
     if len(args) > 1 and is_new and ref_video_id is None:
@@ -2560,6 +2581,7 @@ def handle_text(message):
 
     if doc is None:
         doc = get_or_create_user(message.from_user)
+    record_user_activity(user_id)
 
     state = doc.get("state", "normal")
 
@@ -3105,6 +3127,25 @@ def cb_watch_broadcast_video(call):
 def cb_noop(call):
     bot.answer_callback_query(call.id)
 
+
+@bot.callback_query_handler(func=lambda c: c.data == "reengage_top_videos")
+def cb_reengage_top_videos(call):
+    """Open the existing Top Videos leaderboard from a re-engagement message."""
+    user_id = call.from_user.id
+    if call.message and call.message.chat.type == "private":
+        doc = users.find_one({"_id": user_id})
+        if doc and user_id not in OWNER_IDS and doc.get("is_banned"):
+            bot.answer_callback_query(call.id, "This account is restricted.", show_alert=True)
+            return
+        bot.answer_callback_query(call.id)
+        bot.send_message(
+            call.message.chat.id,
+            get_top_videos_text(10),
+            parse_mode="HTML",
+        )
+    else:
+        bot.answer_callback_query(call.id, "Open Blue Bot in a private chat.", show_alert=True)
+
 @bot.callback_query_handler(func=lambda c: c.data.startswith("rate_") and (c.data.endswith("_like") or c.data.endswith("_dislike")))
 def cb_rate(call):
     parts   = call.data.split("_")
@@ -3175,7 +3216,9 @@ class WebhookHandler(BaseHTTPRequestHandler):
             length  = int(self.headers.get("Content-Length", 0))
             payload = self.rfile.read(length)
             try:
-                update = telebot.types.Update.de_json(json.loads(payload))
+                update_payload = json.loads(payload)
+                record_private_update_activity(update_payload)
+                update = telebot.types.Update.de_json(update_payload)
                 bot.process_new_updates([update])
             except Exception as e:
                 print(f"Update processing error: {e}")
@@ -3190,6 +3233,177 @@ class WebhookHandler(BaseHTTPRequestHandler):
 
 
 # ─── ENTRY POINT ──────────────────────────────────────────────────────────────
+
+# ─── INACTIVE USER RE-ENGAGEMENT ──────────────────────────────────────────────
+
+REENGAGEMENT_DAYS = 7
+REENGAGEMENT_SEND_HOUR = 18
+REENGAGEMENT_TIMEZONE = (
+    os.environ.get("REENGAGEMENT_TIMEZONE")
+    or os.environ.get("TZ")
+    or "Asia/Singapore"
+)
+REENGAGEMENT_MESSAGE = (
+    "👋 Hey, we haven't seen you in a while!\n\n"
+    "Your Blue Bot video hub is ready whenever you are. Come back and explore "
+    "the latest videos and see what's popular.\n\n"
+    "🎬 Your next favorite video might be just one tap away!"
+)
+
+
+def _reengagement_zone():
+    """Resolve the configured IANA timezone, with a safe UTC fallback."""
+    try:
+        return ZoneInfo(REENGAGEMENT_TIMEZONE)
+    except Exception as exc:
+        print(
+            f"Invalid REENGAGEMENT_TIMEZONE={REENGAGEMENT_TIMEZONE!r}; "
+            f"falling back to UTC: {exc}"
+        )
+        return timezone.utc
+
+
+def _reengagement_markup():
+    """Build campaign buttons using the live bot username and existing leaderboard."""
+    if not BOT_USERNAME:
+        raise RuntimeError("Telegram bot username is not available yet.")
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        InlineKeyboardButton(
+            "📱 Open Blue Bot",
+            url=f"https://t.me/{BOT_USERNAME}",
+            style="primary",
+        ),
+        InlineKeyboardButton(
+            "🏆 Explore Top Videos",
+            callback_data="reengage_top_videos",
+            style="success",
+        ),
+    )
+    return markup
+
+
+def initialize_reengagement_state():
+    """Baseline legacy users once so deployment does not trigger a mass first send."""
+    state = settings.find_one({"_id": "reengagement_state"})
+    if state and state.get("initialized_at"):
+        return
+    now = datetime.now(timezone.utc)
+    users.update_many(
+        {"last_active_at": {"$exists": False}},
+        {"$set": {"last_active_at": now}},
+    )
+    settings.update_one(
+        {"_id": "reengagement_state"},
+        {"$setOnInsert": {"initialized_at": now}},
+        upsert=True,
+    )
+    print("Re-engagement state initialized; legacy users receive a 7-day grace period.")
+
+
+def send_reengagement_reminders(now=None):
+    """Send one reminder per due user, retrying failed deliveries no more than daily."""
+    now = now or datetime.now(timezone.utc)
+    inactivity_cutoff = now - timedelta(days=REENGAGEMENT_DAYS)
+    retry_cutoff = now - timedelta(days=1)
+    query = {
+        "is_banned": {"$ne": True},
+        "last_active_at": {"$lte": inactivity_cutoff},
+        "$and": [
+            {
+                "$or": [
+                    {"inactivity_reminder_sent_at": {"$exists": False}},
+                    {"inactivity_reminder_sent_at": {"$lte": inactivity_cutoff}},
+                ]
+            },
+            {
+                "$or": [
+                    {"inactivity_reminder_attempted_at": {"$exists": False}},
+                    {"inactivity_reminder_attempted_at": {"$lte": retry_cutoff}},
+                ]
+            },
+        ],
+    }
+    markup = _reengagement_markup()
+    sent = 0
+    failed = 0
+    for user_doc in users.find(query, {"_id": 1}).sort("_id", 1):
+        user_id = user_doc.get("_id")
+        try:
+            bot.send_message(
+                user_id,
+                REENGAGEMENT_MESSAGE,
+                reply_markup=markup,
+                disable_web_page_preview=True,
+            )
+        except Exception as exc:
+            failed += 1
+            users.update_one(
+                {"_id": user_id},
+                {"$set": {"inactivity_reminder_attempted_at": now}},
+            )
+            print(f"Re-engagement delivery failed for user {user_id}: {exc}")
+        else:
+            sent += 1
+            users.update_one(
+                {"_id": user_id},
+                {
+                    "$set": {"inactivity_reminder_sent_at": now},
+                    "$unset": {"inactivity_reminder_attempted_at": ""},
+                },
+            )
+            # Stay comfortably below Telegram's typical bulk-message rate limit.
+            time.sleep(0.05)
+    print(f"Re-engagement run complete: sent={sent}, failed={failed}.")
+    return sent, failed
+
+
+def reengagement_scheduler():
+    """Run the campaign daily at/after 18:00 in the configured timezone."""
+    zone = _reengagement_zone()
+    print(f"Re-engagement scheduler configured for 18:00 {zone.key}.", flush=True)
+    try:
+        initialize_reengagement_state()
+    except Exception as exc:
+        print(f"Re-engagement initialization failed; scheduler will retry: {exc}")
+    while True:
+        try:
+            initialize_reengagement_state()
+            local_now = datetime.now(zone)
+            today = local_now.date().isoformat()
+            state = settings.find_one({"_id": "reengagement_state"}) or {}
+            if local_now.hour >= REENGAGEMENT_SEND_HOUR and state.get("last_run_date") != today:
+                send_reengagement_reminders(datetime.now(timezone.utc))
+                settings.update_one(
+                    {"_id": "reengagement_state"},
+                    {"$set": {"last_run_date": today}},
+                    upsert=True,
+                )
+        except Exception as exc:
+            # Successful recipients are marked individually, so a retry is safe.
+            print(f"Re-engagement scheduler error: {exc}")
+        time.sleep(30)
+
+
+def record_private_update_activity(update_payload):
+    """Record activity only for users interacting with the bot in private chat."""
+    if not isinstance(update_payload, dict):
+        return
+    message = update_payload.get("message")
+    if isinstance(message, dict):
+        chat = message.get("chat") or {}
+        sender = message.get("from") or {}
+        if chat.get("type") == "private" and sender.get("id") is not None:
+            record_user_activity(sender["id"])
+            return
+    callback = update_payload.get("callback_query")
+    if isinstance(callback, dict):
+        sender = callback.get("from") or {}
+        message = callback.get("message") or {}
+        chat = message.get("chat") or {}
+        if chat.get("type") == "private" and sender.get("id") is not None:
+            record_user_activity(sender["id"])
+
 
 def initialize_database_defaults():
     """Initialize optional counter documents without blocking HTTP startup."""
@@ -3261,6 +3475,11 @@ if __name__ == "__main__":
         target=initialize_telegram,
         args=(base_url, webhook_url),
         name="telegram-initialization",
+        daemon=True,
+    ).start()
+    threading.Thread(
+        target=reengagement_scheduler,
+        name="reengagement-notification-scheduler",
         daemon=True,
     ).start()
 
