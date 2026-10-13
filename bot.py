@@ -618,9 +618,7 @@ def main_menu_keyboard(user_id=None):
         KeyboardButton("👤 Profile", style="success"),
         KeyboardButton("🔗 𝗦𝗵𝗮𝗿𝗲 & 𝗥𝗲𝗳𝗲𝗿", style="primary"),
     )
-    markup.add(
-        KeyboardButton("📞 𝗖𝗼𝗻𝘁𝗮𝗰𝘁 𝗢𝘄𝗻𝗲𝗿", style="success"),
-    )
+    # Contact Owner support is available in the User Dashboard's Help & Support section.
     markup.add(
         KeyboardButton("🏆 𝗧𝗼𝗽 𝗩𝗶𝗱𝗲𝗼𝘀 (Most Liked)", style="primary"),
     )
@@ -814,7 +812,7 @@ def send_welcome(chat_id, user_id):
         "👤 <b>My Profile</b> — View your account information.\n"
         "🏆 <b>Top Videos</b> — Explore the most popular videos.\n"
         "🔗 <b>Share &amp; Refer</b> — Invite friends and share your link.\n"
-        "📞 <b>Contact Owner</b> — Get help when you need it.\n\n"
+        "🆘 <b>Help &amp; Support</b> — Get help from the User Dashboard.\n\n"
         "<b>📚 VIDEO LIBRARY</b>\n"
         f"Available videos: <b>{total}</b>\n\n"
         "<b>🔎 HOW TO FIND A VIDEO</b>\n"
