@@ -218,7 +218,7 @@ class UserMiniAppTests(unittest.TestCase):
         self.assertIn('startswith("https://")', resolver_source)
         self.assertIn('"/app/"', resolver_source)
         self.assertIn("resolve_user_webapp_url", welcome_source)
-        self.assertIn("User Dashboard", welcome_source)
+        self.assertIn("Open Blue Bot", welcome_source)
         self.assertIn("OWNER_IDS", welcome_source)
         self.assertIn("ADMIN_WEBAPP_URL", bot_source)
 
