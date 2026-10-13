@@ -23,11 +23,11 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile bot and Mini App API source
-        run: python -m py_compile bot.py admin_dashboard.py
+        run: python -m py_compile bot.py admin_dashboard.py kingdom_builder.py
       - name: Run static regression tests
         run: python -m unittest discover -s tests -v
       - name: Check dashboard JavaScript syntax
         run: |
           node --check admin/app.js
           node --check user_app/app.js
-          node --check user_app/game.js
+          node --check user_app/game/game.js
