@@ -613,20 +613,13 @@ def get_total_videos():
     return counter["count"] if counter else 0
 
 def main_menu_keyboard(user_id=None):
-    markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add(
-        KeyboardButton("👤 Profile", style="primary"),
-        KeyboardButton("🔗 𝗦𝗵𝗮𝗿𝗲 & 𝗥𝗲𝗳𝗲𝗿", style="success"),
-    )
-    # Contact Owner support is available in the User Dashboard's Help & Support section.
-    markup.add(
-        KeyboardButton("🏆 𝗧𝗼𝗽 𝗩𝗶𝗱𝗲𝗼𝘀 (Most Liked)", style="primary"),
-    )
+    # The welcome actions live on the inline keyboard. Keep only the owner-only
+    # control shortcut on the persistent reply keyboard; regular users need none.
     if user_id in OWNER_IDS:
-        markup.add(
-            KeyboardButton("⚙️ Control Panel", style="success"),
-        )
-    return markup
+        markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+        markup.add(KeyboardButton("⚙️ Control Panel", style="success"))
+        return markup
+    return telebot.types.ReplyKeyboardRemove()
 
 def owner_panel_keyboard():
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
@@ -681,14 +674,15 @@ def cancel_keyboard():
 def welcome_markup(user_id):
     markup = InlineKeyboardMarkup(row_width=2)
     share_url = f"https://t.me/share/url?url=https://t.me/{BOT_USERNAME}?start={user_id}"
-    # Profile is available from the persistent reply keyboard; keep Share here.
-    markup.add(InlineKeyboardButton("🔗 Share", url=share_url))
+    # Keep all welcome actions inline and apply Telegram-supported button styles.
+    markup.add(InlineKeyboardButton("🔗 Share", url=share_url, style="success"))
     # User Mini App is available to regular users; owner controls remain separately gated.
     user_app_url = resolve_user_webapp_url()
     if user_app_url:
         markup.add(InlineKeyboardButton(
             "📱 User Dashboard",
             web_app=telebot.types.WebAppInfo(url=user_app_url),
+            style="primary",
         ))
     # Direct Mini App entry for owners; regular users retain the existing owner-only gate.
     if user_id in OWNER_IDS:
@@ -697,6 +691,7 @@ def welcome_markup(user_id):
             markup.add(InlineKeyboardButton(
                 "⚙️ Admin Panel",
                 web_app=telebot.types.WebAppInfo(url=webapp_url),
+                style="success",
             ))
     return markup
 
