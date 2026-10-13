@@ -223,5 +223,24 @@ class UserMiniAppTests(unittest.TestCase):
         self.assertIn("ADMIN_WEBAPP_URL", bot_source)
 
 
+    def test_18_plus_welcome_screen_precedes_dashboard_and_respects_reduced_motion(self):
+        root = ROOT / "user_app"
+        html = (root / "index.html").read_text(encoding="utf-8")
+        css = (root / "styles.css").read_text(encoding="utf-8")
+        js = (root / "app.js").read_text(encoding="utf-8")
+
+        intro_position = html.index('id="intro-screen"')
+        dashboard_position = html.index('class="app-shell"')
+        self.assertLess(intro_position, dashboard_position)
+        self.assertIn('aria-label="Welcome to 18+ Blue Bot"', html)
+        self.assertIn('class="intro-age-number">18<span>+</span>', html)
+        self.assertIn('class="intro-title"><span>WELCOME TO</span><strong>BLUE BOT</strong>', html)
+        self.assertIn('.telegram-ready .app-shell { display: none; }', css)
+        self.assertIn('.telegram-ready.welcome-complete .app-shell', css)
+        self.assertIn('@media (prefers-reduced-motion: reduce)', css)
+        self.assertIn("window.matchMedia('(prefers-reduced-motion: reduce)')", js)
+        self.assertIn("document.body.classList.add('welcome-complete')", js)
+
+
 if __name__ == "__main__":
     unittest.main()
