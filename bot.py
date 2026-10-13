@@ -615,8 +615,8 @@ def get_total_videos():
 def main_menu_keyboard(user_id=None):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
-        KeyboardButton("👤 Profile", style="success"),
-        KeyboardButton("🔗 𝗦𝗵𝗮𝗿𝗲 & 𝗥𝗲𝗳𝗲𝗿", style="primary"),
+        KeyboardButton("👤 Profile", style="primary"),
+        KeyboardButton("🔗 𝗦𝗵𝗮𝗿𝗲 & 𝗥𝗲𝗳𝗲𝗿", style="success"),
     )
     # Contact Owner support is available in the User Dashboard's Help & Support section.
     markup.add(
