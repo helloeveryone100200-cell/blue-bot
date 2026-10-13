@@ -699,7 +699,7 @@ def welcome_markup(user_id):
     user_app_url = resolve_user_webapp_url()
     if user_app_url:
         markup.add(InlineKeyboardButton(
-            "📱 User Dashboard",
+            "📱 Open Blue Bot",
             web_app=telebot.types.WebAppInfo(url=user_app_url),
             style="primary",
         ))
