@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const KEY = "bluebot.kingdom-builder.v1";
-  const initial = () => ({wood:80,gold:120,workers:2,defence:0,day:1,kills:0,keepLevel:1,buildings:{keep:1,house:0,mill:0,tower:0,farm:0},trees:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47],nextWaveAt:Date.now()+60000,version:1});
+  const initial = () => ({wood:80,gold:120,workers:2,defence:0,day:1,kills:0,keepLevel:1,buildings:{keep:1,house:0,mill:0,tower:0,farm:0},trees:Array.from({length:49},(_,i)=>i).filter(i=>![6,13,16,18,20,24,27,30,32,34,41].includes(i)),nextWaveAt:Date.now()+60000,version:1});
   let state;
   try { const saved = JSON.parse(localStorage.getItem(KEY) || "null"); state = saved && saved.version===1 ? {...initial(),...saved,buildings:{...initial().buildings,...saved.buildings}} : initial(); } catch (_) { state=initial(); }
   const $ = id => document.getElementById(id);
