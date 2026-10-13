@@ -129,7 +129,6 @@
       botUrl = typeof payload.bot_url === 'string' ? payload.bot_url : '';
       byId('open-bot').disabled = !botUrl;
       byId('share-bot').disabled = !botUrl;
-      byId('open-support').disabled = !botUrl;
       byId('referral-link').value = botUrl;
       byId('referral-success-count').textContent = safeCount(profile.shares);
       byId('copy-referral-link').disabled = !botUrl;
@@ -460,18 +459,75 @@
     recordActivity('Opened Blue Bot chat');
     openTelegramLink(botUrl);
   });
-  byId('open-support').addEventListener('click', () => {
-    if (!botUrl) return;
-    recordActivity('Opened support chat');
+  const contactForm = byId('contact-owner-form');
+  const contactMessage = byId('contact-message');
+  const contactSubmit = byId('send-contact-message');
+  const contactNotice = byId('contact-owner-notice');
+  const contactCounter = byId('contact-character-count');
+  let contactSending = false;
+  const updateContactFormState = () => {
+    const length = contactMessage.value.trim().length;
+    contactCounter.textContent = contactMessage.value.length.toLocaleString() + ' / 2,000';
+    contactSubmit.disabled = contactSending || !initData() || length < 10 || length > 2000 || profileIsRestricted;
+  };
+  contactMessage.addEventListener('input', updateContactFormState);
+  contactForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (contactSending || profileIsRestricted) return;
+    const message = contactMessage.value.trim();
+    const category = byId('contact-category').value;
+    if (message.length < 10 || message.length > 2000) {
+      contactNotice.textContent = 'Please enter a message between 10 and 2,000 characters.';
+      contactNotice.dataset.state = 'error';
+      return;
+    }
+    const signedData = initData();
+    if (!signedData) {
+      contactNotice.textContent = 'Open this dashboard from Telegram to contact the owner securely.';
+      contactNotice.dataset.state = 'error';
+      return;
+    }
+    contactSending = true;
+    contactSubmit.disabled = true;
+    contactSubmit.textContent = 'Sending…';
+    contactNotice.textContent = 'Sending your message securely to the bot owner…';
+    contactNotice.dataset.state = 'info';
     try {
-      const supportUrl = new URL(botUrl);
-      supportUrl.search = '';
-      supportUrl.hash = '';
-      openTelegramLink(supportUrl.toString());
-    } catch (_error) {
-      openTelegramLink(botUrl);
+      const response = await fetch('/app/api/contact-owner', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: JSON.stringify({initData: signedData, category, message}),
+        cache: 'no-store',
+        credentials: 'omit'
+      });
+      let payload;
+      try { payload = await response.json(); } catch (_error) { throw new Error('invalid_response'); }
+      if (!response.ok) {
+        const messages = {
+          contact_rate_limited: 'Please wait a moment before sending another support request.',
+          account_restricted: 'Support messaging is unavailable for this restricted account.',
+          invalid_message: 'Please enter a message between 10 and 2,000 characters.',
+          invalid_category: 'Choose a valid support category.'
+        };
+        const error = new Error(payload && payload.error ? payload.error : 'contact_unavailable');
+        error.userMessage = messages[error.message] || 'We could not send your message right now. Please try again shortly.';
+        throw error;
+      }
+      contactMessage.value = '';
+      contactCounter.textContent = '0 / 2,000';
+      contactNotice.textContent = 'Message sent successfully. The Blue Bot owner has been notified.';
+      contactNotice.dataset.state = 'success';
+      recordActivity('Contacted Blue Bot Support');
+    } catch (error) {
+      contactNotice.textContent = error.userMessage || 'We could not confirm delivery. Please try again shortly.';
+      contactNotice.dataset.state = 'error';
+    } finally {
+      contactSending = false;
+      contactSubmit.textContent = 'Send message to owner';
+      updateContactFormState();
     }
   });
+  updateContactFormState();
   byId('share-bot').addEventListener('click', () => {
     if (!botUrl) return;
     recordActivity('Shared personal referral link');
