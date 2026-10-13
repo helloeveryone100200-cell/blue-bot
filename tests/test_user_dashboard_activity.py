@@ -35,7 +35,7 @@ class UserDashboardActivityTests(unittest.TestCase):
             "Searched public video library",
             "Copied personal referral link",
             "Shared personal referral link",
-            "Opened support chat",
+            "Contacted Blue Bot Support",
         ):
             with self.subTest(event=event):
                 self.assertIn(event, js)
