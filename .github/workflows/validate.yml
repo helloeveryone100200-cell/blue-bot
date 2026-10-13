@@ -30,3 +30,4 @@ jobs:
         run: |
           node --check admin/app.js
           node --check user_app/app.js
+          node --check user_app/game.js
