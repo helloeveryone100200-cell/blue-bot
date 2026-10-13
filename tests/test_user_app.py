@@ -242,5 +242,21 @@ class UserMiniAppTests(unittest.TestCase):
         self.assertIn("document.body.classList.add('welcome-complete')", js)
 
 
+    def test_dashboard_organic_contour_borders_cover_primary_surfaces(self):
+        css = (ROOT / "user_app" / "styles.css").read_text(encoding="utf-8")
+        self.assertIn("--organic-border:", css)
+        self.assertIn("border-radius: 27% 31% 24% 29% / 17% 20% 16% 19%;", css)
+        for selector in (
+            ".profile-card", ".metric-card", ".video-card", ".action-item",
+            ".referral-panel", ".activity-panel", ".notification-panel",
+            ".privacy-panel", ".support-contact-card", ".dashboard-bottom-nav",
+        ):
+            with self.subTest(selector=selector):
+                self.assertIn(selector, css)
+        self.assertIn(".video-card::after", css)
+        self.assertIn("width: 16px;", css)
+        self.assertIn("@media (prefers-reduced-motion: reduce)", css)
+
+
 if __name__ == "__main__":
     unittest.main()
