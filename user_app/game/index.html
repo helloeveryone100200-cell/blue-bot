@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#101a20">
+<title>Kingdom Builder — Blue Bot</title>
+<link rel="stylesheet" href="/app/game.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="/app/game.js" defer></script>
+</head>
+<body>
+<main class="game-shell">
+<header class="game-header">
+<a class="back-link" href="/app/" aria-label="Back to Blue Bot dashboard">‹ <span>Blue Bot</span></a>
+<div class="game-title"><span class="crown">♜</span><div><small>YOUR REALM</small><h1>Kingdom Builder</h1></div></div>
+<button id="reset-game" class="reset-button" type="button">Reset</button>
+</header>
+<section class="resource-bar" aria-label="Resources">
+<div><span>🪵</span><small>WOOD</small><strong id="wood">80</strong></div>
+<div><span>🪙</span><small>GOLD</small><strong id="gold">120</strong></div>
+<div><span>👷</span><small>WORKERS</small><strong id="workers">2</strong></div>
+<div><span>🛡️</span><small>DEFENCE</small><strong id="defence">0</strong></div>
+</section>
+<section class="realm-panel">
+<div class="realm-top"><div><p class="eyebrow">THE GREENWOLD FRONTIER</p><h2>Build a kingdom that lasts.</h2></div><span class="day-pill" id="day-label">DAY 1</span></div>
+<div id="game-map" class="game-map" aria-label="Kingdom map"></div>
+<div class="map-legend"><span>🌲 Forest</span><span>🏡 Buildings</span><span>👾 Monster camp</span></div>
+<p id="game-message" class="game-message" role="status" aria-live="polite">Gather wood, build your settlement, and prepare for the night.</p>
+</section>
+<section class="game-section">
+<div class="section-title"><div><p class="eyebrow">REALM MANAGEMENT</p><h2>Build &amp; Upgrade</h2></div><span id="next-wave" class="wave-pill">Nightfall in 60s</span></div>
+<div class="build-grid">
+<button class="build-card" data-build="house"><span class="build-icon">🏡</span><strong>Woodcutter's Lodge</strong><small>+1 worker · Cost 35 wood, 20 gold</small><span class="build-action">Build</span></button>
+<button class="build-card" data-build="mill"><span class="build-icon">🪓</span><strong>Lumber Mill</strong><small>Workers gather wood automatically</small><span class="build-action">Build · 45 wood, 30 gold</span></button>
+<button class="build-card" data-build="tower"><span class="build-icon">🗼</span><strong>Guard Tower</strong><small>Protects the realm from monsters</small><span class="build-action">Build · 40 wood, 45 gold</span></button>
+<button class="build-card" data-build="farm"><span class="build-icon">🌾</span><strong>Gold Mine</strong><small>Generate gold over time</small><span class="build-action">Build · 55 wood, 25 gold</span></button>
+</div>
+</section>
+<section class="game-section lower-section">
+<div class="section-title"><div><p class="eyebrow">FRONTIER</p><h2>Gather &amp; Defend</h2></div></div>
+<div class="action-grid">
+<button id="chop-tree" class="action-button"><span>🌲</span><strong>Chop Trees</strong><small>Gather 12 wood</small></button>
+<button id="scout" class="action-button"><span>🧭</span><strong>Scout Forest</strong><small>Find a small gold cache</small></button>
+<button id="train-guard" class="action-button"><span>⚔️</span><strong>Train Guards</strong><small>Cost 25 gold · +2 defence</small></button>
+<button id="upgrade-keep" class="action-button"><span>🏰</span><strong>Upgrade Keep</strong><small>Cost 50 wood, 50 gold</small></button>
+</div>
+<div class="kingdom-stats"><div><small>BUILDINGS</small><strong id="building-count">1</strong></div><div><small>MONSTERS DEFEATED</small><strong id="kills">0</strong></div><div><small>KEEP LEVEL</small><strong id="keep-level">1</strong></div></div>
+</section>
+<footer>Single-player realm · Progress saves on this device</footer>
+</main>
+<div id="confirm-modal" class="modal" hidden><div class="modal-card"><h2>Reset your kingdom?</h2><p>This clears the saved realm on this device and starts a new game.</p><div><button id="cancel-reset" type="button">Cancel</button><button id="confirm-reset" type="button">Reset kingdom</button></div></div></div>
+</body>
+</html>
