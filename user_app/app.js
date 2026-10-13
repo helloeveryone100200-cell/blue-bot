@@ -140,6 +140,7 @@
         ? 'Your account is currently restricted. Please contact the bot owner if you believe this is a mistake.'
         : 'Your account is connected securely. This dashboard only displays your own account information.', profile.is_banned ? 'error' : 'success');
       profileIsRestricted = profile.is_banned === true;
+      updateContactFormState();
       if (profileIsRestricted) {
         ['pref-new-content', 'pref-referral-updates', 'pref-system-updates'].forEach(id => { byId(id).disabled = true; });
         byId('notification-notice').textContent = 'Notification preferences are unavailable for restricted accounts.';
