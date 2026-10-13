@@ -131,6 +131,30 @@ class MiniAppRouteTests(unittest.TestCase):
                 self.assertEqual(handler.response_headers["Content-Type"], "text/javascript; charset=utf-8")
                 self.assertIn(expected, handler.response_body)
 
+    def test_kingdom_builder_page_and_assets_are_served(self):
+        for path, expected_type, expected_text in (
+            ("/app/game/", "text/html; charset=utf-8", b"Kingdom Builder"),
+            ("/app/game.css", "text/css; charset=utf-8", b".game-map"),
+            ("/app/game.js", "text/javascript; charset=utf-8", b"bluebot.kingdom-builder.v1"),
+        ):
+            with self.subTest(path=path):
+                handler = FakeHandler(path)
+                self.assertTrue(admin_dashboard.handle_admin_request(
+                    handler, self.users, self.videos, self.settings
+                ))
+                self.assertEqual(handler.status, 200)
+                self.assertEqual(handler.response_headers["Content-Type"], expected_type)
+                self.assertIn(expected_text, handler.response_body)
+
+    def test_kingdom_builder_page_rejects_non_get_methods(self):
+        for path in ("/app/game/", "/app/game.css", "/app/game.js"):
+            with self.subTest(path=path):
+                handler = FakeHandler(path, command="POST")
+                self.assertTrue(admin_dashboard.handle_admin_request(
+                    handler, self.users, self.videos, self.settings
+                ))
+                self.assertEqual(handler.status, 405)
+
     def test_contact_owner_route_requires_post(self):
         handler = FakeHandler("/app/api/contact-owner", command="GET")
         admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
