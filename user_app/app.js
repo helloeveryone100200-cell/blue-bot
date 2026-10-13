@@ -603,5 +603,14 @@
     if (typeof webApp.expand === 'function') webApp.expand();
     loadDashboardBackground();
     loadProfile();
+
+    // Let the welcome animation play while account data loads in the background.
+    const reducedMotion = window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.setTimeout(() => {
+      document.body.classList.add('welcome-complete');
+      const introScreen = byId('intro-screen');
+      if (introScreen) introScreen.setAttribute('aria-hidden', 'true');
+    }, reducedMotion ? 250 : 2450);
   }
 })();
