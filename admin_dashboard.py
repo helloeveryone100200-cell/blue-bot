@@ -198,11 +198,14 @@ def handle_admin_request(handler, users, videos, settings, head_only=False, acti
         _send(handler, 200, body, "text/html; charset=utf-8")
         return True
 
-    if path in ("/admin/styles.css", "/admin/app.js", "/app/styles.css", "/app/app.js"):
+    if path in (
+        "/admin/styles.css", "/admin/app.js", "/admin/navigation.js",
+        "/app/styles.css", "/app/app.js", "/app/navigation.js",
+    ):
         if method not in ("GET", "HEAD"):
             _send(handler, 405, b"Method not allowed.")
             return True
-        asset_name = "styles.css" if path.endswith(".css") else "app.js"
+        asset_name = path.rsplit("/", 1)[-1]
         try:
             body = (app_dir / asset_name).read_bytes()
         except OSError:
