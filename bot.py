@@ -3368,6 +3368,7 @@ def reengagement_scheduler():
         print(f"Re-engagement initialization failed; scheduler will retry: {exc}")
     while True:
         try:
+            initialize_reengagement_state()
             local_now = datetime.now(zone)
             today = local_now.date().isoformat()
             state = settings.find_one({"_id": "reengagement_state"}) or {}
