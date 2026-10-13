@@ -117,6 +117,20 @@ class MiniAppRouteTests(unittest.TestCase):
         self.assertIn(b"telegram-web-app.js", handler.response_body)
         self.assertNotIn(b"Sign in securely", handler.response_body)
 
+    def test_dashboard_navigation_assets_are_served(self):
+        for path, expected in (
+            ("/app/navigation.js", b"dashboard-bottom-nav"),
+            ("/admin/navigation.js", b"admin-bottom-nav"),
+        ):
+            with self.subTest(path=path):
+                handler = FakeHandler(path)
+                self.assertTrue(admin_dashboard.handle_admin_request(
+                    handler, self.users, self.videos, self.settings
+                ))
+                self.assertEqual(handler.status, 200)
+                self.assertEqual(handler.response_headers["Content-Type"], "text/javascript; charset=utf-8")
+                self.assertIn(expected, handler.response_body)
+
     def test_api_rejects_get_requests(self):
         handler = FakeHandler("/admin/api/overview", command="GET")
         admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
