@@ -155,6 +155,16 @@ class MiniAppRouteTests(unittest.TestCase):
                 ))
                 self.assertEqual(handler.status, 405)
 
+    def test_kingdom_builder_router_does_not_claim_dashboard_or_unknown_assets(self):
+        for path in ("/app/", "/admin/", "/admin/app.js", "/app/game/../app.js"):
+            with self.subTest(path=path):
+                handler = FakeHandler(path)
+                handled = admin_dashboard.kingdom_builder.handle_request(
+                    handler, path, "GET", admin_dashboard._send
+                )
+                self.assertFalse(handled)
+                self.assertIsNone(handler.status)
+
     def test_contact_owner_route_requires_post(self):
         handler = FakeHandler("/app/api/contact-owner", command="GET")
         admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
