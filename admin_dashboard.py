@@ -214,7 +214,8 @@ def handle_admin_request(handler, users, videos, settings, head_only=False, acti
 
     if path in (
         "/admin/styles.css", "/admin/app.js", "/admin/navigation.js",
-        "/app/styles.css", "/app/app.js", "/app/navigation.js",\n        "/app/game.css", "/app/game.js",
+        "/app/styles.css", "/app/app.js", "/app/navigation.js",
+        "/app/game.css", "/app/game.js",
     ):
         if method not in ("GET", "HEAD"):
             _send(handler, 405, b"Method not allowed.")
