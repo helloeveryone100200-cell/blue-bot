@@ -27,7 +27,13 @@ OWNER_IDS = {int(x.strip()) for x in _owner_ids_env.split(",") if x.strip()}
 if not OWNER_IDS:
     raise RuntimeError("OWNER_IDS contains no valid IDs.")
 # ─── MONGODB SETUP ────────────────────────────────────────────────────────────
-client   = MongoClient(MONGO_URI)
+# Bound MongoDB connection establishment so unavailable database infrastructure
+# cannot indefinitely delay application startup.
+client   = MongoClient(
+    MONGO_URI,
+    serverSelectionTimeoutMS=5000,
+    connectTimeoutMS=5000,
+)
 db       = client["BlueBotDB"]
 users    = db["users"]
 videos   = db["videos"]
@@ -41,8 +47,8 @@ def ensure_z_video_counter():
     if settings.find_one({"_id": "z_video_counter"}) is None:
         settings.insert_one({"_id": "z_video_counter", "count": 0})
 
-ensure_video_counter()
-ensure_z_video_counter()
+# Database defaults are initialized after the HTTP server has bound its port.
+# This keeps transient MongoDB outages from blocking Render's startup probe.
 
 def ensure_photo_counter():
     if settings.find_one({"_id": "photo_counter"}) is None:
@@ -52,8 +58,7 @@ def ensure_z_photo_counter():
     if settings.find_one({"_id": "z_photo_counter"}) is None:
         settings.insert_one({"_id": "z_photo_counter", "count": 0})
 
-ensure_photo_counter()
-ensure_z_photo_counter()
+# Photo counter defaults are initialized by initialize_database_defaults().
 
 def user_notification_enabled(user_doc, category: str) -> bool:
     """Return a user's preference, defaulting to enabled for existing accounts."""
@@ -235,7 +240,9 @@ def configure_telegram_menu_buttons(base_url: str):
 
 
 # Fetch bot username dynamically from Telegram (no env var needed)
-BOT_USERNAME = bot.get_me().username
+# Populated asynchronously after the HTTP server is listening. The dashboard
+# remains available even if Telegram's API is temporarily unreachable.
+BOT_USERNAME = os.environ.get("BOT_USERNAME", "").strip()
 
 # ─── IN-MEMORY STATE ──────────────────────────────────────────────────────────
 # Tracks media groups being buffered: {media_group_id: {"file_ids": [], "photo_ids": [], "caption": "", "processed": bool}}
@@ -3191,27 +3198,78 @@ class WebhookHandler(BaseHTTPRequestHandler):
 
 # ─── ENTRY POINT ──────────────────────────────────────────────────────────────
 
+def initialize_database_defaults():
+    """Initialize optional counter documents without blocking HTTP startup."""
+    initializers = (
+        ensure_video_counter,
+        ensure_z_video_counter,
+        ensure_photo_counter,
+        ensure_z_photo_counter,
+    )
+    for initializer in initializers:
+        try:
+            initializer()
+        except Exception as exc:
+            print(f"Database initialization warning ({initializer.__name__}): {exc}")
+
+
+def initialize_telegram(base_url: str, webhook_url: str):
+    """Configure Telegram in the background after the HTTP listener is ready."""
+    global BOT_USERNAME
+
+    try:
+        BOT_USERNAME = bot.get_me().username or ""
+        print("Telegram bot identity loaded.")
+    except Exception as exc:
+        print(f"Telegram bot identity lookup failed; HTTP service remains available: {exc}")
+
+    # Menu-button API failures must not prevent webhook registration.
+    try:
+        configure_telegram_menu_buttons(base_url)
+    except Exception as exc:
+        print(f"Telegram menu configuration warning: {exc}")
+
+    try:
+        bot.remove_webhook()
+    except Exception as exc:
+        print(f"Telegram webhook removal warning: {exc}")
+
+    time.sleep(1)
+    try:
+        bot.set_webhook(url=webhook_url, allowed_updates=["message", "callback_query"])
+        print(f"Webhook set → {webhook_url}")
+    except Exception as exc:
+        print(f"Telegram webhook registration failed; retry after checking Telegram connectivity: {exc}")
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8080"))
 
     # RENDER_EXTERNAL_URL is set automatically by Render, e.g.
     # https://blue-bot-qz5f.onrender.com
     # You can also set WEBHOOK_URL manually in Render env vars.
-    base_url    = (
+    base_url = (
         os.environ.get("WEBHOOK_URL")
         or os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")
     )
     webhook_url = f"{base_url}/webhook"
 
-    # Set a non-Web-App default for everyone, then add the Web App only per owner.
-    configure_telegram_menu_buttons(base_url)
-
-    # Register webhook with Telegram (replaces any previous polling session).
-    bot.remove_webhook()
-    time.sleep(1)
-    bot.set_webhook(url=webhook_url, allowed_updates=["message", "callback_query"])
-    print(f"Webhook set → {webhook_url}")
-
+    # Bind the public HTTP listener first. Render can then detect the open port
+    # while Telegram/MongoDB network calls run in daemon threads.
     server = ThreadingHTTPServer(("0.0.0.0", port), WebhookHandler)
-    print(f"Blue Bot webhook server running on port {port}.")
+    print(f"Blue Bot HTTP server listening on port {port}.", flush=True)
+
+    threading.Thread(
+        target=initialize_database_defaults,
+        name="database-default-initialization",
+        daemon=True,
+    ).start()
+    threading.Thread(
+        target=initialize_telegram,
+        args=(base_url, webhook_url),
+        name="telegram-initialization",
+        daemon=True,
+    ).start()
+
+    print(f"Blue Bot webhook server running on port {port}.", flush=True)
     server.serve_forever()
