@@ -134,8 +134,8 @@ class MiniAppRouteTests(unittest.TestCase):
     def test_kingdom_builder_page_and_assets_are_served(self):
         for path, expected_type, expected_text in (
             ("/app/game/", "text/html; charset=utf-8", b"Kingdom Builder"),
-            ("/app/game.css", "text/css; charset=utf-8", b".game-map"),
-            ("/app/game.js", "text/javascript; charset=utf-8", b"bluebot.kingdom-builder.v1"),
+            ("/app/game/game.css", "text/css; charset=utf-8", b".game-map"),
+            ("/app/game/game.js", "text/javascript; charset=utf-8", b"bluebot.kingdom-builder.v1"),
         ):
             with self.subTest(path=path):
                 handler = FakeHandler(path)
@@ -147,7 +147,7 @@ class MiniAppRouteTests(unittest.TestCase):
                 self.assertIn(expected_text, handler.response_body)
 
     def test_kingdom_builder_page_rejects_non_get_methods(self):
-        for path in ("/app/game/", "/app/game.css", "/app/game.js"):
+        for path in ("/app/game/", "/app/game/game.css", "/app/game/game.js"):
             with self.subTest(path=path):
                 handler = FakeHandler(path, command="POST")
                 self.assertTrue(admin_dashboard.handle_admin_request(
