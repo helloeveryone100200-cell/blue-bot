@@ -203,3 +203,32 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .control-section-tab { transition: none !important; }
 }
+
+
+/* Bottom-bar navigation for focused owner-console sections. */
+.admin-bottom-nav {
+  position: fixed; z-index: 1000; left: 50%; bottom: 0; transform: translateX(-50%);
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px;
+  width: min(640px, calc(100% - 20px)); padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  border: 1px solid rgba(119,117,255,.24); border-bottom: 0; border-radius: 17px 17px 0 0;
+  background: rgba(8,13,26,.95); box-shadow: 0 -12px 34px rgba(0,0,0,.3);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+}
+.admin-bottom-nav button {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-width: 0; min-height: 54px; padding: 6px 2px; border: 1px solid transparent; border-radius: 11px;
+  background: transparent; color: var(--muted); font: inherit; cursor: pointer;
+  transition: color .16s ease, background .16s ease, border-color .16s ease;
+}
+.admin-bottom-nav .nav-icon { font-size: 18px; line-height: 1; }
+.admin-bottom-nav .nav-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; font-weight: 750; }
+.admin-bottom-nav button[aria-current="page"] { color: #c7c5ff; border-color: rgba(137,133,255,.34); background: linear-gradient(145deg,rgba(119,117,255,.2),rgba(81,72,217,.08)); }
+.admin-bottom-nav button:focus-visible { outline: 2px solid #a7a4ff; outline-offset: 2px; }
+.app-shell { padding-bottom: calc(105px + env(safe-area-inset-bottom)); }
+@media (prefers-reduced-motion: reduce) { .admin-bottom-nav button { transition: none !important; } }
+@media (max-width: 360px) {
+  .admin-bottom-nav { gap: 1px; width: calc(100% - 12px); padding-left: 4px; padding-right: 4px; }
+  .admin-bottom-nav button { min-height: 50px; gap: 3px; }
+  .admin-bottom-nav .nav-icon { font-size: 16px; }
+  .admin-bottom-nav .nav-label { font-size: 8px; }
+}
