@@ -1783,3 +1783,119 @@ button:active:not(:disabled) { transform: translateY(1px) scale(.99); }
   }
   .intro-age-mark { box-shadow: 0 0 34px rgba(255, 125, 26, .18); }
 }
+
+
+/* Playful organic contour treatment requested for the Blue Bot dashboard.
+   The center detail is an abstract inset oval, not a literal anatomical illustration. */
+:root {
+  --organic-border: rgba(255, 151, 73, .42);
+  --organic-border-glow: rgba(255, 128, 42, .10);
+}
+.profile-card,
+.metric-card,
+.video-card,
+.action-item,
+.notice,
+.video-notice,
+.library-count,
+.referral-panel,
+.activity-panel,
+.notification-panel,
+.privacy-panel,
+.support-contact-card,
+.saved-videos-library,
+.dashboard-bottom-nav {
+  border-color: var(--organic-border);
+  border-radius: 27% 31% 24% 29% / 17% 20% 16% 19%;
+  box-shadow: var(--shadow-card), inset 0 0 0 1px var(--organic-border-glow);
+}
+.video-card,
+.action-item,
+.referral-panel,
+.activity-panel,
+.notification-panel,
+.privacy-panel,
+.support-contact-card {
+  position: relative;
+  isolation: isolate;
+}
+.video-card > *,
+.action-item > *,
+.referral-panel > *,
+.activity-panel > *,
+.notification-panel > *,
+.privacy-panel > *,
+.support-contact-card > * {
+  position: relative;
+  z-index: 1;
+}
+.video-card::after,
+.action-item::after,
+.referral-panel::after,
+.activity-panel::after,
+.notification-panel::after,
+.privacy-panel::after,
+.support-contact-card::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 9px;
+  border: 1px solid rgba(255, 151, 73, .24);
+  border-radius: 50%;
+  background: rgba(5, 5, 6, .18);
+  box-shadow: 0 0 0 3px rgba(255, 151, 73, .035), inset 0 1px 2px rgba(0, 0, 0, .35);
+  transform: translate(-50%, -50%);
+  opacity: .55;
+  pointer-events: none;
+}
+.profile-card,
+.metric-card,
+.video-card,
+.action-item,
+.referral-panel,
+.activity-panel,
+.notification-panel,
+.privacy-panel,
+.support-contact-card {
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.profile-card:hover,
+.metric-card:hover,
+.video-card:hover,
+.action-item:hover,
+.referral-panel:hover,
+.activity-panel:hover,
+.notification-panel:hover,
+.privacy-panel:hover,
+.support-contact-card:hover {
+  border-color: rgba(255, 163, 91, .7);
+  box-shadow: var(--shadow-card), inset 0 0 0 1px rgba(255, 151, 73, .14), 0 0 22px rgba(255, 128, 42, .07);
+}
+.dashboard-bottom-nav button {
+  border-radius: 35% 40% 32% 38% / 24% 28% 22% 25%;
+}
+button.refresh-button,
+button.watch-button,
+button.referral-button,
+button.referral-share-button,
+button.contact-submit-button,
+.video-search button,
+.video-pagination button {
+  border-radius: 36% 40% 34% 38% / 25% 28% 23% 26%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-card,
+  .metric-card,
+  .video-card,
+  .action-item,
+  .referral-panel,
+  .activity-panel,
+  .notification-panel,
+  .privacy-panel,
+  .support-contact-card {
+    transition: none;
+  }
+}
