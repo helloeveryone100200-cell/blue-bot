@@ -12,6 +12,8 @@ from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
 from urllib.request import Request, urlopen
 
+import kingdom_builder
+
 ADMIN_DIR = Path(__file__).resolve().parent / "admin"
 USER_APP_DIR = Path(__file__).resolve().parent / "user_app"
 MAX_API_BODY = 16 * 1024
@@ -188,16 +190,7 @@ def handle_admin_request(handler, users, videos, settings, head_only=False, acti
     method = "HEAD" if head_only else handler.command
     app_dir = USER_APP_DIR if is_user_app else ADMIN_DIR
 
-    if path in ("/app/game", "/app/game/"):
-        if method not in ("GET", "HEAD"):
-            _send(handler, 405, b"Method not allowed.")
-            return True
-        try:
-            body = (USER_APP_DIR / "game" / "index.html").read_bytes()
-        except OSError:
-            _send(handler, 503, b"Game assets are unavailable.")
-            return True
-        _send(handler, 200, body, "text/html; charset=utf-8")
+    if kingdom_builder.handle_request(handler, path, method, _send):
         return True
 
     if path in ("/app", "/app/", "/admin", "/admin/"):
@@ -215,7 +208,6 @@ def handle_admin_request(handler, users, videos, settings, head_only=False, acti
     if path in (
         "/admin/styles.css", "/admin/app.js", "/admin/navigation.js",
         "/app/styles.css", "/app/app.js", "/app/navigation.js",
-        "/app/game.css", "/app/game.js",
     ):
         if method not in ("GET", "HEAD"):
             _send(handler, 405, b"Method not allowed.")
