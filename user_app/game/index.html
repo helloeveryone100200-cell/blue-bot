@@ -4,52 +4,74 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#101a20">
+<meta name="theme-color" content="#10100f">
 <title>Kingdom Builder — Blue Bot</title>
 <link rel="stylesheet" href="game.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="game.js" defer></script>
 </head>
 <body>
+<div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
 <main class="game-shell">
-<header class="game-header">
-<a class="back-link" href="https://blue-bot-qz5f.onrender.com/app/" aria-label="Back to Blue Bot dashboard">‹ <span>Blue Bot</span></a>
-<div class="game-title"><span class="crown">♜</span><div><small>YOUR REALM</small><h1>Kingdom Builder</h1></div></div>
-<button id="reset-game" class="reset-button" type="button">Reset</button>
-</header>
-<section class="resource-bar" aria-label="Resources">
-<div><span>🪵</span><small>WOOD</small><strong id="wood">80</strong></div>
-<div><span>🪙</span><small>GOLD</small><strong id="gold">120</strong></div>
-<div><span>👷</span><small>WORKERS</small><strong id="workers">2</strong></div>
-<div><span>🛡️</span><small>DEFENCE</small><strong id="defence">0</strong></div>
-</section>
-<section class="realm-panel">
-<div class="realm-top"><div><p class="eyebrow">THE GREENWOLD FRONTIER</p><h2>Build a kingdom that lasts.</h2></div><span class="day-pill" id="day-label">DAY 1</span></div>
-<div id="game-map" class="game-map" aria-label="Kingdom map"></div>
-<div class="map-legend"><span>🌲 Forest</span><span>🏡 Buildings</span><span>👾 Monster camp</span></div>
-<p id="game-message" class="game-message" role="status" aria-live="polite">Gather wood, build your settlement, and prepare for the night.</p>
-</section>
-<section class="game-section">
-<div class="section-title"><div><p class="eyebrow">REALM MANAGEMENT</p><h2>Build &amp; Upgrade</h2></div><span id="next-wave" class="wave-pill">Nightfall in 60s</span></div>
-<div class="build-grid">
-<button class="build-card" data-build="house"><span class="build-icon">🏡</span><strong>Woodcutter's Lodge</strong><small>+1 worker · Cost 35 wood, 20 gold</small><span class="build-action">Build</span></button>
-<button class="build-card" data-build="mill"><span class="build-icon">🪓</span><strong>Lumber Mill</strong><small>Workers gather wood automatically</small><span class="build-action">Build · 45 wood, 30 gold</span></button>
-<button class="build-card" data-build="tower"><span class="build-icon">🗼</span><strong>Guard Tower</strong><small>Protects the realm from monsters</small><span class="build-action">Build · 40 wood, 45 gold</span></button>
-<button class="build-card" data-build="farm"><span class="build-icon">🌾</span><strong>Gold Mine</strong><small>Generate gold over time</small><span class="build-action">Build · 55 wood, 25 gold</span></button>
-</div>
-</section>
-<section class="game-section lower-section">
-<div class="section-title"><div><p class="eyebrow">FRONTIER</p><h2>Gather &amp; Defend</h2></div></div>
-<div class="action-grid">
-<button id="chop-tree" class="action-button"><span>🌲</span><strong>Chop Trees</strong><small>Gather 12 wood</small></button>
-<button id="scout" class="action-button"><span>🧭</span><strong>Scout Forest</strong><small>Find a small gold cache</small></button>
-<button id="train-guard" class="action-button"><span>⚔️</span><strong>Train Guards</strong><small>Cost 25 gold · +2 defence</small></button>
-<button id="upgrade-keep" class="action-button"><span>🏰</span><strong>Upgrade Keep</strong><small>Cost 50 wood, 50 gold</small></button>
-</div>
-<div class="kingdom-stats"><div><small>BUILDINGS</small><strong id="building-count">1</strong></div><div><small>MONSTERS DEFEATED</small><strong id="kills">0</strong></div><div><small>KEEP LEVEL</small><strong id="keep-level">1</strong></div></div>
-</section>
-<footer>Single-player realm · Progress saves on this device</footer>
+  <header class="topbar">
+    <a class="back-link" href="https://blue-bot-qz5f.onrender.com/app/" aria-label="Back to Blue Bot dashboard"><span class="back-chevron">‹</span><span>Blue Bot</span></a>
+    <div class="brand"><div class="brand-mark">♜</div><div><p>REALM MANAGEMENT</p><h1>Kingdom <span>Builder</span></h1></div></div>
+    <button id="reset-game" class="icon-button" type="button" aria-label="Reset game" title="Reset kingdom">↻</button>
+  </header>
+
+  <section class="resource-strip" aria-label="Kingdom resources">
+    <div class="resource-card"><span class="resource-icon wood-icon">▥</span><div><small>WOOD</small><strong id="wood">80</strong><em id="wood-rate">+0 / min</em></div></div>
+    <div class="resource-card"><span class="resource-icon gold-icon">✦</span><div><small>GOLD</small><strong id="gold">120</strong><em id="gold-rate">+0 / min</em></div></div>
+    <div class="resource-card"><span class="resource-icon worker-icon">♟</span><div><small>WORKERS</small><strong id="workers">2</strong><em>Realm workforce</em></div></div>
+    <div class="resource-card"><span class="resource-icon guard-icon">⬟</span><div><small>DEFENCE</small><strong id="defence">0</strong><em>Guard strength</em></div></div>
+    <div class="realm-level"><span class="level-crown">♛</span><div><small>YOUR REALM</small><strong>LEVEL <span id="keep-level">1</span></strong><div class="level-track"><i id="realm-progress"></i></div></div></div>
+  </section>
+
+  <div class="workspace">
+    <section class="world-column">
+      <div class="world-heading">
+        <div><p class="eyebrow">THE GREENWOLD FRONTIER</p><h2>Your Kingdom</h2><p class="subheading">A new age begins with what you build.</p></div>
+        <div class="day-badge"><span class="moon">☾</span><div><small>REALM CYCLE</small><strong id="day-label">DAY 1</strong></div></div>
+      </div>
+      <section class="world-card" aria-label="Interactive kingdom world">
+        <div class="world-sky"><span class="sky-star star-a">✦</span><span class="sky-star star-b">·</span><span class="sky-star star-c">✧</span><div class="world-sun"></div><div class="distant-mountains"></div></div>
+        <div class="world-ribbon"><span><i class="live-dot"></i> KINGDOM TERRITORY</span><span id="next-wave">NIGHTFALL IN 60S</span></div>
+        <div id="game-map" class="game-map" aria-label="Select a tile or building"></div>
+        <div class="map-footer"><span><i class="legend-dot forest-dot"></i> Forest</span><span><i class="legend-dot building-dot"></i> Buildings</span><span><i class="legend-dot threat-dot"></i> Threat</span><span class="map-hint">Select a building to manage it</span></div>
+      </section>
+      <div class="world-notice"><span class="notice-symbol">✦</span><p id="game-message" role="status" aria-live="polite">Welcome, Keeper. Choose a building or clear the forest to begin shaping your realm.</p></div>
+      <section class="activity-panel">
+        <div class="section-heading"><div><p class="eyebrow">KINGDOM ACTIONS</p><h3>Gather &amp; Prepare</h3></div><span class="section-count">FIELD OPERATIONS</span></div>
+        <div class="action-grid">
+          <button id="chop-tree" class="action-card" type="button"><span class="action-symbol">♧</span><span><strong>Chop Trees</strong><small>Gather 12 wood</small></span><span class="action-arrow">↗</span></button>
+          <button id="scout" class="action-card" type="button"><span class="action-symbol">⌖</span><span><strong>Scout Forest</strong><small>Search for gold</small></span><span class="action-arrow">↗</span></button>
+          <button id="train-guard" class="action-card" type="button"><span class="action-symbol">⚔</span><span><strong>Train Guards</strong><small>25 gold · +2 defence</small></span><span class="action-arrow">↗</span></button>
+          <button id="upgrade-keep" class="action-card" type="button"><span class="action-symbol">♜</span><span><strong>Upgrade Keep</strong><small id="keep-cost">50 wood · 50 gold</small></span><span class="action-arrow">↗</span></button>
+        </div>
+      </section>
+    </section>
+
+    <aside class="management-column" aria-label="Building management">
+      <section class="building-panel">
+        <div class="panel-topline"><p class="eyebrow">BUILDING MANAGEMENT</p><span class="status-indicator"><i></i> LIVE</span></div>
+        <div id="detail-art" class="detail-art art-keep"><div class="art-glow"></div><div class="art-sigil">♜</div><span id="detail-level" class="art-level">LV. 1</span><span class="art-caption" id="detail-art-caption">ROYAL STRONGHOLD</span></div>
+        <div class="detail-heading"><div><p id="detail-category" class="eyebrow">ROYAL STRUCTURE</p><h2 id="detail-name">The Keep</h2></div><span id="detail-state" class="owned-pill">OWNED</span></div>
+        <p id="detail-description" class="detail-description">The heart of your realm. Strengthen the Keep to unlock a more resilient kingdom.</p>
+        <div class="production-card"><div><small>PRODUCTION / EFFECT</small><strong id="detail-production">+1 DEFENCE</strong></div><span class="production-symbol" id="detail-production-icon">⬟</span></div>
+        <div class="upgrade-block"><div class="upgrade-title"><span>UPGRADE PROGRESS</span><strong id="upgrade-level-text">LEVEL 1 / 5</strong></div><div class="upgrade-track"><i id="upgrade-progress"></i></div><div class="next-upgrade"><div><small>NEXT LEVEL</small><strong id="next-level-benefit">+1 Defence</strong></div><span id="next-level-tag">LV. 2</span></div></div>
+        <div class="cost-block"><div class="cost-title"><span id="cost-heading">UPGRADE COST</span><small id="cost-note">Resources are spent instantly</small></div><div class="cost-items"><div class="cost-item"><span class="cost-wood">▥</span><div><small>WOOD</small><strong id="detail-wood-cost">50</strong></div><i id="wood-check">✓</i></div><div class="cost-item"><span class="cost-gold">✦</span><div><small>GOLD</small><strong id="detail-gold-cost">50</strong></div><i id="gold-check">✓</i></div></div></div>
+        <button id="primary-building-action" class="primary-action" type="button"><span id="primary-action-icon">⬆</span><span id="primary-action-label">UPGRADE BUILDING</span><span class="button-arrow">→</span></button>
+        <button id="collect-production" class="secondary-action" type="button">⌁ <span>Collect resources</span></button>
+        <p class="panel-footnote"><span>◈</span> Every upgrade brings your realm closer to greatness.</p>
+      </section>
+      <section class="realm-summary">
+        <div class="section-heading"><div><p class="eyebrow">REALM OVERVIEW</p><h3>Settlement Report</h3></div><span class="report-mark">◫</span></div>
+        <div class="summary-grid"><div><small>BUILDINGS</small><strong id="building-count">1</strong></div><div><small>WAVES DEFEATED</small><strong id="kills">0</strong></div><div><small>WORKERS</small><strong id="summary-workers">2</strong></div></div>
+      </section>
+    </aside>
+  </div>
+  <footer class="game-footer"><span>BLUE BOT <b>·</b> KINGDOM BUILDER</span><span>Single-player realm <b>·</b> Progress saves on this device</span></footer>
 </main>
-<div id="confirm-modal" class="modal" hidden><div class="modal-card"><h2>Reset your kingdom?</h2><p>This clears the saved realm on this device and starts a new game.</p><div><button id="cancel-reset" type="button">Cancel</button><button id="confirm-reset" type="button">Reset kingdom</button></div></div></div>
+<div id="confirm-modal" class="modal" hidden><div class="modal-card"><span class="modal-crest">♜</span><p class="eyebrow">A NEW BEGINNING</p><h2>Reset your kingdom?</h2><p>This clears the saved realm on this device and starts a new game.</p><div class="modal-actions"><button id="cancel-reset" type="button">Keep my realm</button><button id="confirm-reset" type="button">Reset kingdom</button></div></div></div>
 </body>
 </html>
