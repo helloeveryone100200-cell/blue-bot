@@ -1516,3 +1516,41 @@ button:active:not(:disabled) { transform: translateY(1px) scale(.99); }
 @media (max-width: 420px) {
   .privacy-status-grid { grid-template-columns: 1fr; }
 }
+
+
+/* Bottom-bar navigation and focused User Dashboard pages. */
+.dashboard-page { min-width: 0; animation: dashboard-page-in .18s ease both; }
+.dashboard-page[hidden] { display: none !important; }
+.dashboard-bottom-nav {
+  position: fixed; z-index: 1000; left: 50%; bottom: 0; transform: translateX(-50%);
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px;
+  width: min(900px, calc(100% - 20px)); padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  border: 1px solid rgba(137, 133, 255, .24); border-bottom: 0;
+  border-radius: 18px 18px 0 0; background: rgba(10, 13, 28, .94);
+  box-shadow: 0 -12px 36px rgba(0,0,0,.26); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+.dashboard-bottom-nav button {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-width: 0; min-height: 54px; padding: 6px 2px; border: 1px solid transparent; border-radius: 12px;
+  background: transparent; color: var(--muted); font: inherit; cursor: pointer;
+  transition: color .16s ease, background .16s ease, border-color .16s ease;
+}
+.dashboard-bottom-nav .nav-icon { font-size: 19px; line-height: 1; }
+.dashboard-bottom-nav .nav-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; font-weight: 750; }
+.dashboard-bottom-nav button[aria-current="page"] {
+  color: var(--indigo-bright, #a7a4ff); border-color: rgba(137,133,255,.26);
+  background: linear-gradient(145deg, rgba(119,117,255,.18), rgba(81,72,217,.08));
+}
+.dashboard-bottom-nav button:focus-visible { outline: 2px solid #a7a4ff; outline-offset: 2px; }
+.app-shell { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+@keyframes dashboard-page-in { from { opacity: .82; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-page { animation: none !important; }
+  .dashboard-bottom-nav button { transition: none !important; }
+}
+@media (max-width: 360px) {
+  .dashboard-bottom-nav { gap: 1px; width: calc(100% - 12px); padding-left: 4px; padding-right: 4px; }
+  .dashboard-bottom-nav button { min-height: 50px; gap: 3px; }
+  .dashboard-bottom-nav .nav-icon { font-size: 17px; }
+  .dashboard-bottom-nav .nav-label { font-size: 8px; }
+}
