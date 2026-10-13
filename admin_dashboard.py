@@ -2,6 +2,7 @@
 import base64
 import binascii
 import hashlib
+import html
 import hmac
 import json
 import os
@@ -9,6 +10,7 @@ import re
 import time
 from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
+from urllib.request import Request, urlopen
 
 ADMIN_DIR = Path(__file__).resolve().parent / "admin"
 USER_APP_DIR = Path(__file__).resolve().parent / "user_app"
@@ -424,6 +426,108 @@ def handle_admin_request(handler, users, videos, settings, head_only=False, acti
             _json(handler, 503, {"error": "saved_videos_unavailable"})
             return True
         _json(handler, 200, {"ok": True, "savedIds": valid_ids, "items": items, "limit": 100})
+        return True
+
+    if path == "/app/api/contact-owner":
+        if method != "POST":
+            _json(handler, 405, {"error": "method_not_allowed"})
+            return True
+        authenticated, valid = _read_user_payload(handler)
+        if not valid:
+            return True
+        telegram_user, payload = authenticated
+        user_id = telegram_user["id"]
+        category = payload.get("category")
+        message = payload.get("message")
+        categories = {
+            "General question", "Account access", "Videos and library",
+            "Referrals", "Bug report",
+        }
+        if not isinstance(category, str) or category not in categories:
+            _json(handler, 400, {"error": "invalid_category"})
+            return True
+        if not isinstance(message, str):
+            _json(handler, 400, {"error": "invalid_message"})
+            return True
+        message = message.strip()
+        if len(message) < 10 or len(message) > 2000:
+            _json(handler, 400, {"error": "invalid_message"})
+            return True
+        owner_ids = _owner_ids()
+        bot_token = os.environ.get("BOT_TOKEN", "")
+        if not owner_ids or not bot_token or bot_token == "YOUR_BOT_TOKEN":
+            _json(handler, 503, {"error": "contact_unavailable"})
+            return True
+        try:
+            user_doc = users.find_one(
+                {"_id": user_id},
+                {"_id": 1, "username": 1, "first_name": 1, "is_banned": 1, "support_contact_at": 1},
+            )
+            if not user_doc:
+                _json(handler, 404, {"error": "user_not_found"})
+                return True
+            if user_doc.get("is_banned") is True:
+                _json(handler, 403, {"error": "account_restricted"})
+                return True
+            now = int(time.time())
+            previous = user_doc.get("support_contact_at")
+            if isinstance(previous, int) and now - previous < 60:
+                _json(handler, 429, {"error": "contact_rate_limited"})
+                return True
+            reservation = users.update_one(
+                {"_id": user_id, "$or": [
+                    {"support_contact_at": {"$lte": now - 60}},
+                    {"support_contact_at": {"$exists": False}},
+                ]},
+                {"$set": {"support_contact_at": now}},
+            )
+            if getattr(reservation, "matched_count", 1) == 0:
+                _json(handler, 429, {"error": "contact_rate_limited"})
+                return True
+        except Exception:
+            _json(handler, 503, {"error": "contact_unavailable"})
+            return True
+        username = str(telegram_user.get("username") or user_doc.get("username") or "")[:64]
+        first_name = str(telegram_user.get("first_name") or user_doc.get("first_name") or "Blue Bot User")[:128]
+        safe_name = html.escape(first_name)
+        safe_username = html.escape(username)
+        safe_message = html.escape(message)
+        notification = (
+            "<b>📩 New Support Request</b>\n\n"
+            "<blockquote>"
+            f"<b>Name:</b> {safe_name}\n"
+            f"<b>Username:</b> @{safe_username if safe_username else 'Not provided'}\n"
+            f"<b>Telegram ID:</b> <code>{user_id}</code>\n"
+            f"<b>Category:</b> {html.escape(category)}\n"
+            "<b>Source:</b> User Dashboard Help &amp; Support\n\n"
+            f"<b>Message:</b>\n{safe_message}"
+            "</blockquote>"
+        )
+        delivered = 0
+        for owner_id in owner_ids:
+            request_body = json.dumps({
+                "chat_id": owner_id,
+                "text": notification,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            }).encode("utf-8")
+            request = Request(
+                f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                data=request_body,
+                headers={"Content-Type": "application/json", "Accept": "application/json"},
+                method="POST",
+            )
+            try:
+                with urlopen(request, timeout=5) as response:
+                    result = json.loads(response.read().decode("utf-8"))
+                if isinstance(result, dict) and result.get("ok") is True:
+                    delivered += 1
+            except Exception:
+                continue
+        if delivered == 0:
+            _json(handler, 503, {"error": "contact_delivery_failed"})
+            return True
+        _json(handler, 200, {"ok": True, "delivered": delivered})
         return True
 
     if path == "/app/api/notification-preferences":

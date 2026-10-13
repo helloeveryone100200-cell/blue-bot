@@ -131,6 +131,81 @@ class MiniAppRouteTests(unittest.TestCase):
                 self.assertEqual(handler.response_headers["Content-Type"], "text/javascript; charset=utf-8")
                 self.assertIn(expected, handler.response_body)
 
+    def test_contact_owner_route_requires_post(self):
+        handler = FakeHandler("/app/api/contact-owner", command="GET")
+        admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        self.assertEqual(handler.status, 405)
+
+    def test_contact_owner_rejects_invalid_message_and_category(self):
+        for payload, error in (
+            ({"category": "General question", "message": "short"}, "invalid_message"),
+            ({"category": "Unknown", "message": "I need help with my account."}, "invalid_category"),
+            ({"category": "General question", "message": "x" * 2001}, "invalid_message"),
+        ):
+            with self.subTest(error=error), patch("admin_dashboard.urlopen") as send:
+                handler = self.authed_request("/app/api/contact-owner", payload)
+                self.assertEqual(handler.status, 400)
+                self.assertEqual(json.loads(handler.response_body)["error"], error)
+                send.assert_not_called()
+
+    def test_contact_owner_rejects_unauthenticated_requests(self):
+        body = json.dumps({"initData": "invalid", "category": "General question", "message": "I need help with my account."}).encode()
+        handler = FakeHandler("/app/api/contact-owner", command="POST", headers={"Content-Length": str(len(body))}, body=body)
+        with patch.dict(os.environ, {"BOT_TOKEN": BOT_TOKEN, "OWNER_IDS": "1234"}, clear=False):
+            admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
+        self.assertEqual(handler.status, 403)
+
+    def test_contact_owner_forwards_escaped_message_to_configured_owner(self):
+        self.users.find_one.return_value = {
+            "_id": 1234, "username": "support_user", "first_name": "Test User",
+            "is_banned": False,
+        }
+        self.users.update_one.return_value.matched_count = 1
+        class FakeResponse:
+            def __enter__(self): return self
+            def __exit__(self, *_args): return False
+            def read(self): return b'{"ok":true,"result":{"message_id":1}}'
+        with patch("admin_dashboard.urlopen", return_value=FakeResponse()) as send, patch(
+            "admin_dashboard.time.time", return_value=1800000000
+        ):
+            handler = self.authed_request(
+                "/app/api/contact-owner",
+                {"category": "Bug report", "message": "Please check <script>alert(1)</script>"},
+            )
+        self.assertEqual(handler.status, 200)
+        self.assertEqual(json.loads(handler.response_body), {"ok": True, "delivered": 1})
+        self.assertEqual(send.call_count, 1)
+        request = send.call_args.args[0]
+        self.assertEqual(request.full_url, f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage")
+        body = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(body["chat_id"], 1234)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", body["text"])
+        self.assertEqual(body["parse_mode"], "HTML")
+
+    def test_contact_owner_rejects_restricted_accounts(self):
+        self.users.find_one.return_value = {"_id": 1234, "is_banned": True}
+        with patch("admin_dashboard.urlopen") as send:
+            handler = self.authed_request(
+                "/app/api/contact-owner",
+                {"category": "General question", "message": "I need help with my account."},
+            )
+        self.assertEqual(handler.status, 403)
+        self.assertEqual(json.loads(handler.response_body)["error"], "account_restricted")
+        send.assert_not_called()
+
+    def test_contact_owner_rate_limits_repeat_requests(self):
+        self.users.find_one.return_value = {
+            "_id": 1234, "is_banned": False, "support_contact_at": 1799999980,
+        }
+        with patch("admin_dashboard.time.time", return_value=1800000000), patch("admin_dashboard.urlopen") as send:
+            handler = self.authed_request(
+                "/app/api/contact-owner",
+                {"category": "General question", "message": "I need help with my account."},
+            )
+        self.assertEqual(handler.status, 429)
+        self.assertEqual(json.loads(handler.response_body)["error"], "contact_rate_limited")
+        send.assert_not_called()
+
     def test_api_rejects_get_requests(self):
         handler = FakeHandler("/admin/api/overview", command="GET")
         admin_dashboard.handle_admin_request(handler, self.users, self.videos, self.settings)
